@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "app-treino-scaffold",
-    "slug": "app-treino-scaffold",
+    "name": "App Treino",
+    "slug": "app-treino",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "apptreinoscaffold",
+    "scheme": "apptreino",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"

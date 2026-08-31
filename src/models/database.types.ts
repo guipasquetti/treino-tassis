@@ -1,0 +1,508 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
+  public: {
+    Tables: {
+      alimentos_taco: {
+        Row: {
+          calcio_mg: number | null
+          carboidrato_g: number | null
+          categoria: string
+          ferro_mg: number | null
+          fibra_g: number | null
+          id: number
+          kcal: number | null
+          lipideos_g: number | null
+          nome: string
+          proteina_g: number | null
+          sodio_mg: number | null
+        }
+        Insert: {
+          calcio_mg?: number | null
+          carboidrato_g?: number | null
+          categoria: string
+          ferro_mg?: number | null
+          fibra_g?: number | null
+          id: number
+          kcal?: number | null
+          lipideos_g?: number | null
+          nome: string
+          proteina_g?: number | null
+          sodio_mg?: number | null
+        }
+        Update: {
+          calcio_mg?: number | null
+          carboidrato_g?: number | null
+          categoria?: string
+          ferro_mg?: number | null
+          fibra_g?: number | null
+          id?: number
+          kcal?: number | null
+          lipideos_g?: number | null
+          nome?: string
+          proteina_g?: number | null
+          sodio_mg?: number | null
+        }
+        Relationships: []
+      }
+      anamnese: {
+        Row: {
+          alergias: string
+          cirurgias: string
+          client_id: string
+          condicoes_medicas: string
+          historico_familiar: string
+          lesoes_dores: string
+          medicamentos: string
+          nivel_atividade: string
+          objetivo_principal: string
+          observacoes: string
+          respostas_completas: Json | null
+          restricoes_alimentares: string
+          updated_at: string
+        }
+        Insert: {
+          alergias?: string
+          cirurgias?: string
+          client_id: string
+          condicoes_medicas?: string
+          historico_familiar?: string
+          lesoes_dores?: string
+          medicamentos?: string
+          nivel_atividade?: string
+          objetivo_principal?: string
+          observacoes?: string
+          respostas_completas?: Json | null
+          restricoes_alimentares?: string
+          updated_at?: string
+        }
+        Update: {
+          alergias?: string
+          cirurgias?: string
+          client_id?: string
+          condicoes_medicas?: string
+          historico_familiar?: string
+          lesoes_dores?: string
+          medicamentos?: string
+          nivel_atividade?: string
+          objetivo_principal?: string
+          observacoes?: string
+          respostas_completas?: Json | null
+          restricoes_alimentares?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "anamnese_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      convites: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          nome: string
+          respondido_em: string | null
+          respostas: Json | null
+          status: string
+          token: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email: string
+          id?: string
+          nome?: string
+          respondido_em?: string | null
+          respostas?: Json | null
+          status?: string
+          token: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+          nome?: string
+          respondido_em?: string | null
+          respostas?: Json | null
+          status?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "convites_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "convites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planos_alimentares: {
+        Row: {
+          client_id: string
+          id: string
+          meta_carboidrato_g: number | null
+          meta_gordura_g: number | null
+          meta_kcal: number | null
+          meta_proteina_g: number | null
+          nutricionista: string
+          observacoes: string
+          periodo: string
+          refeicoes: Json
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          id?: string
+          meta_carboidrato_g?: number | null
+          meta_gordura_g?: number | null
+          meta_kcal?: number | null
+          meta_proteina_g?: number | null
+          nutricionista?: string
+          observacoes?: string
+          periodo?: string
+          refeicoes?: Json
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          id?: string
+          meta_carboidrato_g?: number | null
+          meta_gordura_g?: number | null
+          meta_kcal?: number | null
+          meta_proteina_g?: number | null
+          nutricionista?: string
+          observacoes?: string
+          periodo?: string
+          refeicoes?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planos_alimentares_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plans: {
+        Row: {
+          client_id: string
+          dias: Json
+          id: string
+          periodo: string
+          treinador: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          dias?: Json
+          id?: string
+          periodo?: string
+          treinador?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          dias?: Json
+          id?: string
+          periodo?: string
+          treinador?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plans_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          altura_cm: number | null
+          created_at: string
+          data_nascimento: string | null
+          email: string | null
+          id: string
+          nome: string
+          peso_kg: number | null
+          role: string
+          telefone: string | null
+        }
+        Insert: {
+          altura_cm?: number | null
+          created_at?: string
+          data_nascimento?: string | null
+          email?: string | null
+          id: string
+          nome?: string
+          peso_kg?: number | null
+          role?: string
+          telefone?: string | null
+        }
+        Update: {
+          altura_cm?: number | null
+          created_at?: string
+          data_nascimento?: string | null
+          email?: string | null
+          id?: string
+          nome?: string
+          peso_kg?: number | null
+          role?: string
+          telefone?: string | null
+        }
+        Relationships: []
+      }
+      workout_drafts: {
+        Row: {
+          client_id: string
+          exercise_id: string
+          session_date: string
+          sets: Json
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          exercise_id: string
+          session_date: string
+          sets?: Json
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          exercise_id?: string
+          session_date?: string
+          sets?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_drafts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workout_logs: {
+        Row: {
+          client_id: string
+          created_at: string
+          exercise_id: string
+          id: string
+          session_date: string
+          sets: Json
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          exercise_id: string
+          id?: string
+          session_date: string
+          sets: Json
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          exercise_id?: string
+          id?: string
+          session_date?: string
+          sets?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_logs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      finalizar_cadastro_convite: {
+        Args: { p_token: string }
+        Returns: boolean
+      }
+      is_trainer: { Args: never; Returns: boolean }
+      obter_convite: {
+        Args: { p_token: string }
+        Returns: {
+          email: string
+          nome: string
+          status: string
+        }[]
+      }
+      submeter_anamnese: {
+        Args: { p_respostas: Json; p_token: string }
+        Returns: boolean
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
