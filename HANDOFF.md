@@ -45,9 +45,12 @@ tomadas ali. Era o conteúdo original do repo GitHub `treino-tassis` (histórico
 substituído em 02/set quando conectamos este projeto Expo ao mesmo repo).
 
 **Identidade visual:** referência escolhida pelo Guilherme (02/set) é o app nativo
-**Apple Fitness** (dark theme, anéis de progresso, tab bar em pill) — screenshots em
-[`docs/design-inspiration/`](docs/design-inspiration/). Backlog explícito — não aplicar
-agora, só quando a fase de identidade visual começar (ver §7).
+**Apple Fitness** (dark theme, cores saturadas por categoria, números grandes, cards
+arredondados) — screenshots em [`docs/design-inspiration/`](docs/design-inspiration/).
+✅ Já aplicada em [`src/theme/index.ts`](src/theme/index.ts). Escopo explícito do
+Guilherme: **só a identidade visual**, não as funcionalidades do Apple Fitness —
+HealthKit/Apple Watch ficam de fora, no máximo como captura de dado pro módulo de
+exercício mais pra frente. Marca própria (nome/cores do Tassis) segue pendente no §7.
 
 ## 2. Modelo de negócio e visão de produto (reunião com Tassis, 31/ago)
 
@@ -102,10 +105,17 @@ Reels/TikTok.
 | Camada | Tecnologia |
 |---|---|
 | App | React Native + Expo SDK 57, Expo Router, TypeScript |
-| Estado | Zustand (ainda não criado — ver §8) |
+| Estado | Zustand (`src/store/authStore.ts`) |
+| UI | Design system próprio (`src/theme`) + `@expo/vector-icons` — **sem lib de componentes** |
 | Persistência local | AsyncStorage + Expo SecureStore |
 | Backend | Supabase (Postgres + Auth + RLS) |
 | Build/OTA | não configurado ainda (sem EAS) |
+
+**Decisão de stack (02/set):** avaliado usar Xcode/SwiftUI em paralelo, **descartado**.
+Motivos: contradiz o go-to-market de web-primeiro (§2), cortaria Android (maior parte do
+mercado do Tassis), e dois codebases com um dev só é insustentável. Nada dos problemas
+enfrentados até aqui (SMTP, RLS, telas placeholder) vinha do Expo. Se um dia HealthKit/
+Apple Watch virar core, dá pra fazer via módulo nativo sem trocar de stack.
 
 ## 4. Infra — IDs e ambientes
 
@@ -170,18 +180,35 @@ Types TS gerados do schema real em [`src/models/database.types.ts`](src/models/d
 
 ## 6. Estrutura de pastas
 
+Scaffold do Expo foi **removido por completo** em 02/set — nada de `themed-text`,
+`animated-icon`, `hint-row`, aba "Explore" etc. O que existe hoje é só código do produto.
+
 ```
-app/                          expo-router — rotas = telas (a criar)
 src/
-  lib/supabase.ts             ✅ client Supabase tipado
+  app/                        expo-router — rotas = telas
+    _layout.tsx               Stack raiz: auth, tema dark, correção de área por papel
+    index.tsx                 rota "/": decide login vs /aluno vs /pro (declarativo)
+    login.tsx
+    aluno/                    área do ALUNO (abas: Treino · Dieta · Perfil)
+      _layout.tsx  index.tsx (treino)  dieta.tsx  perfil.tsx
+    pro/                      área do PROFISSIONAL (abas: Alunos · Planos · Perfil)
+      _layout.tsx  index.tsx (alunos)  planos.tsx  perfil.tsx
+  theme/index.ts              design system (paleta, spacing, radius, cores por treino)
+  components/
+    ui/index.tsx              Screen, Card, Button, Pill, Stat, Stepper, Caption...
+    perfil-screen.tsx         perfil compartilhado pelos dois papéis
   models/
-    database.types.ts         ✅ gerado do schema
-    types.ts                  tipos de domínio (a criar)
-  services/                   1 arquivo por domínio, chamadas Supabase (a criar)
-  store/                      zustand (a criar)
-  components/                 do scaffold Expo (genéricos, a substituir aos poucos)
-  hooks/
+    database.types.ts         gerado do schema Supabase
+    domain.ts                 tipos dos jsonb + helpers (formatarSet, somaMacros...)
+  services/                   1 arquivo por domínio
+    authService.ts  workoutService.ts  nutritionService.ts  professionalService.ts
+  store/authStore.ts          zustand (sessão, profile, isProfessional)
+  lib/supabase.ts             client tipado (com guard de SSR, ver §8)
 ```
+
+**Rotas são segmentos explícitos (`/aluno`, `/pro`), não route groups.** Foi tentado com
+grupos `(client)`/`(pro)` e os dois `index.tsx` disputavam a rota `/` — resultado era
+"Unmatched Route". Não voltar pra grupos sem resolver essa colisão.
 
 ## 7. Pendências do Tassis (bloqueiam trabalho downstream)
 
@@ -225,17 +252,28 @@ produção. Dashboard: Authentication → Settings → SMTP Settings.
   derrubava o servidor inteiro (`ReferenceError: window is not defined`). Corrigido em
   [`src/lib/supabase.ts`](src/lib/supabase.ts) com um `webSafeStorage` guardado por
   `typeof window`, mesmo padrão já usado no `OLIHealthHub/src/services/supabase.ts`.
-- ✅ Home real por papel (02/set): `src/app/(app)/index.tsx` renderiza
-  [`ClientHome`](src/components/client-home.tsx) ou [`ProfessionalHome`](src/components/professional-home.tsx)
-  conforme `authStore.isProfessional`. Dados vêm de verdade do Supabase via
-  [`src/services/homeService.ts`](src/services/homeService.ts): aluno vê suas assinaturas
-  ativas (nome do profissional + plano), plano de treino vigente e contagem de séries
-  registradas; treinador vê a lista de alunos vinculados (nome, plano, status da
-  assinatura). Não testado ponta a ponta com login real nessa sessão (sem credencial
-  disponível) — só validado por typecheck + leitura das RLS; conferir visualmente com
-  login de verdade.
-- Ainda sem telas de treino/nutrição além da home (registrar série, montar plano, ver
-  dieta) — só o resumo na home.
+- ✅ **V1 utilizável implementada (02/set)** — telas reais, dados reais, scaffold zerado:
+  - **Aluno · Treino** ([`src/app/aluno/index.tsx`](src/app/aluno/index.tsx)): abas por dia
+    (A/B/C…) coloridas por tipo, card por exercício com prescrição (warm/feeder/working),
+    última sessão, leitura de progressão, steppers de carga/reps, registro de série e
+    histórico. Grava via draft→log igual ao protótipo (ver §11).
+  - **Aluno · Dieta** ([`dieta.tsx`](src/app/aluno/dieta.tsx)): totais do dia vs. metas de
+    macro, refeições, itens com quantidade/macros e substituições.
+  - **Profissional · Alunos** ([`src/app/pro/index.tsx`](src/app/pro/index.tsx)): contagem
+    total/ativos/inativos e card por aluno com plano, status e dias desde o último treino
+    (sinaliza quem sumiu há 7+ dias — a dor de "quem não responde" do §2).
+  - **Profissional · Planos** ([`planos.tsx`](src/app/pro/planos.tsx)): lista, criação e
+    ativar/desativar dos `professional_plans` (nome, preço, periodicidade, módulos).
+  - **Perfil** (ambos): dados do profile, vínculos e sair.
+- Design system em [`src/theme/index.ts`](src/theme/index.ts) — preto real, cards
+  elevados, cores saturadas por categoria, seguindo a referência Apple Fitness do §1.
+  As cores push/pull/leg mantêm a semântica que o protótipo já usava.
+- ⚠️ **Não verificado com login real**: nenhuma credencial disponível na sessão em que
+  isso foi construído. Validado por typecheck + render SSR das rotas (200, sem
+  "Unmatched Route") + leitura das RLS. **Conferir visualmente antes de mostrar ao
+  Tassis.**
+- Ainda faltam telas de escrita do profissional: montar/editar plano de treino e montar
+  dieta com busca TACO (o `buscarAlimentos` já existe no service, sem tela).
 - Sem pagamento/cobrança automática ainda (schema tem `subscriptions.status`, mas nada
   muda esse status sozinho), sem contrato/LGPD.
 - Migração de schema versionada em [`supabase/migrations/20260902_multi_tenant_professionals_subscriptions.sql`](supabase/migrations/20260902_multi_tenant_professionals_subscriptions.sql)
@@ -273,3 +311,46 @@ Tabela abaixo é por par paciente↔profissional (já reflete o modelo N:N do §
    via `expo start --web`/Expo Go).
 9. Cobrar do Tassis os itens do §7 — vários bloqueiam decisões de schema/UX.
 10. Avaliar se `is_trainer()` pode ser removida (não é mais usada em nenhuma RLS, ver §5).
+
+## 11. Formas dos campos jsonb (extraídas da produção — não inventar)
+
+Estas estruturas já existem nos dados reais e o protótipo grava nelas. Mudar qualquer uma
+quebra os dados do Tassis e do aluno. Tipadas em [`src/models/domain.ts`](src/models/domain.ts).
+
+**`plans.dias`** — array de dias de treino:
+```jsonc
+[{ "id": "A", "nome": "Push", "desc": "Peito · Ombro · Tríceps", "tipo": "push",
+   "ex": [{ "id": "a1", "nome": "Crucifixo máquina", "sets": 2, "min": 12, "max": 15,
+            "warm": "8-10 (2x)", "feeder": "4 reps (2x)",
+            "nota": "…", "tempo": true, "ombro": true }] }]
+```
+`tipo` ∈ `push|pull|leg` (define a cor). `tempo: true` = exercício por segundos (prancha),
+aí `min`/`max` são segundos, não repetições. `warm`/`feeder` são texto livre ("—" quando não tem).
+
+**`workout_logs.sets` e `workout_drafts.sets`** — array de séries: `[{"p": 40, "r": 12}]`
+(`p` = peso em kg, `r` = repetições ou segundos).
+
+**`planos_alimentares.refeicoes`**:
+```jsonc
+[{ "nome": "Café da manhã",
+   "itens": [{ "nome": "Ovo inteiro", "quantidade": "2 unidades médias (100g)",
+               "macros": { "kcal": 145.7, "proteina_g": 13.3, "carboidrato_g": 0.6, "lipideos_g": 9.5 },
+               "obs": "…",
+               "substituicoes": [{ "nome": "…", "quantidade": "…", "macros": {…} }] }] }]
+```
+`macros` é `null` quando o alimento não tem referência na TACO — sempre tratar o nulo.
+
+### Regra de registro de série (draft → log)
+
+Replicada do protótipo em [`workoutService.ts`](src/services/workoutService.ts); não
+simplificar sem entender:
+1. Enquanto `séries registradas < ex.sets`, o progresso fica em **`workout_drafts`**
+   (chave: client_id + exercise_id + session_date).
+2. Ao completar a última série, faz upsert em **`workout_logs`**
+   (`onConflict: client_id,exercise_id,session_date`) e **apaga o draft**.
+3. "Corrigir última série" desfaz: se já estava em log, apaga o log e devolve as séries
+   restantes pro draft; a série removida volta pros steppers pra ser reinformada.
+
+A sugestão de carga/reps da próxima série também veio do protótipo: se na última sessão o
+aluno bateu o topo da faixa (`max`) em todas as séries com a mesma carga → sugere subir
+(passo de 2,5kg acima de 20kg, 1kg abaixo); senão mantém a carga e pede +1 repetição.
