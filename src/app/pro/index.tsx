@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -58,11 +59,12 @@ export default function AlunosScreen() {
 }
 
 function AlunoCard({ aluno }: { aluno: AlunoVinculado }) {
+  const router = useRouter();
   const dias = diasDesde(aluno.ultimoTreino);
   const alerta = dias === null || dias > 7;
 
   return (
-    <Card>
+    <Card onPress={() => router.push(`/pro/aluno/${aluno.clientId}`)}>
       <View style={styles.header}>
         <Body style={styles.nome}>{aluno.nome}</Body>
         <View

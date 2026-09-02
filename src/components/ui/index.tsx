@@ -5,7 +5,9 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
+  TextInput,
   View,
   type StyleProp,
   type TextStyle,
@@ -182,6 +184,68 @@ export function StepperButton({ icon, onPress }: { icon: 'add' | 'remove'; onPre
   );
 }
 
+/** Campo de texto com rótulo — base dos formulários do profissional. */
+export function Field({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType,
+  style,
+}: {
+  label?: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  placeholder?: string;
+  keyboardType?: 'default' | 'number-pad' | 'decimal-pad';
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[styles.field, style]}>
+      {label ? <Text style={styles.fieldLabel}>{label}</Text> : null}
+      <TextInput
+        style={styles.input}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={Palette.textTertiary}
+        keyboardType={keyboardType}
+      />
+    </View>
+  );
+}
+
+/** Linha com rótulo e switch. */
+export function ToggleRow({
+  label,
+  value,
+  onValueChange,
+}: {
+  label: string;
+  value: boolean;
+  onValueChange: (v: boolean) => void;
+}) {
+  return (
+    <View style={styles.toggleRow}>
+      <Text style={[styles.caption, { color: Palette.text }]}>{label}</Text>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ true: Palette.green, false: Palette.surfaceElevated }}
+      />
+    </View>
+  );
+}
+
+/** Botão pequeno de remover, usado em listas editáveis. */
+export function RemoveButton({ onPress, label = 'Remover' }: { onPress: () => void; label?: string }) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [pressed && styles.cardPressed]}>
+      <Text style={styles.removeText}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export function EmptyState({ text }: { text: string }) {
   return (
     <Card>
@@ -321,5 +385,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Palette.background,
+  },
+  field: {
+    gap: Spacing.xs,
+    flex: 1,
+  },
+  fieldLabel: {
+    color: Palette.textSecondary,
+    fontSize: FontSize.caption,
+    fontWeight: '600',
+  },
+  input: {
+    backgroundColor: Palette.surfaceElevated,
+    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    color: Palette.text,
+    fontSize: FontSize.body,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  removeText: {
+    color: Palette.danger,
+    fontSize: FontSize.small,
+    fontWeight: '700',
   },
 });
