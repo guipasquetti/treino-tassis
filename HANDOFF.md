@@ -109,7 +109,8 @@ Reels/TikTok.
 | UI | Design system próprio (`src/theme`) + `@expo/vector-icons` — **sem lib de componentes** |
 | Persistência local | AsyncStorage + Expo SecureStore |
 | Backend | Supabase (Postgres + Auth + RLS) |
-| Build/OTA | não configurado ainda (sem EAS) |
+| Hospedagem web | EAS Hosting — https://app-treino.expo.app (ver §4) |
+| Build nativo (iOS/Android) | não configurado ainda — sem EAS Build, sem conta Apple |
 
 **Decisão de stack (02/set):** avaliado usar Xcode/SwiftUI em paralelo, **descartado**.
 Motivos: contradiz o go-to-market de web-primeiro (§2), cortaria Android (maior parte do
