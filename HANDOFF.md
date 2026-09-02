@@ -295,9 +295,13 @@ produção. Dashboard: Authentication → Settings → SMTP Settings.
 - ✅ **Editor de plano de treino** ([`src/app/pro/aluno/[id].tsx`](src/app/pro/aluno/%5Bid%5D.tsx)):
   tocar num aluno na lista abre o editor — dias (tipo, grupos musculares), exercícios,
   séries, faixa de reps, warm/feeder, flags cronometrado/ombro. Preserva ids (ver §11).
-- Ainda falta a tela de montar **dieta** com busca TACO (o `buscarAlimentos` já existe em
-  `nutritionService`, sem tela) e **editar** um `professional_plans` existente (hoje só
-  cria novo e liga/desliga).
+- ✅ **Editor de dieta** ([`src/app/pro/aluno/[id]/dieta.tsx`](src/app/pro/aluno/%5Bid%5D/dieta.tsx)):
+  metas de macro do dia, refeições, itens vindos da busca TACO (macros calculados a partir
+  do valor por 100g) ou item livre. Detalhe do aluno agora tem duas telas com alternador
+  (Treino | Dieta).
+- Ainda falta **editar** um `professional_plans` existente (hoje só cria novo e
+  liga/desliga) e o editor de substituições de alimento (as existentes são preservadas e
+  exibidas, mas não dá pra criar/remover pela tela).
 - Sem pagamento/cobrança automática ainda (schema tem `subscriptions.status`, mas nada
   muda esse status sozinho), sem contrato/LGPD.
 - Migração de schema versionada em [`supabase/migrations/20260902_multi_tenant_professionals_subscriptions.sql`](supabase/migrations/20260902_multi_tenant_professionals_subscriptions.sql)
@@ -407,3 +411,19 @@ singular.
 
 Por simulação de JWT: upsert em `plans` pelo profissional dono **passa**; update do aluno
 no próprio plano é **filtrado** (0 linhas, sem erro — comportamento normal de RLS).
+
+### Dieta: macros são absolutos, e substituições não podem ser perdidas
+
+Os `macros` de um item em `planos_alimentares.refeicoes` são **absolutos** (já na
+quantidade daquele item), não por 100g. A TACO (`alimentos_taco`) é que guarda por 100g —
+o editor escala na hora de adicionar ([`macrosPorGramas`](src/models/domain.ts)).
+
+A dieta real do aluno tem **31 substituições e 8 observações escritas à mão**. O editor
+grava com spread do item existente (`{...item, nome, quantidade}`) justamente pra não
+reconstruir e perder esses campos. Round-trip do JSON de produção conferido: contagens
+iguais e documento byte-idêntico. **Se for refatorar o save, refazer essa verificação.**
+
+Itens criados pelo editor ganham `taco_id` e `quantidade_g` (campos opcionais, ignorados
+por leitores antigos) pra permitir recalcular os macros quando a gramagem muda. Item sem
+`taco_id` é "livre" — o profissional digita quantidade em texto e os macros não são
+calculados.
