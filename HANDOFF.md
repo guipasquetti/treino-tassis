@@ -292,8 +292,12 @@ produção. Dashboard: Authentication → Settings → SMTP Settings.
 - ⚠️ **Telas ainda não vistas com login real**: quem construiu não tinha credencial.
   Validado por typecheck + render SSR das rotas (200, sem "Unmatched Route") + as
   verificações de RLS acima. **Conferir visualmente.**
-- Ainda faltam telas de escrita do profissional: montar/editar plano de treino e montar
-  dieta com busca TACO (o `buscarAlimentos` já existe no service, sem tela).
+- ✅ **Editor de plano de treino** ([`src/app/pro/aluno/[id].tsx`](src/app/pro/aluno/%5Bid%5D.tsx)):
+  tocar num aluno na lista abre o editor — dias (tipo, grupos musculares), exercícios,
+  séries, faixa de reps, warm/feeder, flags cronometrado/ombro. Preserva ids (ver §11).
+- Ainda falta a tela de montar **dieta** com busca TACO (o `buscarAlimentos` já existe em
+  `nutritionService`, sem tela) e **editar** um `professional_plans` existente (hoje só
+  cria novo e liga/desliga).
 - Sem pagamento/cobrança automática ainda (schema tem `subscriptions.status`, mas nada
   muda esse status sozinho), sem contrato/LGPD.
 - Migração de schema versionada em [`supabase/migrations/20260902_multi_tenant_professionals_subscriptions.sql`](supabase/migrations/20260902_multi_tenant_professionals_subscriptions.sql)
@@ -374,3 +378,32 @@ simplificar sem entender:
 A sugestão de carga/reps da próxima série também veio do protótipo: se na última sessão o
 aluno bateu o topo da faixa (`max`) em todas as séries com a mesma carga → sugere subir
 (passo de 2,5kg acima de 20kg, 1kg abaixo); senão mantém a carga e pede +1 repetição.
+
+### ⚠️ `Exercicio.id` é chave de histórico — nunca reatribuir
+
+`workout_logs.exercise_id` e `workout_drafts.exercise_id` referenciam o `id` do exercício
+dentro de `plans.dias`. Não há FK: é um acoplamento por convenção. Se um id for reatribuído
+a outro exercício, o histórico de carga do aluno passa a apontar pro exercício errado, **sem
+erro nenhum**.
+
+O protótipo tem esse bug: `dadosDoBuilder()` regenera todos os ids por posição
+(`String.fromCharCode(97+i)+(j+1)`) a cada save, então apagar/reordenar exercício lá
+embaralha o histórico. **Não copiar esse comportamento.**
+
+O editor do app ([`src/services/planEditor.ts`](src/services/planEditor.ts)) faz o certo:
+exercício existente mantém o id; exercício novo recebe o menor id livre conferido contra o
+plano inteiro. A tela avisa quais ids sairão do plano antes de salvar.
+
+### Restrição em aberto: um plano de treino por aluno
+
+`plans` tem UNIQUE em `client_id` (`plans_client_id_key`), herdado do protótipo — e o
+editor usa `upsert onConflict: 'client_id'`. Isso conflita com o modelo N:N do §1: se um
+aluno tiver dois treinadores, os dois disputam a mesma linha. Com o Tassis sozinho não dá
+problema. Antes de entrar o segundo profissional, decidir: trocar o UNIQUE para
+`(client_id, professional_id)` e ajustar o upsert + as telas que assumem "o plano" no
+singular.
+
+### RLS de escrita verificada (02/set)
+
+Por simulação de JWT: upsert em `plans` pelo profissional dono **passa**; update do aluno
+no próprio plano é **filtrado** (0 linhas, sem erro — comportamento normal de RLS).
