@@ -129,6 +129,19 @@ Apple Watch virar core, dá pra fazer via módulo nativo sem trocar de stack.
 | Bundle iOS/Android | não definido ainda |
 | Repo git | `github.com/guipasquetti/treino-tassis` (público) |
 | Pasta local | `/Users/guilhermepasquetti/Developer/App Treino` |
+| **App no ar (web)** | **https://app-treino.expo.app** — EAS Hosting, produção |
+| EAS project | `@guipasquetti/app-treino` (`f37244c8-045f-4fff-89de-ecf05f7872ce`) |
+
+**Deploy web** (é assim que o Tassis acessa hoje — é a "v1.0 Web" do §2):
+```bash
+npx expo export --platform web && eas deploy --prod
+```
+`eas deploy` sem `--prod` gera uma URL de preview sem mexer na produção. Dashboard:
+`https://expo.dev/projects/f37244c8-045f-4fff-89de-ecf05f7872ce/hosting/deployments`.
+
+⚠️ As chaves `EXPO_PUBLIC_*` são **embutidas no bundle** no momento do export — é o
+esperado (a publishable key é pública por design, quem protege o dado é a RLS). Nunca
+colocar chave de service role em variável `EXPO_PUBLIC_*`.
 
 `.env` local (gitignored) já populado com `EXPO_PUBLIC_SUPABASE_URL` +
 `EXPO_PUBLIC_SUPABASE_ANON_KEY` (publishable key, não a legacy anon). `.env.example`
@@ -268,10 +281,17 @@ produção. Dashboard: Authentication → Settings → SMTP Settings.
 - Design system em [`src/theme/index.ts`](src/theme/index.ts) — preto real, cards
   elevados, cores saturadas por categoria, seguindo a referência Apple Fitness do §1.
   As cores push/pull/leg mantêm a semântica que o protótipo já usava.
-- ⚠️ **Não verificado com login real**: nenhuma credencial disponível na sessão em que
-  isso foi construído. Validado por typecheck + render SSR das rotas (200, sem
-  "Unmatched Route") + leitura das RLS. **Conferir visualmente antes de mostrar ao
-  Tassis.**
+- ✅ **RLS verificada de verdade (02/set)**, por simulação de JWT no SQL
+  (`set local role authenticated` + `request.jwt.claims`):
+  - usuário autenticado aleatório → **0 linhas** em profiles, anamnese, logs, dieta,
+    assinaturas e planos;
+  - aluno → só o próprio dado + o profile do profissional dele;
+  - Tassis → só o dado do aluno vinculado + o próprio.
+  Isso foi checado **antes** de publicar, porque a `anamnese` tem dado de saúde
+  (condições médicas, medicamentos, cirurgias) numa URL pública.
+- ⚠️ **Telas ainda não vistas com login real**: quem construiu não tinha credencial.
+  Validado por typecheck + render SSR das rotas (200, sem "Unmatched Route") + as
+  verificações de RLS acima. **Conferir visualmente.**
 - Ainda faltam telas de escrita do profissional: montar/editar plano de treino e montar
   dieta com busca TACO (o `buscarAlimentos` já existe no service, sem tela).
 - Sem pagamento/cobrança automática ainda (schema tem `subscriptions.status`, mas nada
