@@ -19,6 +19,11 @@ export async function getPlanoAlimentar(clientId: string): Promise<PlanoAlimenta
 
 export type AlimentoTaco = Tables<'alimentos_taco'>;
 
+export async function getAlimento(id: number): Promise<AlimentoTaco | null> {
+  const { data } = await supabase.from('alimentos_taco').select('*').eq('id', id).maybeSingle();
+  return data;
+}
+
 /** Busca na tabela TACO por nome. Usado pelo profissional ao montar a dieta. */
 export async function buscarAlimentos(termo: string, limite = 20): Promise<AlimentoTaco[]> {
   const busca = termo.trim();

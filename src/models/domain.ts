@@ -63,11 +63,33 @@ export type ItemRefeicao = {
   nome: string;
   /** Texto livre, ex.: "2 fatias (50g)". */
   quantidade: string;
-  /** Null quando o alimento não tem referência na TACO. */
+  /** Null quando o alimento não tem referência na TACO. Sempre ABSOLUTO (já na quantidade). */
   macros: Macros | null;
   obs?: string;
   substituicoes: ItemSubstituicao[];
+  /**
+   * Origem na tabela TACO, quando o item veio de lá. Campos opcionais adicionados pelo
+   * editor do app — dados antigos não têm, e leitores devem ignorar se ausentes.
+   * Servem pra recalcular os macros quando a gramagem muda.
+   */
+  taco_id?: number;
+  quantidade_g?: number;
 };
+
+/** Escala os macros da TACO (que são por 100g) para a quantidade em gramas. */
+export function macrosPorGramas(
+  por100g: { kcal: number | null; proteina_g: number | null; carboidrato_g: number | null; lipideos_g: number | null },
+  gramas: number,
+): Macros {
+  const f = gramas / 100;
+  const arredondar = (v: number | null) => Math.round((v ?? 0) * f * 10) / 10;
+  return {
+    kcal: arredondar(por100g.kcal),
+    proteina_g: arredondar(por100g.proteina_g),
+    carboidrato_g: arredondar(por100g.carboidrato_g),
+    lipideos_g: arredondar(por100g.lipideos_g),
+  };
+}
 
 export type Refeicao = {
   nome: string;

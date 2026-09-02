@@ -36,13 +36,24 @@ export default function ProLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
         }}
       />
-      {/* Detalhe do aluno: acessível por push a partir da lista, não é uma aba. */}
+      {/* Detalhe do aluno: acessível por push a partir da lista, não são abas. */}
       <Tabs.Screen
-        name="aluno/[id]"
+        name="aluno/[id]/index"
         options={{
           href: null,
           headerShown: true,
           title: 'Plano de treino',
+          headerStyle: { backgroundColor: Palette.background },
+          headerTintColor: Palette.text,
+          headerShadowVisible: false,
+        }}
+      />
+      <Tabs.Screen
+        name="aluno/[id]/dieta"
+        options={{
+          href: null,
+          headerShown: true,
+          title: 'Plano alimentar',
           headerStyle: { backgroundColor: Palette.background },
           headerTintColor: Palette.text,
           headerShadowVisible: false,

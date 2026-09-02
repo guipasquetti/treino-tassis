@@ -2,6 +2,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { AlunoTabs } from '@/components/aluno-tabs';
 import {
   Body,
   Button,
@@ -109,6 +110,8 @@ export default function EditorPlanoScreen() {
 
   return (
     <Screen title={nomeAluno} subtitle="Plano de treino">
+      <AlunoTabs clientId={clientId!} ativo="treino" />
+
       <Card>
         <Field
           label="Período"
