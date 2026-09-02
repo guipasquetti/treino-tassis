@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Treino</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#12161B; --panel:#1B222A; --panel2:#222B35; --line:#2E3945;
+    --ink:#E9EEF4; --ink2:#93A1B0; --ink3:#63707E;
+    --push:#E2564A; --pull:#3D8FD4; --leg:#3FAE72; --gold:#E8B33C; --plan:#9B7FE8;
+    --r:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg)}
+  body{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;padding:14px 0 40px;min-height:100vh}
+  .app{
+    background:var(--bg); color:var(--ink); border-radius:18px; padding:16px 14px 28px;
+    max-width:760px; margin:0 auto; font-variant-numeric:tabular-nums;
+  }
+  .topo{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .app h1{font-size:19px;letter-spacing:.02em;font-weight:800}
+  .sub{color:var(--ink3);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;margin-top:3px}
+  .sair{background:none;border:1px solid var(--line);color:var(--ink3);border-radius:8px;
+    padding:7px 11px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;flex:0 0 auto}
+  .sair:hover{color:var(--ink);border-color:var(--ink3)}
+  .tabs{display:flex;gap:6px;margin:16px 0 4px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{
+    flex:0 0 auto;background:var(--panel);border:1px solid var(--line);color:var(--ink2);
+    border-radius:999px;padding:9px 15px;font-size:12.5px;font-weight:700;cursor:pointer;
+    letter-spacing:.03em;transition:.15s;white-space:nowrap
+  }
+  .tab:hover{color:var(--ink)}
+  .tab.on{color:#0F1318;border-color:transparent}
+  .tab:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  .daybar{height:3px;border-radius:2px;margin:10px 0 14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:13px;margin-bottom:10px}
+  .exname{font-size:14.5px;font-weight:700;line-height:1.3}
+  .presc{color:var(--ink3);font-size:11.5px;margin-top:5px;letter-spacing:.02em}
+  .flag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;padding:3px 7px;
+    border-radius:5px;margin-top:7px;text-transform:uppercase}
+  .flag.ombro{background:rgba(226,86,74,.16);color:#F08A80}
+  .flag.nota{background:rgba(232,179,60,.14);color:var(--gold)}
+  .last{margin-top:9px;font-size:12px;color:var(--ink2)}
+  .last b{color:var(--ink);font-weight:700}
+  .cue{margin-top:9px;border-radius:9px;padding:8px 10px;font-size:12px;font-weight:700;line-height:1.35}
+  .cue.up{background:rgba(63,174,114,.14);color:#6FD9A0;border:1px solid rgba(63,174,114,.3)}
+  .cue.hold{background:var(--panel2);color:var(--ink2);border:1px solid var(--line)}
+  .hoje{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+  .hrow-hoje{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink2);
+    background:var(--panel2);border-radius:7px;padding:6px 9px}
+  .hrow-hoje b{color:var(--ink);font-weight:700}
+  .pend{margin-top:11px;border-top:1px dashed var(--line);padding-top:11px}
+  .pend-label{font-size:11px;color:var(--ink3);font-weight:800;letter-spacing:.04em;margin-bottom:7px;text-transform:uppercase}
+  .set{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .step{display:flex;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .step button{background:none;border:0;color:var(--ink2);font-size:19px;font-weight:700;
+    width:40px;height:44px;cursor:pointer;flex:0 0 auto;line-height:1}
+  .step button:hover{color:var(--ink);background:rgba(255,255,255,.05)}
+  .step input{flex:1;min-width:0;background:none;border:0;color:var(--ink);text-align:center;
+    font-size:16px;font-weight:700;font-family:inherit;padding:0;-moz-appearance:textfield}
+  .step input::-webkit-outer-spin-button,.step input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .step .u{color:var(--ink3);font-size:10.5px;padding-right:10px;font-weight:700}
+  .bw{display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:12px;
+    background:var(--panel2);border:1px solid var(--line);border-radius:9px;height:40px}
+  .row{display:flex;gap:7px;margin-top:10px}
+  .btn{flex:1;border:0;border-radius:9px;padding:11px;font-size:12.5px;font-weight:800;
+    font-family:inherit;cursor:pointer;letter-spacing:.03em;color:#0F1318}
+  .btn:disabled{opacity:.5;cursor:default}
+  .btn.ghost{background:var(--panel2);color:var(--ink2);border:1px solid var(--line);flex:0 0 auto;padding:11px 14px}
+  .btn.ghost:hover{color:var(--ink)}
+  .btn.link{background:none;color:var(--ink3);text-decoration:underline;font-weight:700;
+    font-size:11.5px;flex:0 0 auto;padding:4px 0;letter-spacing:.02em;margin-top:8px}
+  .btn.link:hover{color:var(--ink2)}
+  .done{margin-top:10px;background:rgba(63,174,114,.12);border:1px solid rgba(63,174,114,.3);
+    color:#6FD9A0;border-radius:9px;padding:8px 10px;font-size:12px;font-weight:700}
+  .hist{margin-top:11px;border-top:1px solid var(--line);padding-top:10px;display:none}
+  .hist.open{display:block}
+  .hrow{display:flex;justify-content:space-between;align-items:center;font-size:12px;
+    padding:6px 0;border-bottom:1px solid rgba(46,57,69,.5);color:var(--ink2);gap:10px}
+  .hrow:last-child{border:0}
+  .hrow .d{color:var(--ink3);font-size:11px;flex:0 0 auto}
+  .hrow .v{color:var(--ink);font-weight:700;text-align:right}
+  .spark{margin-top:9px}
+  .empty{color:var(--ink3);font-size:12px;padding:6px 0}
+  .toast{position:sticky;bottom:8px;margin-top:14px;background:var(--leg);color:#0F1318;
+    border-radius:10px;padding:11px;text-align:center;font-weight:800;font-size:12.5px;
+    opacity:0;transform:translateY(6px);transition:.25s;pointer-events:none}
+  .toast.show{opacity:1;transform:none}
+  .guia h3{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin-bottom:9px}
+  .guia p{font-size:13px;line-height:1.55;color:var(--ink2);margin-bottom:9px}
+  .guia p b{color:var(--ink)}
+  .guia ol{margin:0 0 4px 17px;font-size:13px;line-height:1.6;color:var(--ink2)}
+  .guia li{margin-bottom:4px}
+  .lbl{font-size:11px;color:var(--ink3);font-weight:800;letter-spacing:.03em;text-transform:uppercase;
+    display:block;margin:9px 0 4px}
+  .txt,.sel{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+    border-radius:8px;padding:11px 10px;font-size:16px;font-family:inherit}
+  textarea.txt{resize:vertical;min-height:44px;line-height:1.4}
+  .txt:disabled{opacity:.55}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .diacard{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:11px;margin-top:10px}
+  .diahead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .diahead .letra{font-weight:800;color:var(--plan);font-size:13px;flex:0 0 auto}
+  .excard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:9px}
+  .exhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:2px}
+  .exhead span{font-size:11px;color:var(--ink3);font-weight:800}
+  .chks{display:flex;gap:14px;margin-top:9px;flex-wrap:wrap}
+  .chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2)}
+  .chk input{width:15px;height:15px;accent-color:var(--plan)}
+  .x{background:none;border:0;color:var(--ink3);font-size:17px;cursor:pointer;line-height:1;padding:6px 8px;margin:-6px -8px}
+  .x:hover{color:var(--push)}
+  .erro{background:rgba(226,86,74,.14);border:1px solid rgba(226,86,74,.35);color:#F08A80;
+    border-radius:9px;padding:9px 11px;font-size:12.5px;font-weight:600;margin-top:10px}
+  .authwrap{max-width:380px;margin:60px auto 0}
+  .authtabs{display:flex;gap:6px;margin-bottom:16px}
+  .authtab{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--ink2);
+    border-radius:9px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit}
+  .authtab.on{background:var(--plan);color:#fff;border-color:transparent}
+  .center{text-align:center}
+  .clientrow{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:9px}
+  .clientrow .nome{font-weight:700;font-size:13.5px}
+  .clientrow .email{font-size:11.5px;color:var(--ink3);margin-top:2px}
+  .clientrow .semplano{font-size:10.5px;color:var(--gold);font-weight:700;margin-top:3px}
+  .pill{background:var(--panel);border:1px solid var(--line);color:var(--ink2);border-radius:999px;
+    padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex:0 0 auto}
+  .pill:hover{color:var(--ink)}
+  .loading{text-align:center;color:var(--ink3);padding:60px 0;font-size:13px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="loading">Carregando…</div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://fshwcaxcbnudvoyyqaxy.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_mcfnUuwBbF0B-8un9Cm1Xw_4_AfK-gB';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const COR = {push:'#E2564A', pull:'#3D8FD4', leg:'#3FAE72'};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hojeISO = () => new Date().toISOString().slice(0,10);
+const fmtData = iso => { const [y,m,d] = iso.split('-'); return d+'/'+m; };
+
+// ---------------------------------------------------------------
+// ESTADO GLOBAL
+// ---------------------------------------------------------------
+let session = null;
+let profile = null;          // {id, nome, email, role}
+let view = 'loading';        // loading | auth | client | trainer
+let authMode = 'login';
+let authErro = '';
+let authCarregando = false;
+
+// visão "cliente" (usada tanto pelo próprio cliente quanto pelo treinador em modo leitura)
+let plano = null;             // {periodo, treinador, dias}
+let hist = {};                // {exercicio_id: [{data:iso, sets:[{p,r}]}]}
+let draft = {};                // {exercicio_id: {data:iso, sets:[{p,r}]}}
+let pendente = {};
+let aba = null;
+let abertos = {};
+let somenteLeitura = false;
+
+// visão "treinador"
+let clientes = [];
+let convites = [];
+let ultimoLinkGerado = null;
+let clienteSelecionado = null;   // profile do cliente selecionado
+let anamneseAtual = null;
+let cadastroDraft = null;
+let dietaAtual = null;
+let dietaDraft = null;
+let alimentosTacoCache = null;
+let buscaAlimentoTexto = {};
+let buscaAlimentoResultados = {};
+let trainerTab = 'lista';        // lista | cadastro | plano | progresso
+let builder = null;
+
+// fluxo público de convite (link de anamnese, sem login)
+let conviteToken = null;
+let conviteInfo = null;
+let conviteRespostas = {};
+let conviteErro = '';
+let conviteEnviando = false;
+
+const PERGUNTAS_ANAMNESE = [
+  {titulo:'1. Identificação', campos:[
+    {id:'nome_completo', label:'Nome completo', tipo:'texto'},
+    {id:'data_nascimento', label:'Data de nascimento', tipo:'data'},
+    {id:'idade', label:'Idade', tipo:'texto'},
+    {id:'sexo', label:'Sexo', tipo:'texto'},
+    {id:'telefone', label:'Telefone', tipo:'texto'},
+    {id:'profissao', label:'Profissão', tipo:'texto'},
+    {id:'rotina_trabalho', label:'Rotina de trabalho (horários, trabalho físico ou sedentário)', tipo:'area'}
+  ]},
+  {titulo:'2. Dados Antropométricos', campos:[
+    {id:'peso_atual', label:'Peso atual (kg)', tipo:'numero'},
+    {id:'altura_cm', label:'Altura (cm)', tipo:'numero'},
+    {id:'peso_habitual', label:'Peso habitual', tipo:'texto'},
+    {id:'maior_peso', label:'Maior peso já atingido', tipo:'texto'},
+    {id:'menor_peso_adulto', label:'Menor peso na vida adulta', tipo:'texto'},
+    {id:'mudancas_peso', label:'Mudanças recentes de peso (ganho/perda, quanto e em quanto tempo)', tipo:'area'}
+  ]},
+  {titulo:'3. Histórico de Saúde', campos:[
+    {id:'patologias', label:'Possui alguma patologia diagnosticada? Se sim, qual(is)?', tipo:'area', placeholder:'Ex.: Não'},
+    {id:'historico_familiar', label:'Histórico familiar de doenças (diabetes, hipertensão, dislipidemia, obesidade, cardiovasculares, tireoide etc.)', tipo:'area'},
+    {id:'cirurgias', label:'Já realizou cirurgias? Quais e quando?', tipo:'area', placeholder:'Ex.: Não'},
+    {id:'intolerancias_alergias', label:'Possui intolerâncias ou alergias alimentares?', tipo:'area', placeholder:'Ex.: Não'},
+    {id:'sintomas_gastro', label:'Sintomas gastrointestinais frequentes (azia, refluxo, constipação, diarreia, gases)?', tipo:'area', placeholder:'Ex.: Não'}
+  ]},
+  {titulo:'4. Medicamentos e Suplementos', campos:[
+    {id:'medicamentos', label:'Faz uso de algum medicamento? Qual(is), dose e horário', tipo:'area', placeholder:'Ex.: Não'},
+    {id:'suplementos', label:'Utiliza suplementos alimentares? (proteína, creatina, vitaminas, termogênicos, outros)', tipo:'area', placeholder:'Ex.: Não'},
+    {id:'fitoterapicos', label:'Uso de fitoterápicos ou chás com frequência', tipo:'area', placeholder:'Ex.: Não'}
+  ]},
+  {titulo:'5. Hábitos Alimentares', campos:[
+    {id:'refeicoes_por_dia', label:'Quantas refeições faz por dia?', tipo:'texto'},
+    {id:'horarios_refeicoes', label:'Horários habituais das refeições', tipo:'texto'},
+    {id:'cafe_manha', label:'Café da manhã — o que costuma comer', tipo:'area'},
+    {id:'lanche_manha', label:'Lanche da manhã — o que costuma comer', tipo:'area'},
+    {id:'almoco', label:'Almoço — o que costuma comer', tipo:'area'},
+    {id:'lanche_tarde', label:'Lanche da tarde — o que costuma comer', tipo:'area'},
+    {id:'jantar', label:'Jantar — o que costuma comer', tipo:'area'},
+    {id:'ceia', label:'Ceia — o que costuma comer', tipo:'area'},
+    {id:'beliscar', label:'Costuma beliscar entre as refeições?', tipo:'texto'},
+    {id:'freq_ultraprocessados', label:'Frequência de consumo de alimentos ultraprocessados', tipo:'texto'},
+    {id:'freq_doces_alcool', label:'Frequência de doces, refrigerantes e bebidas alcoólicas', tipo:'texto'},
+    {id:'consumo_agua', label:'Consumo diário de água (aproximado)', tipo:'texto'}
+  ]},
+  {titulo:'6. Preferências Alimentares', campos:[
+    {id:'alimentos_gosta', label:'Alimentos que gosta', tipo:'area'},
+    {id:'alimentos_nao_gosta', label:'Alimentos que não gosta', tipo:'area'},
+    {id:'nao_consome', label:'Alimentos que não consome por opção (vegetarianismo, veganismo, religião, cultura)', tipo:'area', placeholder:'Ex.: Nenhum'},
+    {id:'facilidade_cozinhar', label:'Facilidade para cozinhar em casa', tipo:'texto'},
+    {id:'refeicoes_fora', label:'Realiza refeições fora de casa com frequência? Onde?', tipo:'texto'}
+  ]},
+  {titulo:'7. Atividade Física', campos:[
+    {id:'pratica_atividade', label:'Pratica atividade física? Qual(is) modalidade(s)?', tipo:'area', placeholder:'Ex.: Não'},
+    {id:'tempo_treino', label:'Tempo de treino (meses/anos)', tipo:'texto'},
+    {id:'freq_musculacao', label:'Frequência semanal de treino de força/musculação', tipo:'texto'},
+    {id:'freq_cardio', label:'Frequência semanal de cardio', tipo:'texto'},
+    {id:'duracao_treinos', label:'Duração média dos treinos', tipo:'texto'},
+    {id:'intensidade', label:'Intensidade percebida (leve, moderada, intensa)', tipo:'texto'},
+    {id:'limitacao_fisica', label:'Possui alguma limitação física, dor ou lesão?', tipo:'area', placeholder:'Ex.: Não'}
+  ]},
+  {titulo:'8. Sono e Rotina', campos:[
+    {id:'horario_dormir', label:'Horário que costuma dormir', tipo:'texto'},
+    {id:'horario_acordar', label:'Horário que costuma acordar', tipo:'texto'},
+    {id:'horas_sono', label:'Média de horas de sono por noite', tipo:'texto'},
+    {id:'qualidade_sono', label:'Qualidade do sono (boa, regular, ruim)', tipo:'texto'},
+    {id:'acorda_descansado', label:'Acorda descansado?', tipo:'texto'}
+  ]},
+  {titulo:'9. Objetivo com o Acompanhamento Nutricional', campos:[
+    {id:'objetivo_principal', label:'Objetivo principal (emagrecimento, ganho de massa, saúde, desempenho esportivo, outro)', tipo:'texto'},
+    {id:'prazo_objetivo', label:'Prazo esperado para atingir o objetivo', tipo:'texto'},
+    {id:'dieta_anterior', label:'Já fez dieta antes? Qual foi a experiência?', tipo:'area'},
+    {id:'dificuldade_seguir_dieta', label:'Principal dificuldade em seguir um plano alimentar', tipo:'area'}
+  ]},
+  {titulo:'10. Observações Finais', campos:[
+    {id:'observacoes_finais', label:'Algo mais que considere importante informar', tipo:'area'},
+    {id:'expectativas', label:'Expectativas em relação ao acompanhamento nutricional', tipo:'area'}
+  ]}
+];
+
+carregarSessao();
+
+async function carregarSessao(){
+  const tokenUrl = new URLSearchParams(location.search).get('convite');
+  if(tokenUrl){ await iniciarFluxoConvite(tokenUrl); return; }
+  const { data } = await sb.auth.getSession();
+  session = data.session;
+  sb.auth.onAuthStateChange((_evt, s) => {
+    session = s;
+    if(!s){ profile = null; view = 'auth'; render(); }
+  });
+  if(session) await entrarComoUsuarioLogado();
+  else { view = 'auth'; render(); }
+}
+
+async function iniciarFluxoConvite(token){
+  conviteToken = token;
+  view = 'loading'; render();
+  const { data, error } = await sb.rpc('obter_convite', {p_token: token});
+  if(error || !data || !data.length){ view = 'convite-invalido'; conviteErro = 'Link inválido.'; render(); return; }
+  conviteInfo = data[0];
+  if(conviteInfo.status === 'concluido'){
+    view = 'convite-invalido';
+    conviteErro = 'Este link já foi usado. Se você já tem conta, faça login normalmente.';
+  } else {
+    view = conviteInfo.status === 'pendente' ? 'convite-form' : 'convite-senha';
+  }
+  render();
+}
+
+async function entrarComoUsuarioLogado(){
+  const { data, error } = await sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+  if(error || !data){ view = 'auth'; authErro = 'Não foi possível carregar seu perfil. Tente novamente.'; render(); return; }
+  profile = data;
+
+  const pendente = localStorage.getItem('convite_pendente');
+  if(pendente){
+    const { data: ok } = await sb.rpc('finalizar_cadastro_convite', {p_token: pendente});
+    localStorage.removeItem('convite_pendente');
+    if(ok){
+      const { data: perfilAtualizado } = await sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+      if(perfilAtualizado) profile = perfilAtualizado;
+    }
+  }
+
+  if(profile.role === 'trainer'){
+    view = 'trainer';
+    await Promise.all([carregarClientes(), carregarAlimentosTaco()]);
+  } else {
+    view = 'client';
+    somenteLeitura = false;
+    await Promise.all([carregarDadosCliente(profile.id), carregarDieta(profile.id), carregarAlimentosTaco()]);
+  }
+  render();
+}
+
+// ---------------------------------------------------------------
+// CARREGAMENTO DE DADOS
+// ---------------------------------------------------------------
+async function carregarDadosCliente(clientId){
+  const [{data: planoRow}, {data: logs}, {data: drafts}] = await Promise.all([
+    sb.from('plans').select('*').eq('client_id', clientId).maybeSingle(),
+    sb.from('workout_logs').select('*').eq('client_id', clientId).order('session_date', {ascending:true}),
+    sb.from('workout_drafts').select('*').eq('client_id', clientId)
+  ]);
+  plano = planoRow ? {periodo: planoRow.periodo, treinador: planoRow.treinador, dias: planoRow.dias} : null;
+  hist = {}; draft = {}; pendente = {}; abertos = {};
+  (logs || []).forEach(row => {
+    (hist[row.exercise_id] = hist[row.exercise_id] || []).push({data: row.session_date, sets: row.sets});
+  });
+  (drafts || []).forEach(row => {
+    if(row.session_date === hojeISO()) draft[row.exercise_id] = {data: row.session_date, sets: row.sets};
+  });
+  aba = plano && plano.dias.length ? plano.dias[0].id : null;
+}
+
+async function carregarAnamnese(clientId){
+  const { data } = await sb.from('anamnese').select('*').eq('client_id', clientId).maybeSingle();
+  anamneseAtual = data || null;
+  cadastroDraft = null;
+}
+
+async function carregarDieta(clientId){
+  const { data } = await sb.from('planos_alimentares').select('*').eq('client_id', clientId).maybeSingle();
+  dietaAtual = data || null;
+  dietaDraft = null;
+}
+
+async function carregarAlimentosTaco(){
+  if(alimentosTacoCache) return;
+  const { data } = await sb.from('alimentos_taco').select('*').order('nome');
+  alimentosTacoCache = data || [];
+}
+
+async function carregarClientes(){
+  const [{data: perfis}, {data: convitesData}] = await Promise.all([
+    sb.from('profiles').select('*').eq('role','client').order('nome'),
+    sb.from('convites').select('*').neq('status','concluido').order('created_at', {ascending:false})
+  ]);
+  clientes = perfis || [];
+  convites = convitesData || [];
+}
+
+async function criarConvite(){
+  const nome = $('#inv-nome').value.trim();
+  const email = $('#inv-email').value.trim();
+  if(!nome || !email){ toast('Preencha nome e e-mail', 'var(--push)'); return; }
+  const token = crypto.randomUUID();
+  const { error } = await sb.from('convites').insert({token, nome, email, created_by: profile.id});
+  if(error){ toast('Não consegui gerar o link — talvez esse e-mail já tenha um convite', 'var(--push)'); return; }
+  ultimoLinkGerado = location.origin + location.pathname + '?convite=' + token;
+  await carregarClientes();
+  render();
+  toast('Link gerado para ' + esc(nome));
+}
+
+// ---------------------------------------------------------------
+// LÓGICA DE PROGRESSÃO (igual à versão anterior)
+// ---------------------------------------------------------------
+function acharEx(id){ if(!plano) return null; for(const d of plano.dias){ const e = d.ex.find(x => x.id === id); if(e) return e; } }
+function anteriorA(ex, jaConcluidaHoje){
+  const h = hist[ex.id] || [];
+  if(!h.length) return null;
+  return jaConcluidaHoje ? (h.length > 1 ? h[h.length - 2] : null) : h[h.length - 1];
+}
+function concluidaHoje(ex){ const h = hist[ex.id]; return !!(h && h.length && h[h.length-1].data === hojeISO()); }
+function draftHoje(ex){ const d = draft[ex.id]; return (d && d.data === hojeISO()) ? d : null; }
+
+function avaliar(ex, anterior){
+  if(!anterior) return {tipo:'novo', txt:'Primeiro registro: escolha uma carga em que você falhe entre ' + ex.min + ' e ' + ex.max + (ex.tempo ? ' segundos.' : ' repetições.')};
+  const cargas = anterior.sets.map(s => s.p);
+  const mesmaCarga = cargas.every(p => p === cargas[0]);
+  const topo = anterior.sets.every(s => s.r >= ex.max);
+  if(ex.tempo) return {tipo:'hold', txt:'Buscar mais tempo que da última vez: ' + anterior.sets[0].r + 's.'};
+  if(topo && mesmaCarga) return {tipo:'up', txt:'Consolidou ' + ex.max + ' reps em todas as séries → suba 1 a 2 kg de cada lado e volte a buscar ' + ex.min + '.'};
+  return {tipo:'hold', txt:'Mesma carga de ' + cargas[0] + 'kg, tentar 1 repetição a mais que da última vez.'};
+}
+function incP(p, dir){ const passo = p >= 20 ? 2.5 : 1; return Math.max(0, +(p + dir*passo).toFixed(1)); }
+function sugestao(ex){
+  const done = concluidaHoje(ex);
+  const dr = draftHoje(ex);
+  const logadas = done ? hist[ex.id][hist[ex.id].length-1].sets : (dr ? dr.sets : []);
+  const anterior = anteriorA(ex, done);
+  const idx = logadas.length;
+  if(idx === 0){
+    if(!anterior) return {p:0, r: ex.min};
+    const av = avaliar(ex, anterior);
+    if(ex.tempo) return {p:0, r: anterior.sets[0].r + 5};
+    if(av.tipo === 'up') return {p: incP(anterior.sets[0].p, 1), r: ex.min};
+    return {p: anterior.sets[0].p, r: Math.min(anterior.sets[0].r + 1, ex.max)};
+  }
+  const anteriorSet = anterior && anterior.sets[idx] ? anterior.sets[idx] : null;
+  return { p: logadas[idx-1].p, r: ex.tempo ? logadas[idx-1].r : (anteriorSet ? Math.min(anteriorSet.r + 1, ex.max) : logadas[idx-1].r) };
+}
+function fmtSet(ex, s){ return ex.tempo ? (s.r + 's') : (s.p + 'kg × ' + s.r); }
+function sparkline(h){
+  if(h.length < 2) return '';
+  const pts = h.slice(-10).map(s => Math.max(...s.sets.map(x => x.p)));
+  const max = Math.max(...pts), min = Math.min(...pts), W = 240, H = 34;
+  const span = (max - min) || 1;
+  const d = pts.map((p,i) => (i*(W/(pts.length-1))).toFixed(1) + ',' + (H - 4 - ((p-min)/span)*(H-10)).toFixed(1)).join(' ');
+  return '<svg class="spark" viewBox="0 0 '+W+' '+H+'" width="100%" height="34" aria-hidden="true">' +
+    '<polyline points="'+d+'" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+    pts.map((p,i)=>'<circle cx="'+(i*(W/(pts.length-1))).toFixed(1)+'" cy="'+(H-4-((p-min)/span)*(H-10)).toFixed(1)+'" r="2.5" fill="var(--gold)"/>').join('') +
+    '</svg>';
+}
+
+function cardHTML(ex, cor){
+  const done = concluidaHoje(ex);
+  const dr = draftHoje(ex);
+  const logadas = done ? hist[ex.id][hist[ex.id].length-1].sets : (dr ? dr.sets : []);
+  const anterior = anteriorA(ex, done);
+  const av = avaliar(ex, anterior);
+  const restam = ex.sets - logadas.length;
+
+  if(!pendente[ex.id] && restam > 0) pendente[ex.id] = sugestao(ex);
+  const v = pendente[ex.id] || {p:0, r:ex.min};
+
+  const hojeRows = logadas.map((s,i) => '<div class="hrow-hoje"><span>'+(i+1)+'ª série</span><b>'+fmtSet(ex,s)+'</b></div>').join('');
+
+  let pendHTML = '';
+  if(somenteLeitura){
+    pendHTML = restam > 0
+      ? '<div class="cue hold">Ainda faltam '+restam+' série(s) hoje.</div>'
+      : '<div class="done">✓ Treino de hoje registrado — '+ex.sets+' de '+ex.sets+' séries</div>';
+  } else if(restam > 0){
+    pendHTML = '<div class="pend">' +
+      '<div class="pend-label">Série '+(logadas.length+1)+' de '+ex.sets+'</div>' +
+      '<div class="set">' +
+        (ex.tempo ? '<div class="bw">peso corporal</div>' :
+        '<div class="step">' +
+          '<button data-a="p-" data-e="'+ex.id+'" aria-label="diminuir carga">−</button>' +
+          '<input type="number" step="0.5" value="'+v.p+'" data-f="p" data-e="'+ex.id+'" aria-label="carga em kg">' +
+          '<span class="u">kg</span>' +
+          '<button data-a="p+" data-e="'+ex.id+'" aria-label="aumentar carga">+</button>' +
+        '</div>') +
+        '<div class="step">' +
+          '<button data-a="r-" data-e="'+ex.id+'" aria-label="diminuir">−</button>' +
+          '<input type="number" value="'+v.r+'" data-f="r" data-e="'+ex.id+'" aria-label="'+(ex.tempo?'segundos':'repetições')+'">' +
+          '<span class="u">'+(ex.tempo?'seg':'reps')+'</span>' +
+          '<button data-a="r+" data-e="'+ex.id+'" aria-label="aumentar">+</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="row"><button class="btn" style="background:'+cor+'" data-a="save" data-e="'+ex.id+'">Registrar '+(logadas.length+1)+'ª série</button></div>' +
+    '</div>';
+  } else {
+    pendHTML = '<div class="done">✓ Treino de hoje registrado — '+ex.sets+' de '+ex.sets+' séries</div>';
+  }
+
+  const h = hist[ex.id] || [];
+  const linhas = h.length
+    ? h.slice().reverse().slice(0,8).map(s => '<div class="hrow"><span class="d">'+esc(fmtData(s.data))+'</span><span class="v">' + s.sets.map(x => fmtSet(ex,x)).join('  ·  ') + '</span></div>').join('')
+    : '<div class="empty">Nenhum treino registrado ainda.</div>';
+
+  return '<div class="card">' +
+    '<div class="exname">'+esc(ex.nome)+'</div>' +
+    '<div class="presc">Warm up '+esc(ex.warm)+'  ·  Feeder '+esc(ex.feeder)+'  ·  <b style="color:'+cor+'">Working '+ex.min+'-'+ex.max+' ('+ex.sets+'x)</b></div>' +
+    (ex.ombro ? '<span class="flag ombro">Ombro · pare 1-2 reps antes da falha</span> ' : '') +
+    (ex.nota ? '<span class="flag nota">'+esc(ex.nota)+'</span>' : '') +
+    (anterior ? '<div class="last">Última sessão ('+esc(fmtData(anterior.data))+'): <b>' + anterior.sets.map(x => fmtSet(ex,x)).join(' · ') + '</b></div>' : '') +
+    '<div class="cue '+(av.tipo==='up'?'up':'hold')+'">'+esc(av.txt)+'</div>' +
+    (hojeRows ? '<div class="hoje">'+hojeRows+'</div>' : '') +
+    pendHTML +
+    (!somenteLeitura && logadas.length > 0 ? '<button class="btn link" data-a="undo" data-e="'+ex.id+'">Corrigir última série registrada</button>' : '') +
+    '<div class="row"><button class="btn ghost" style="width:100%" data-a="hist" data-e="'+ex.id+'">Histórico'+(h.length?' ('+h.length+')':'')+'</button></div>' +
+    '<div class="hist'+(abertos[ex.id]?' open':'')+'" id="h-'+ex.id+'">'+linhas+sparkline(h)+'</div>' +
+  '</div>';
+}
+
+function guiaHTML(){
+  return '<div class="card guia">' +
+  '<h3>As três fases da série</h3>' +
+  '<p><b>Warm up</b> — carga leve só para preparar o corpo. Descanso 1 min.</p>' +
+  '<p><b>Feeder set</b> — aumento gradual do peso, poucas repetições. Descanso 2 min.</p>' +
+  '<p><b>Working set</b> — carga desafiadora dentro da faixa prescrita. Descanso 3 a 4 min.</p>' +
+  '</div><div class="card guia">' +
+  '<h3>Progressão de carga</h3>' +
+  '<p>Sem progressão, o treino vira manutenção. Todas as séries de trabalho vão até a falha ou o mais perto possível dela, sempre com execução perfeita.</p>' +
+  '<ol><li>Registre uma série por vez: carga e repetições, toque em "Registrar".</li>' +
+  '<li>O campo já vem sugerido com base na última sessão — normalmente 1 repetição a mais, mesma carga.</li>' +
+  '<li>Quando todas as séries baterem o topo da faixa com a mesma carga, sobe 1 a 2 kg e volta ao início da faixa.</li>' +
+  '<li>Errou algo? "Corrigir última série registrada" reabre o campo.</li></ol>' +
+  '</div>';
+}
+
+// ---------------------------------------------------------------
+// AÇÕES DO CLIENTE (gravam no Supabase)
+// ---------------------------------------------------------------
+async function registrarSerie(exId){
+  const ex = acharEx(exId);
+  const v = pendente[exId] || sugestao(ex);
+  if(!ex.tempo && !v.p){ toast('Informe a carga antes de registrar', 'var(--push)'); return; }
+  const hoje = hojeISO();
+  const done = concluidaHoje(ex);
+  const dr = draftHoje(ex);
+  const logadasAtuais = done ? hist[ex.id][hist[ex.id].length-1].sets : (dr ? dr.sets : []);
+  const novasSets = [...logadasAtuais, {p:+v.p, r:+v.r}];
+
+  if(novasSets.length >= ex.sets){
+    const { error } = await sb.from('workout_logs').upsert(
+      {client_id: profile.id, exercise_id: exId, session_date: hoje, sets: novasSets},
+      {onConflict:'client_id,exercise_id,session_date'}
+    );
+    await sb.from('workout_drafts').delete().eq('client_id', profile.id).eq('exercise_id', exId);
+    if(error){ toast('Não consegui salvar — tente de novo', 'var(--push)'); return; }
+    (hist[exId] = hist[exId] || []);
+    if(hist[exId].length && hist[exId][hist[exId].length-1].data === hoje) hist[exId][hist[exId].length-1] = {data:hoje, sets:novasSets};
+    else hist[exId].push({data:hoje, sets:novasSets});
+    delete draft[exId];
+    toast('Treino concluído — ' + esc(ex.nome), 'var(--leg)');
+  } else {
+    const { error } = await sb.from('workout_drafts').upsert(
+      {client_id: profile.id, exercise_id: exId, session_date: hoje, sets: novasSets}
+    );
+    if(error){ toast('Não consegui salvar — tente de novo', 'var(--push)'); return; }
+    draft[exId] = {data: hoje, sets: novasSets};
+    toast('Série registrada — ' + esc(ex.nome), 'var(--leg)');
+  }
+  delete pendente[exId];
+  render();
+}
+
+async function corrigirUltima(exId){
+  const hoje = hojeISO();
+  const ex = acharEx(exId);
+  let removed = null;
+  if(hist[exId] && hist[exId].length && hist[exId][hist[exId].length-1].data === hoje){
+    const sets = hist[exId][hist[exId].length-1].sets.slice();
+    removed = sets.pop();
+    hist[exId].pop();
+    await sb.from('workout_logs').delete().eq('client_id', profile.id).eq('exercise_id', exId).eq('session_date', hoje);
+    if(sets.length){
+      await sb.from('workout_drafts').upsert({client_id: profile.id, exercise_id: exId, session_date: hoje, sets});
+      draft[exId] = {data: hoje, sets};
+    }
+  } else if(draft[exId] && draft[exId].data === hoje && draft[exId].sets.length){
+    const sets = draft[exId].sets.slice();
+    removed = sets.pop();
+    if(sets.length){
+      await sb.from('workout_drafts').upsert({client_id: profile.id, exercise_id: exId, session_date: hoje, sets});
+      draft[exId] = {data: hoje, sets};
+    } else {
+      await sb.from('workout_drafts').delete().eq('client_id', profile.id).eq('exercise_id', exId);
+      delete draft[exId];
+    }
+  }
+  if(removed){
+    pendente[exId] = {p: removed.p, r: removed.r};
+    toast('Última série reaberta para correção', 'var(--gold)');
+    render();
+  }
+}
+
+// ---------------------------------------------------------------
+// TELA DE LOGIN / CADASTRO
+// ---------------------------------------------------------------
+function authHTML(){
+  const cadastro = authMode === 'signup';
+  return '<div class="authwrap">' +
+    '<h1 class="center" style="margin-bottom:4px">Treino</h1>' +
+    '<div class="sub center" style="margin-bottom:20px">Entre com sua conta</div>' +
+    '<div class="authtabs">' +
+      '<button class="authtab'+(!cadastro?' on':'')+'" data-auth="login">Entrar</button>' +
+      '<button class="authtab'+(cadastro?' on':'')+'" data-auth="signup">Criar conta</button>' +
+    '</div>' +
+    '<div class="card">' +
+    (cadastro ? '<label class="lbl">Nome</label><input class="txt" id="af-nome" placeholder="Seu nome">' : '') +
+    '<label class="lbl">E-mail</label><input class="txt" id="af-email" type="email" placeholder="voce@email.com">' +
+    '<label class="lbl">Senha</label><input class="txt" id="af-senha" type="password" placeholder="••••••••">' +
+    (authErro ? '<div class="erro">'+esc(authErro)+'</div>' : '') +
+    '<div class="row"><button class="btn" style="background:var(--plan);color:#fff" id="af-enviar" '+(authCarregando?'disabled':'')+'>'+
+      (authCarregando ? 'Aguarde…' : (cadastro ? 'Criar conta' : 'Entrar'))+'</button></div>' +
+    (cadastro ? '<p style="color:var(--ink3);font-size:11.5px;margin-top:10px">Depois de criar a conta, pode chegar um e-mail de confirmação — confirme antes de entrar.</p>' : '') +
+    '</div>' +
+  '</div>';
+}
+
+async function submeterAuth(){
+  const email = $('#af-email').value.trim();
+  const senha = $('#af-senha').value;
+  if(!email || !senha){ authErro = 'Preencha e-mail e senha.'; render(); return; }
+  authCarregando = true; authErro = ''; render();
+  if(authMode === 'signup'){
+    const nome = $('#af-nome') ? $('#af-nome').value.trim() : '';
+    const { error } = await sb.auth.signUp({ email, password: senha, options: { data: { nome } } });
+    authCarregando = false;
+    if(error){ authErro = error.message; render(); return; }
+    authErro = '';
+    authMode = 'login';
+    render();
+    toast('Conta criada — confira seu e-mail se for pedida confirmação, depois entre.', 'var(--leg)');
+  } else {
+    const { error } = await sb.auth.signInWithPassword({ email, password: senha });
+    authCarregando = false;
+    if(error){ authErro = 'E-mail ou senha inválidos.'; render(); return; }
+    session = (await sb.auth.getSession()).data.session;
+    await entrarComoUsuarioLogado();
+  }
+}
+
+// ---------------------------------------------------------------
+// FLUXO PÚBLICO DE CONVITE — anamnese sem login + criação de senha
+// ---------------------------------------------------------------
+function conviteFormHTML(){
+  const secoes = PERGUNTAS_ANAMNESE.map(sec =>
+    '<div class="card"><div class="exname">'+esc(sec.titulo)+'</div>' +
+    sec.campos.map(f => {
+      const v = conviteRespostas[f.id] || '';
+      const ph = f.placeholder ? ' placeholder="'+esc(f.placeholder)+'"' : '';
+      if(f.tipo === 'area') return '<label class="lbl">'+esc(f.label)+'</label><textarea class="txt" rows="2" data-resp="'+f.id+'"'+ph+'>'+esc(v)+'</textarea>';
+      if(f.tipo === 'data') return '<label class="lbl">'+esc(f.label)+'</label><input class="txt" type="date" data-resp="'+f.id+'" value="'+esc(v)+'">';
+      if(f.tipo === 'numero') return '<label class="lbl">'+esc(f.label)+'</label><input class="txt" type="number" data-resp="'+f.id+'" value="'+esc(v)+'">';
+      return '<label class="lbl">'+esc(f.label)+'</label><input class="txt" data-resp="'+f.id+'" value="'+esc(v)+'"'+ph+'>';
+    }).join('') +
+  '</div>').join('');
+
+  return '<div class="authwrap" style="max-width:560px">' +
+    '<h1 class="center" style="margin-bottom:4px">Anamnese</h1>' +
+    '<div class="sub center" style="margin-bottom:6px">'+esc(conviteInfo.nome)+' · '+esc(conviteInfo.email)+'</div>' +
+    '<p style="color:var(--ink3);font-size:12px;text-align:center;margin-bottom:16px">Preencha com calma — ao final você cria sua senha de acesso.</p>' +
+  '</div>' +
+  '<div style="max-width:560px;margin:0 auto">' + secoes +
+    '<div class="card"><div class="row"><button class="btn" style="background:var(--plan);color:#fff" id="btn-enviar-anamnese" '+(conviteEnviando?'disabled':'')+'>'+(conviteEnviando?'Enviando…':'Enviar respostas')+'</button></div></div>' +
+  '</div>';
+}
+
+function conviteSenhaHTML(){
+  return '<div class="authwrap">' +
+    '<h1 class="center" style="margin-bottom:4px">Quase lá!</h1>' +
+    '<div class="sub center" style="margin-bottom:20px">Crie uma senha para acessar seu painel</div>' +
+    '<div class="card">' +
+    '<label class="lbl">E-mail</label><input class="txt" value="'+esc(conviteInfo.email)+'" disabled>' +
+    '<label class="lbl">Senha</label><input class="txt" type="password" id="cs-senha" placeholder="••••••••">' +
+    (conviteErro ? '<div class="erro">'+esc(conviteErro)+'</div>' : '') +
+    '<div class="row"><button class="btn" style="background:var(--plan);color:#fff" id="btn-criar-senha" '+(conviteEnviando?'disabled':'')+'>'+(conviteEnviando?'Aguarde…':'Criar acesso')+'</button></div>' +
+    '</div>' +
+  '</div>';
+}
+
+function conviteInvalidoHTML(){
+  return '<div class="authwrap"><div class="card center">' +
+    '<div class="exname" style="margin-bottom:8px">Link indisponível</div>' +
+    '<p style="color:var(--ink2);font-size:13px">'+esc(conviteErro)+'</p>' +
+    '<div class="row"><button class="btn ghost" style="width:100%" onclick="location.href=location.pathname">Ir para o login</button></div>' +
+  '</div></div>';
+}
+
+async function enviarAnamnese(){
+  conviteEnviando = true; render();
+  const { data: ok, error } = await sb.rpc('submeter_anamnese', {p_token: conviteToken, p_respostas: conviteRespostas});
+  conviteEnviando = false;
+  if(error || !ok){ toast('Não consegui enviar — tente novamente', 'var(--push)'); render(); return; }
+  view = 'convite-senha';
+  render();
+}
+
+async function criarSenhaConvite(){
+  const senha = $('#cs-senha').value;
+  if(!senha || senha.length < 6){ conviteErro = 'A senha precisa ter pelo menos 6 caracteres.'; render(); return; }
+  conviteEnviando = true; conviteErro = ''; render();
+  localStorage.setItem('convite_pendente', conviteToken);
+  const { data, error } = await sb.auth.signUp({
+    email: conviteInfo.email, password: senha,
+    options: { data: { nome: conviteRespostas.nome_completo || conviteInfo.nome } }
+  });
+  conviteEnviando = false;
+  if(error){ conviteErro = error.message; localStorage.removeItem('convite_pendente'); render(); return; }
+  history.replaceState(null, '', location.pathname);
+  if(data.session){
+    session = data.session;
+    await entrarComoUsuarioLogado();
+  } else {
+    view = 'auth'; authMode = 'login';
+    toast('Confira seu e-mail para confirmar a conta, depois entre normalmente.', 'var(--gold)');
+    render();
+  }
+}
+
+async function sair(){
+  await sb.auth.signOut();
+  session = null; profile = null; plano = null; hist = {}; draft = {}; pendente = {};
+  clientes = []; clienteSelecionado = null; trainerTab = 'lista'; builder = null;
+  view = 'auth'; authMode = 'login';
+  render();
+}
+
+// ---------------------------------------------------------------
+// PAINEL DO TREINADOR
+// ---------------------------------------------------------------
+function novoExercicioVazio(){ return {id:'', nome:'', warm:'—', feeder:'—', sets:2, min:8, max:12, ombro:false, tempo:false, nota:''}; }
+function novoDiaVazio(){ return {id:'', nome:'', tipo:'push', desc:'', ex:[novoExercicioVazio()]}; }
+
+function builderDoPlano(p){
+  if(!p || !p.dias || !p.dias.length){
+    return { periodo:'', treinador: profile.nome || '', dias:[novoDiaVazio()] };
+  }
+  return {
+    periodo: p.periodo || '', treinador: p.treinador || profile.nome || '',
+    dias: p.dias.map(d => ({
+      id: d.id, nome: d.nome, tipo: d.tipo, desc: d.desc,
+      ex: d.ex.map(e => ({ id: e.id, nome:e.nome, warm:e.warm, feeder:e.feeder, sets:e.sets, min:e.min, max:e.max,
+        ombro: !!e.ombro, tempo: !!e.tempo, nota: e.nota || '' }))
+    }))
+  };
+}
+
+function cadastroInicial(){
+  const c = clienteSelecionado, a = anamneseAtual;
+  return {
+    nome: c.nome || '', telefone: c.telefone || '', data_nascimento: c.data_nascimento || '',
+    altura_cm: c.altura_cm ?? '', peso_kg: c.peso_kg ?? '',
+    objetivo_principal: a?.objetivo_principal || '', nivel_atividade: a?.nivel_atividade || '',
+    lesoes_dores: a?.lesoes_dores || '', condicoes_medicas: a?.condicoes_medicas || '',
+    medicamentos: a?.medicamentos || '', cirurgias: a?.cirurgias || '',
+    historico_familiar: a?.historico_familiar || '', restricoes_alimentares: a?.restricoes_alimentares || '',
+    alergias: a?.alergias || '', observacoes: a?.observacoes || ''
+  };
+}
+
+function campoTxt(label, campo, placeholder){
+  const v = cadastroDraft[campo];
+  return '<label class="lbl">'+label+'</label><input class="txt" data-cad="'+campo+'" value="'+esc(v)+'"'+(placeholder?' placeholder="'+esc(placeholder)+'"':'')+'>';
+}
+function campoArea(label, campo, placeholder){
+  const v = cadastroDraft[campo];
+  return '<label class="lbl">'+label+'</label><textarea class="txt" rows="2" data-cad="'+campo+'" placeholder="'+esc(placeholder||'')+'">'+esc(v)+'</textarea>';
+}
+
+function cadastroHTML(){
+  if(!cadastroDraft) cadastroDraft = cadastroInicial();
+  const c = clienteSelecionado;
+  return '<div class="card">' +
+    '<div class="exname">Dados do cliente</div>' +
+    '<label class="lbl">E-mail (login — não editável)</label><input class="txt" value="'+esc(c.email)+'" disabled>' +
+    campoTxt('Nome', 'nome') +
+    '<div class="grid2">' +
+      '<div>'+campoTxt('Telefone', 'telefone', '(11) 90000-0000')+'</div>' +
+      '<div><label class="lbl">Data de nascimento</label><input class="txt" type="date" data-cad="data_nascimento" value="'+esc(cadastroDraft.data_nascimento)+'"></div>' +
+    '</div>' +
+    '<div class="grid2">' +
+      '<div><label class="lbl">Altura (cm)</label><input class="txt" type="number" data-cad="altura_cm" value="'+esc(cadastroDraft.altura_cm)+'"></div>' +
+      '<div><label class="lbl">Peso (kg)</label><input class="txt" type="number" step="0.1" data-cad="peso_kg" value="'+esc(cadastroDraft.peso_kg)+'"></div>' +
+    '</div>' +
+  '</div>' +
+  '<div class="card">' +
+    '<div class="exname">Anamnese</div>' +
+    campoTxt('Objetivo principal', 'objetivo_principal', 'Ex.: Hipertrofia e perda de gordura') +
+    campoTxt('Nível de atividade', 'nivel_atividade', 'Ex.: Sedentário, ativo, atleta...') +
+    campoArea('Lesões / dores atuais', 'lesoes_dores', 'Ex.: Tendinopatia moderada nos dois ombros') +
+    campoArea('Condições médicas', 'condicoes_medicas') +
+    campoArea('Medicamentos em uso', 'medicamentos') +
+    campoArea('Cirurgias anteriores', 'cirurgias') +
+    campoArea('Histórico familiar relevante', 'historico_familiar') +
+    campoArea('Restrições alimentares', 'restricoes_alimentares', 'Ex.: Vegetariano, intolerância a lactose — útil já pensando no plano alimentar') +
+    campoArea('Alergias', 'alergias') +
+    campoArea('Observações gerais', 'observacoes') +
+    '<div class="row"><button class="btn" style="background:var(--plan);color:#fff" data-a="salvar-cadastro">Salvar cadastro e anamnese</button></div>' +
+  '</div>' +
+  anamneseCompletaHTML();
+}
+
+function anamneseCompletaHTML(){
+  const r = anamneseAtual?.respostas_completas;
+  if(!r) return '';
+  const secoes = PERGUNTAS_ANAMNESE.map(sec => {
+    const linhas = sec.campos.map(f => {
+      const v = r[f.id];
+      if(!v) return '';
+      return '<div class="hrow" style="align-items:flex-start"><span class="d" style="flex:0 0 45%">'+esc(f.label)+'</span><span class="v" style="text-align:right;flex:1">'+esc(v)+'</span></div>';
+    }).join('');
+    return linhas ? '<div class="lbl" style="margin-top:14px">'+esc(sec.titulo)+'</div>'+linhas : '';
+  }).join('');
+  return '<div class="card"><div class="exname">Anamnese completa (enviada pelo cliente)</div>' +
+    '<p style="color:var(--ink3);font-size:11.5px;margin-top:4px">Respostas originais do questionário — os campos acima já trazem um resumo editável.</p>' +
+    secoes + '</div>';
+}
+
+// ---------------------------------------------------------------
+// MÓDULO DE DIETA — TACO + montagem de refeições + leitura da anamnese
+// ---------------------------------------------------------------
+function novaRefeicaoVazia(){ return {nome:'', horario:'', itens:[]}; }
+
+function dietaInicial(){
+  const d = dietaAtual;
+  if(!d){
+    return { periodo:'', nutricionista: profile.nome||'', meta_kcal:'', meta_proteina_g:'', meta_carboidrato_g:'', meta_gordura_g:'', observacoes:'', refeicoes:[novaRefeicaoVazia()] };
+  }
+  return {
+    periodo: d.periodo||'', nutricionista: d.nutricionista||profile.nome||'',
+    meta_kcal: d.meta_kcal ?? '', meta_proteina_g: d.meta_proteina_g ?? '',
+    meta_carboidrato_g: d.meta_carboidrato_g ?? '', meta_gordura_g: d.meta_gordura_g ?? '',
+    observacoes: d.observacoes || '',
+    refeicoes: (d.refeicoes && d.refeicoes.length ? d.refeicoes : [novaRefeicaoVazia()]).map(r => ({
+      nome: r.nome||'', horario: r.horario||'', itens: (r.itens||[]).map(i => ({...i}))
+    }))
+  };
+}
+
+let substituicaoEscolhida = {}; // chave "ri-ii" -> índice da substituição escolhida (ausente = usar o alimento original)
+
+function macrosItem(item, ri, ii){
+  if(item.substituicoes !== undefined){
+    if(ri !== undefined && ii !== undefined){
+      const escolha = substituicaoEscolhida[ri+'-'+ii];
+      if(escolha !== undefined && item.substituicoes[escolha]){
+        return item.substituicoes[escolha].macros || {kcal:0, proteina_g:0, carboidrato_g:0, lipideos_g:0};
+      }
+    }
+    return item.macros || {kcal:0, proteina_g:0, carboidrato_g:0, lipideos_g:0};
+  }
+  if(item.tipo === 'taco'){
+    const al = alimentosTacoCache && alimentosTacoCache.find(a => a.id === item.alimento_id);
+    if(!al) return {kcal:0, proteina_g:0, carboidrato_g:0, lipideos_g:0};
+    const f = (+item.quantidade_g || 0) / 100;
+    return { kcal:(al.kcal||0)*f, proteina_g:(al.proteina_g||0)*f, carboidrato_g:(al.carboidrato_g||0)*f, lipideos_g:(al.lipideos_g||0)*f };
+  }
+  return { kcal:+item.kcal||0, proteina_g:+item.proteina_g||0, carboidrato_g:+item.carboidrato_g||0, lipideos_g:+item.lipideos_g||0 };
+}
+function somaMacros(itens, ri){
+  return itens.reduce((acc,i,ii) => { const m = macrosItem(i, ri, ii); acc.kcal+=m.kcal; acc.proteina_g+=m.proteina_g; acc.carboidrato_g+=m.carboidrato_g; acc.lipideos_g+=m.lipideos_g; return acc; }, {kcal:0,proteina_g:0,carboidrato_g:0,lipideos_g:0});
+}
+function fmtMacro(m){ return Math.round(m.kcal)+' kcal · '+Math.round(m.proteina_g)+'g P · '+Math.round(m.carboidrato_g)+'g C · '+Math.round(m.lipideos_g)+'g G'; }
+
+// Classifica o quanto uma substituição muda a composição em relação ao alimento de referência.
+// Usa diferença ABSOLUTA (não percentual) em cada macro — evitar que um alimento quase sem
+// gordura (ex.: arroz) pareça "mudar muito" só porque a variação percentual de um número
+// pertinho de zero é gigante mesmo sendo poucos gramas na prática.
+function classificarTroca(ref, alvo){
+  if(!ref || !alvo) return null;
+  const dKcal = Math.abs((alvo.kcal||0) - (ref.kcal||0));
+  const dProt = Math.abs((alvo.proteina_g||0) - (ref.proteina_g||0));
+  const dCarb = Math.abs((alvo.carboidrato_g||0) - (ref.carboidrato_g||0));
+  const dGord = Math.abs((alvo.lipideos_g||0) - (ref.lipideos_g||0));
+  const pontuar = (v, seguro, moderado) => v<=seguro ? 0 : (v<=moderado ? 1 : 2);
+  const pior = Math.max(
+    pontuar(dKcal, 50, 150),
+    pontuar(dProt, 5, 15),
+    pontuar(dCarb, 10, 25),
+    pontuar(dGord, 5, 12)
+  );
+  if(pior === 0) return {tag:'segura', cor:'var(--leg)', label:'Troca segura'};
+  if(pior === 1) return {tag:'moderada', cor:'var(--gold)', label:'Muda um pouco'};
+  return {tag:'alta', cor:'var(--push)', label:'Muda bastante'};
+}
+
+function itemInteligenteHTML(ri, ii, item){
+  const chave = ri+'-'+ii;
+  const escolha = substituicaoEscolhida[chave];
+  const usandoBase = (escolha === undefined || !item.substituicoes[escolha]);
+  const referencia = item.macros || (item.substituicoes||[]).map(s => s.macros).find(Boolean);
+  const macrosAtuais = macrosItem(item, ri, ii);
+
+  let html = '<div class="excard">' +
+    '<div class="exname" style="font-size:13px">'+esc(item.nome)+(item.quantidade ? ' — '+esc(item.quantidade) : '')+'</div>';
+  if(item.obs) html += '<div class="flag nota">'+esc(item.obs)+'</div>';
+  html += '<div class="last" style="margin-top:6px">'+(macrosAtuais.kcal || macrosAtuais.proteina_g || macrosAtuais.carboidrato_g || macrosAtuais.lipideos_g ? fmtMacro(macrosAtuais) : 'Sem valor de referência')+'</div>';
+
+  if(item.substituicoes && item.substituicoes.length){
+    html += '<div class="pend-label" style="margin-top:10px">Substituições possíveis</div>' +
+      '<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">';
+    if(!usandoBase){
+      html += '<button class="pill" style="justify-content:space-between;display:flex" data-a="usar-base" data-refeicao="'+ri+'" data-item="'+ii+'">↩ Voltar para '+esc(item.nome)+'</button>';
+    }
+    item.substituicoes.forEach((s, si) => {
+      const selecionado = escolha === si;
+      const cls = classificarTroca(referencia, s.macros);
+      const tag = cls
+        ? '<span style="color:'+cls.cor+';font-weight:800;font-size:10px;text-transform:uppercase;white-space:nowrap;margin-left:8px">'+esc(cls.label)+'</span>'
+        : '<span style="color:var(--ink3);font-size:10px;white-space:nowrap;margin-left:8px">sem comparação</span>';
+      html += '<button class="pill" style="justify-content:space-between;display:flex;text-align:left;white-space:normal;'+(selecionado?'background:var(--plan);color:#fff':'')+'" data-a="escolher-sub" data-refeicao="'+ri+'" data-item="'+ii+'" data-sub="'+si+'">' +
+        '<span>'+esc(s.nome)+' — '+esc(s.quantidade)+'</span>' + tag +
+      '</button>';
+      if(selecionado && s.obs) html += '<div class="flag nota">'+esc(s.obs)+'</div>';
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function minhaDietaHTML(){
+  const d = dietaAtual;
+  if(!d || !d.refeicoes || !d.refeicoes.length){
+    return '<div class="card empty">Seu nutricionista ainda não montou sua dieta. Assim que ele publicar, aparece aqui.</div>';
+  }
+  let out = '';
+  const temMeta = d.meta_kcal || d.meta_proteina_g || d.meta_carboidrato_g || d.meta_gordura_g;
+  if(temMeta){
+    out += '<div class="card"><div class="exname">Metas diárias</div><div class="last"><b>' +
+      [
+        d.meta_kcal ? Math.round(d.meta_kcal)+' kcal' : '',
+        d.meta_proteina_g ? Math.round(d.meta_proteina_g)+'g proteína' : '',
+        d.meta_carboidrato_g ? Math.round(d.meta_carboidrato_g)+'g carbo' : '',
+        d.meta_gordura_g ? Math.round(d.meta_gordura_g)+'g gordura' : ''
+      ].filter(Boolean).join(' · ') +
+      '</b></div></div>';
+  }
+
+  const totalDia = d.refeicoes.reduce((acc, r, ri) => {
+    const m = somaMacros(r.itens || [], ri);
+    acc.kcal+=m.kcal; acc.proteina_g+=m.proteina_g; acc.carboidrato_g+=m.carboidrato_g; acc.lipideos_g+=m.lipideos_g;
+    return acc;
+  }, {kcal:0,proteina_g:0,carboidrato_g:0,lipideos_g:0});
+  out += '<div class="card"><div class="exname">Total do dia</div><div class="last"><b>'+fmtMacro(totalDia)+'</b></div>' +
+    '<p style="color:var(--ink3);font-size:11px;margin-top:6px">Toque numa substituição dentro de uma refeição para ver como ela muda a conta — o total acima já reflete a troca.</p></div>';
+
+  d.refeicoes.forEach((r, ri) => {
+    const totalRef = somaMacros(r.itens || [], ri);
+    out += '<div class="card">' +
+      '<div class="exname">'+esc(r.nome || ('Refeição '+(ri+1)))+(r.horario ? ' · '+esc(r.horario) : '')+'</div>';
+    (r.itens || []).forEach((item, ii) => {
+      if(item.substituicoes !== undefined){
+        out += itemInteligenteHTML(ri, ii, item);
+      } else {
+        const m = macrosItem(item, ri, ii);
+        const nome = item.tipo === 'taco' ? esc(item.nome)+' — '+item.quantidade_g+'g' : esc(item.nome || 'Item');
+        out += '<div class="hrow"><span class="d">'+nome+'</span><span class="v">'+Math.round(m.kcal)+' kcal</span></div>';
+      }
+    });
+    out += '<div class="last" style="margin-top:8px">Total da refeição: <b>'+fmtMacro(totalRef)+'</b></div>' +
+    '</div>';
+  });
+
+  if(d.observacoes) out += '<div class="card"><div class="exname">Observações</div><div class="last" style="white-space:pre-wrap">'+esc(d.observacoes)+'</div></div>';
+  return out;
+}
+
+function resumoAnamneseHTML(){
+  const a = anamneseAtual;
+  if(!a) return '<div class="card empty">Sem anamnese preenchida ainda para este cliente — veja a aba Cadastro.</div>';
+  const linhas = [
+    ['Objetivo', a.objetivo_principal], ['Nível de atividade', a.nivel_atividade],
+    ['Restrições alimentares', a.restricoes_alimentares], ['Alergias', a.alergias],
+    ['Condições médicas', a.condicoes_medicas]
+  ].filter(([,v]) => v && v.trim());
+  const extra = a.respostas_completas || {};
+  const habitos = [
+    ['Refeições/dia', extra.refeicoes_por_dia], ['Água/dia', extra.consumo_agua],
+    ['Não consome', extra.nao_consome], ['Não gosta', extra.alimentos_nao_gosta]
+  ].filter(([,v]) => v && String(v).trim());
+  return '<div class="card"><div class="exname">Resumo da anamnese (leitura rápida)</div>' +
+    (linhas.length ? linhas.map(([l,v]) => '<div class="last"><b>'+esc(l)+':</b> '+esc(v)+'</div>').join('') : '<div class="empty">Cadastro básico ainda sem anamnese detalhada.</div>') +
+    (habitos.length ? '<div class="lbl" style="margin-top:10px">Da anamnese completa</div>' + habitos.map(([l,v]) => '<div class="last"><b>'+esc(l)+':</b> '+esc(v)+'</div>').join('') : '') +
+  '</div>';
+}
+
+function dietaHTML(){
+  if(!dietaDraft) dietaDraft = dietaInicial();
+  const c = clienteSelecionado;
+  const d = dietaDraft;
+
+  let out = resumoAnamneseHTML();
+
+  out += '<div class="card"><div class="exname">Metas diárias</div>' +
+    '<div class="grid3">' +
+      '<div><label class="lbl">Kcal</label><input class="txt" type="number" data-diet="meta_kcal" value="'+esc(d.meta_kcal)+'"></div>' +
+      '<div><label class="lbl">Proteína (g)</label><input class="txt" type="number" data-diet="meta_proteina_g" value="'+esc(d.meta_proteina_g)+'"></div>' +
+      '<div><label class="lbl">Carbo (g)</label><input class="txt" type="number" data-diet="meta_carboidrato_g" value="'+esc(d.meta_carboidrato_g)+'"></div>' +
+    '</div>' +
+    '<div class="grid2" style="margin-top:0">' +
+      '<div><label class="lbl">Gordura (g)</label><input class="txt" type="number" data-diet="meta_gordura_g" value="'+esc(d.meta_gordura_g)+'"></div>' +
+      '<div><label class="lbl">Período</label><input class="txt" data-diet="periodo" value="'+esc(d.periodo)+'" placeholder="Ex.: 01/09 a 31/10"></div>' +
+    '</div>' +
+  '</div>';
+
+  const totalDia = d.refeicoes.reduce((acc, r, ri) => {
+    const m = somaMacros(r.itens || [], ri);
+    acc.kcal+=m.kcal; acc.proteina_g+=m.proteina_g; acc.carboidrato_g+=m.carboidrato_g; acc.lipideos_g+=m.lipideos_g;
+    return acc;
+  }, {kcal:0,proteina_g:0,carboidrato_g:0,lipideos_g:0});
+  let cueDia = '';
+  if(d.meta_kcal){
+    const diff = Math.round(totalDia.kcal - d.meta_kcal);
+    cueDia = '<div class="cue '+(Math.abs(diff)<=100?'up':'hold')+'">Meta '+d.meta_kcal+' kcal — '+(diff>=0?'+':'')+diff+' kcal em relação à meta</div>';
+  }
+  out += '<div class="card"><div class="exname">Total do dia (todas as refeições)</div>' +
+    '<div class="last"><b>'+fmtMacro(totalDia)+'</b></div>' + cueDia + '</div>';
+
+  d.refeicoes.forEach((r, ri) => {
+    const totalRef = somaMacros(r.itens || [], ri);
+    out += '<div class="diacard">' +
+      '<div class="diahead"><span class="letra">Refeição '+(ri+1)+'</span>' +
+      (d.refeicoes.length > 1 ? '<button class="x" data-a="rm-refeicao" data-refeicao="'+ri+'">✕ remover</button>' : '') + '</div>' +
+      '<div class="grid2">' +
+        '<div><label class="lbl">Nome</label><input class="txt" data-diet-r="nome" data-refeicao="'+ri+'" value="'+esc(r.nome)+'" placeholder="Ex.: Café da manhã"></div>' +
+        '<div><label class="lbl">Horário</label><input class="txt" data-diet-r="horario" data-refeicao="'+ri+'" value="'+esc(r.horario)+'" placeholder="Ex.: 07:00"></div>' +
+      '</div>';
+
+    r.itens.forEach((item, ii) => {
+      if(item.substituicoes !== undefined){
+        out += itemInteligenteHTML(ri, ii, item);
+        return;
+      }
+      const m = macrosItem(item, ri, ii);
+      out += '<div class="excard"><div class="exhead"><span>Item '+(ii+1)+'</span><button class="x" data-a="rm-item" data-refeicao="'+ri+'" data-item="'+ii+'">✕</button></div>';
+      if(item.tipo === 'taco'){
+        out += '<div class="exname" style="font-size:13px;margin-bottom:6px">'+esc(item.nome)+'</div>' +
+          '<div class="grid2">' +
+            '<div><label class="lbl">Quantidade (g)</label><input class="txt" type="number" data-diet-item="quantidade_g" data-refeicao="'+ri+'" data-item="'+ii+'" value="'+item.quantidade_g+'"></div>' +
+            '<div><label class="lbl">Nesta porção</label><div class="last" style="margin-top:9px">'+fmtMacro(m)+'</div></div>' +
+          '</div>';
+      } else {
+        out += '<input class="txt" data-diet-item="nome" data-refeicao="'+ri+'" data-item="'+ii+'" value="'+esc(item.nome)+'" placeholder="Nome do item (ex.: Marmita da Sônia)" style="margin-bottom:8px">' +
+          '<div class="grid3">' +
+            '<div><label class="lbl">Kcal</label><input class="txt" type="number" data-diet-item="kcal" data-refeicao="'+ri+'" data-item="'+ii+'" value="'+item.kcal+'"></div>' +
+            '<div><label class="lbl">Proteína (g)</label><input class="txt" type="number" data-diet-item="proteina_g" data-refeicao="'+ri+'" data-item="'+ii+'" value="'+item.proteina_g+'"></div>' +
+            '<div><label class="lbl">Carbo (g)</label><input class="txt" type="number" data-diet-item="carboidrato_g" data-refeicao="'+ri+'" data-item="'+ii+'" value="'+item.carboidrato_g+'"></div>' +
+          '</div>';
+      }
+      out += '</div>';
+    });
+
+    out += '<div class="last" style="margin-top:6px">Total da refeição: <b>'+fmtMacro(totalRef)+'</b></div>';
+
+    const termo = buscaAlimentoTexto[ri] || '';
+    const resultados = buscaAlimentoResultados[ri] || [];
+    out += '<div class="pend">' +
+      '<div class="pend-label">Adicionar alimento (tabela TACO)</div>' +
+      '<div class="row" style="margin-top:0">' +
+        '<input class="txt" placeholder="Ex.: arroz, frango, banana..." data-busca-taco="'+ri+'" value="'+esc(termo)+'">' +
+        '<button class="btn ghost" data-a="buscar-taco" data-refeicao="'+ri+'">Buscar</button>' +
+      '</div>' +
+      (resultados.length ? '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">' +
+        resultados.map(id => {
+          const al = alimentosTacoCache.find(a => a.id === id);
+          if(!al) return '';
+          return '<button class="pill" style="text-align:left;justify-content:flex-start;white-space:normal" data-a="add-taco" data-refeicao="'+ri+'" data-id="'+al.id+'">'+esc(al.nome)+' <span style="color:var(--ink3)">· '+Math.round(al.kcal||0)+' kcal/100g</span></button>';
+        }).join('') + '</div>' : '') +
+      '<div class="row"><button class="btn ghost" style="width:100%" data-a="add-item-livre" data-refeicao="'+ri+'">+ Item sem TACO (ex.: marmita pronta)</button></div>' +
+    '</div>' +
+    '</div>';
+  });
+
+  out += '<div class="row"><button class="btn ghost" style="width:100%" data-a="add-refeicao">+ Adicionar refeição</button></div>' +
+    '<div class="card">' +
+    '<label class="lbl">Observações gerais da dieta</label>' +
+    '<textarea class="txt" rows="3" data-diet="observacoes" placeholder="Ex.: substituições permitidas, orientações de preparo...">'+esc(d.observacoes)+'</textarea>' +
+    '<div class="row"><button class="btn" style="background:var(--leg);color:#fff" data-a="salvar-dieta">Salvar dieta de '+esc(c.nome||c.email)+'</button></div>' +
+    '</div>';
+
+  return out;
+}
+
+function buscarTaco(ri){
+  const termo = (buscaAlimentoTexto[ri] || '').trim().toLowerCase();
+  if(!termo || !alimentosTacoCache){ buscaAlimentoResultados[ri] = []; return; }
+  const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const t = norm(termo);
+  buscaAlimentoResultados[ri] = alimentosTacoCache
+    .filter(a => norm(a.nome).includes(t))
+    .slice(0, 8)
+    .map(a => a.id);
+}
+
+async function salvarDieta(){
+  const d = dietaDraft;
+  const dados = {
+    periodo: d.periodo, nutricionista: d.nutricionista || profile.nome || '',
+    meta_kcal: d.meta_kcal === '' ? null : +d.meta_kcal,
+    meta_proteina_g: d.meta_proteina_g === '' ? null : +d.meta_proteina_g,
+    meta_carboidrato_g: d.meta_carboidrato_g === '' ? null : +d.meta_carboidrato_g,
+    meta_gordura_g: d.meta_gordura_g === '' ? null : +d.meta_gordura_g,
+    observacoes: d.observacoes,
+    refeicoes: d.refeicoes
+  };
+  const { error } = await sb.from('planos_alimentares').upsert(
+    {client_id: clienteSelecionado.id, ...dados, updated_at: new Date().toISOString()},
+    {onConflict:'client_id'}
+  );
+  if(error){ toast('Não consegui salvar a dieta', 'var(--push)'); return; }
+  dietaAtual = dados;
+  toast('Dieta de ' + esc(clienteSelecionado.nome || clienteSelecionado.email) + ' salva');
+}
+
+function trainerHTML(){
+  if(trainerTab === 'lista'){
+    const linhasConvite = convites.length
+      ? convites.map(v => '<div class="clientrow">' +
+          '<div><div class="nome">'+esc(v.nome)+'</div><div class="email">'+esc(v.email)+'</div>' +
+          '<div class="semplano">'+(v.status==='pendente' ? 'Aguardando preencher anamnese' : 'Anamnese preenchida — aguardando criar senha')+'</div></div>' +
+          '<button class="pill" data-a="copiar-link-convite" data-token="'+v.token+'">Copiar link</button></div>').join('')
+      : '';
+    const linhas = clientes.length
+      ? clientes.map(c => '<div class="clientrow">' +
+          '<div><div class="nome">'+esc(c.nome || '(sem nome)')+'</div><div class="email">'+esc(c.email||'')+'</div>' +
+          '</div><button class="pill" data-a="abrir-cliente" data-id="'+c.id+'">Abrir</button></div>').join('')
+      : '<div class="empty">Nenhum cliente cadastrado ainda.</div>';
+
+    return '<div class="card">' +
+      '<div class="exname">Convidar novo cliente</div>' +
+      '<p style="color:var(--ink3);font-size:12px;margin-top:4px">Gera um link com a anamnese completa. O cliente preenche e cria a própria senha no final — o cadastro acontece sozinho.</p>' +
+      '<div class="grid2">' +
+        '<div><label class="lbl">Nome</label><input class="txt" id="inv-nome" placeholder="Nome do cliente"></div>' +
+        '<div><label class="lbl">E-mail</label><input class="txt" id="inv-email" type="email" placeholder="cliente@email.com"></div>' +
+      '</div>' +
+      '<div class="row"><button class="btn" style="background:var(--plan);color:#fff" data-a="gerar-convite">Gerar link</button></div>' +
+      (ultimoLinkGerado ? '<div class="cue hold" style="margin-top:12px;word-break:break-all">'+esc(ultimoLinkGerado)+'</div><div class="row"><button class="btn ghost" style="width:100%" data-a="copiar-ultimo-link">Copiar link</button></div>' : '') +
+    '</div>' +
+    (linhasConvite ? '<div class="card"><div class="exname">Convites em andamento</div>'+linhasConvite+'</div>' : '') +
+    '<div class="card"><div class="exname">Clientes</div>' + linhas + '</div>';
+  }
+
+  const c = clienteSelecionado;
+  const tabsCliente = '<div class="row" style="margin-bottom:4px;flex-wrap:wrap">' +
+    '<button class="pill" data-a="voltar-lista">← Clientes</button>' +
+    '<button class="pill" style="'+(trainerTab==='cadastro'?'background:var(--plan);color:#fff':'')+'" data-a="aba-trainer" data-v="cadastro">Cadastro</button>' +
+    '<button class="pill" style="'+(trainerTab==='plano'?'background:var(--plan);color:#fff':'')+'" data-a="aba-trainer" data-v="plano">Treino</button>' +
+    '<button class="pill" style="'+(trainerTab==='dieta'?'background:var(--leg);color:#fff':'')+'" data-a="aba-trainer" data-v="dieta">Dieta</button>' +
+    '<button class="pill" style="'+(trainerTab==='progresso'?'background:var(--plan);color:#fff':'')+'" data-a="aba-trainer" data-v="progresso">Progresso</button>' +
+  '</div>';
+
+  if(trainerTab === 'cadastro') return tabsCliente + cadastroHTML();
+  if(trainerTab === 'dieta') return tabsCliente + dietaHTML();
+
+  if(trainerTab === 'progresso'){
+    if(!plano || !plano.dias.length) return tabsCliente + '<div class="card empty">'+esc(c.nome)+' ainda não tem um plano montado.</div>';
+    if(!aba) aba = plano.dias[0].id;
+    const diasTabs = plano.dias.map(d => '<button class="tab'+(aba===d.id?' on':'')+'" data-t="'+d.id+'"'+(aba===d.id?' style="background:'+COR[d.tipo]+'"':'')+'>'+d.id+' · '+d.nome+'</button>').join('');
+    const dia = plano.dias.find(x => x.id === aba) || plano.dias[0];
+    const cor = COR[dia.tipo] || COR.push;
+    return tabsCliente + '<div class="tabs">'+diasTabs+'</div><div class="daybar" style="background:'+cor+'"></div>' +
+      '<div class="presc" style="margin-bottom:10px;letter-spacing:.09em;text-transform:uppercase">'+esc(dia.desc)+'</div>' +
+      dia.ex.map(ex => cardHTML(ex, cor)).join('');
+  }
+
+  // trainerTab === 'plano'
+  if(!builder) builder = builderDoPlano(plano);
+  let out = tabsCliente + '<div class="card"><div class="exname">Plano de '+esc(c.nome || c.email)+'</div>' +
+    '<div class="grid2">' +
+      '<div><label class="lbl">Período</label><input class="txt" data-b="plano" data-f="periodo" value="'+esc(builder.periodo)+'" placeholder="Ex.: 01/09 a 31/10"></div>' +
+      '<div><label class="lbl">Treinador</label><input class="txt" data-b="plano" data-f="treinador" value="'+esc(builder.treinador)+'"></div>' +
+    '</div></div>';
+
+  builder.dias.forEach((d, i) => {
+    out += '<div class="diacard" data-dia="'+i+'">' +
+      '<div class="diahead"><span class="letra">Dia '+String.fromCharCode(65+i)+'</span>' +
+      (builder.dias.length > 1 ? '<button class="x" data-a="rm-dia" data-dia="'+i+'">✕ remover dia</button>' : '') + '</div>' +
+      '<div class="grid2">' +
+        '<div><label class="lbl">Nome do dia</label><input class="txt" data-b="dia" data-dia="'+i+'" data-f="nome" value="'+esc(d.nome)+'" placeholder="Ex.: Push"></div>' +
+        '<div><label class="lbl">Tipo (cor)</label><select class="sel" data-b="dia" data-dia="'+i+'" data-f="tipo">' +
+          ['push','pull','leg'].map(t => '<option value="'+t+'"'+(d.tipo===t?' selected':'')+'>'+({push:'Push (vermelho)',pull:'Pull (azul)',leg:'Leg (verde)'})[t]+'</option>').join('') +
+        '</select></div>' +
+      '</div>' +
+      '<label class="lbl">Descrição</label><input class="txt" data-b="dia" data-dia="'+i+'" data-f="desc" value="'+esc(d.desc)+'" placeholder="Ex.: Peito · Ombro · Tríceps">';
+
+    d.ex.forEach((e, j) => {
+      out += '<div class="excard"><div class="exhead"><span>Exercício '+(j+1)+'</span>' +
+        (d.ex.length > 1 ? '<button class="x" data-a="rm-ex" data-dia="'+i+'" data-ex="'+j+'">✕</button>' : '') + '</div>' +
+        '<input class="txt" data-b="ex" data-dia="'+i+'" data-ex="'+j+'" data-f="nome" value="'+esc(e.nome)+'" placeholder="Nome do exercício">' +
+        '<div class="grid2">' +
+          '<div><label class="lbl">Warm up</label><input class="txt" data-b="ex" data-dia="'+i+'" data-ex="'+j+'" data-f="warm" value="'+esc(e.warm)+'"></div>' +
+          '<div><label class="lbl">Feeder set</label><input class="txt" data-b="ex" data-dia="'+i+'" data-ex="'+j+'" data-f="feeder" value="'+esc(e.feeder)+'"></div>' +
+        '</div>' +
+        '<div class="grid3">' +
+          '<div><label class="lbl">Séries</label><input class="txt" type="number" min="1" data-b="ex" data-dia="'+i+'" data-ex="'+j+'" data-f="sets" value="'+e.sets+'"></div>' +
+          '<div><label class="lbl">Rep. mínima</label><input class="txt" type="number" min="1" data-b="ex" data-dia="'+i+'" data-ex="'+j+'" data-f="min" value="'+e.min+'"></div>' +
+          '<div><label class="lbl">Rep. máxima</label><input class="txt" type="number" min="1" data-b="ex" data-dia="'+i+'" data-ex="'+j+'" data-f="max" value="'+e.max+'"></div>' +
+        '</div>' +
+        '<label class="lbl">Observação</label><input class="txt" data-b="ex" data-dia="'+i+'" data-ex="'+j+'" data-f="nota" value="'+esc(e.nota)+'" placeholder="Ex.: Sempre com sobrecarga">' +
+        '<div class="chks">' +
+          '<label class="chk"><input type="checkbox" data-b="ex" data-dia="'+i+'" data-ex="'+j+'" data-f="ombro" '+(e.ombro?'checked':'')+'> Sensível ao ombro</label>' +
+          '<label class="chk"><input type="checkbox" data-b="ex" data-dia="'+i+'" data-ex="'+j+'" data-f="tempo" '+(e.tempo?'checked':'')+'> Cronometrado (segundos)</label>' +
+        '</div></div>';
+    });
+    out += '<div class="row"><button class="btn ghost" style="width:100%" data-a="add-ex" data-dia="'+i+'">+ Adicionar exercício</button></div></div>';
+  });
+
+  out += '<div class="row"><button class="btn ghost" style="width:100%" data-a="add-dia">+ Adicionar dia</button></div>' +
+    '<div class="card"><div class="row"><button class="btn" style="background:var(--plan);color:#fff" data-a="salvar-plano">Salvar plano de '+esc(c.nome||c.email)+'</button></div></div>';
+  return out;
+}
+
+function dadosDoBuilder(){
+  return {
+    periodo: builder.periodo, treinador: builder.treinador,
+    dias: builder.dias.map((d,i) => ({
+      id: String.fromCharCode(65+i), nome: d.nome || ('Dia '+(i+1)), tipo: d.tipo, desc: d.desc || '',
+      ex: d.ex.map((e,j) => {
+        const ex = { id: String.fromCharCode(97+i)+(j+1), nome: e.nome || ('Exercício '+(j+1)), warm: e.warm||'—', feeder: e.feeder||'—',
+          sets:+e.sets||1, min:+e.min||1, max:+e.max||(+e.min||1) };
+        if(e.ombro) ex.ombro = true;
+        if(e.tempo) ex.tempo = true;
+        if(e.nota) ex.nota = e.nota;
+        return ex;
+      })
+    }))
+  };
+}
+
+async function salvarPlanoCliente(){
+  const semNome = builder.dias.some(d => d.ex.some(e => !e.nome.trim()));
+  if(semNome){ toast('Preencha o nome de todos os exercícios', 'var(--push)'); return; }
+  const dados = dadosDoBuilder();
+  const { error } = await sb.from('plans').upsert(
+    {client_id: clienteSelecionado.id, periodo: dados.periodo, treinador: dados.treinador, dias: dados.dias, updated_at: new Date().toISOString()},
+    {onConflict:'client_id'}
+  );
+  if(error){ toast('Não consegui salvar o plano', 'var(--push)'); return; }
+  plano = {periodo: dados.periodo, treinador: dados.treinador, dias: dados.dias};
+  toast('Plano de ' + esc(clienteSelecionado.nome||clienteSelecionado.email) + ' salvo');
+}
+
+async function salvarCadastro(){
+  const d = cadastroDraft;
+  const { error: e1 } = await sb.from('profiles').update({
+    nome: d.nome, telefone: d.telefone,
+    data_nascimento: d.data_nascimento || null,
+    altura_cm: d.altura_cm === '' ? null : +d.altura_cm,
+    peso_kg: d.peso_kg === '' ? null : +d.peso_kg
+  }).eq('id', clienteSelecionado.id);
+
+  const { error: e2 } = await sb.from('anamnese').upsert({
+    client_id: clienteSelecionado.id,
+    objetivo_principal: d.objetivo_principal, nivel_atividade: d.nivel_atividade,
+    lesoes_dores: d.lesoes_dores, condicoes_medicas: d.condicoes_medicas,
+    medicamentos: d.medicamentos, cirurgias: d.cirurgias,
+    historico_familiar: d.historico_familiar, restricoes_alimentares: d.restricoes_alimentares,
+    alergias: d.alergias, observacoes: d.observacoes,
+    updated_at: new Date().toISOString()
+  }, {onConflict:'client_id'});
+
+  if(e1 || e2){ toast('Não consegui salvar o cadastro', 'var(--push)'); return; }
+
+  clienteSelecionado.nome = d.nome; clienteSelecionado.telefone = d.telefone;
+  clienteSelecionado.data_nascimento = d.data_nascimento; clienteSelecionado.altura_cm = d.altura_cm; clienteSelecionado.peso_kg = d.peso_kg;
+  const idx = clientes.findIndex(c => c.id === clienteSelecionado.id);
+  if(idx >= 0) clientes[idx] = {...clientes[idx], nome: d.nome};
+  toast('Cadastro de ' + esc(d.nome || clienteSelecionado.email) + ' salvo');
+}
+
+// ---------------------------------------------------------------
+// RENDER PRINCIPAL
+// ---------------------------------------------------------------
+function render(){
+  const app = $('#app');
+
+  if(view === 'loading'){ app.innerHTML = '<div class="loading">Carregando…</div>'; return; }
+  if(view === 'auth'){ app.innerHTML = authHTML(); ligarEventosAuth(); return; }
+
+  if(view === 'convite-invalido'){ app.innerHTML = conviteInvalidoHTML(); return; }
+  if(view === 'convite-form'){
+    app.innerHTML = conviteFormHTML();
+    const b = $('#btn-enviar-anamnese'); if(b) b.addEventListener('click', enviarAnamnese);
+    return;
+  }
+  if(view === 'convite-senha'){
+    app.innerHTML = conviteSenhaHTML();
+    const b = $('#btn-criar-senha'); if(b) b.addEventListener('click', criarSenhaConvite);
+    const s = $('#cs-senha'); if(s) s.addEventListener('keydown', e => { if(e.key === 'Enter') criarSenhaConvite(); });
+    return;
+  }
+
+  if(view === 'trainer'){
+    app.innerHTML =
+      '<div class="topo"><div><h1>Painel do treinador</h1><div class="sub">'+esc(profile.nome||profile.email)+'</div></div>' +
+      '<button class="sair" data-a="sair">Sair</button></div>' +
+      '<div id="corpo">'+trainerHTML()+'</div>' +
+      '<div class="toast" id="toast"></div>';
+    return;
+  }
+
+  // view === 'client'
+  if(!plano || !plano.dias.length){
+    app.innerHTML =
+      '<div class="topo"><div><h1>Treino</h1><div class="sub">'+esc(profile.nome||profile.email)+'</div></div>' +
+      '<button class="sair" data-a="sair">Sair</button></div>' +
+      '<div class="card empty" style="margin-top:16px">Seu treinador ainda não montou seu plano. Assim que ele publicar, aparece aqui.</div>' +
+      '<div class="toast" id="toast"></div>';
+    return;
+  }
+  if(!aba) aba = plano.dias[0].id;
+  const diasTabs = plano.dias.map(d => '<button class="tab'+(aba===d.id?' on':'')+'" data-t="'+d.id+'"'+(aba===d.id?' style="background:'+COR[d.tipo]+'"':'')+'>'+d.id+' · '+d.nome+'</button>').join('') +
+    '<button class="tab'+(aba==='G'?' on':'')+'" data-t="G"'+(aba==='G'?' style="background:var(--gold)"':'')+'>Guia</button>' +
+    '<button class="tab'+(aba==='NUTRI'?' on':'')+'" data-t="NUTRI"'+(aba==='NUTRI'?' style="background:var(--leg)"':'')+'>Dieta</button>';
+  let corpo;
+  if(aba === 'G'){ corpo = '<div class="daybar" style="background:var(--gold)"></div>' + guiaHTML(); }
+  else if(aba === 'NUTRI'){ corpo = '<div class="daybar" style="background:var(--leg)"></div>' + minhaDietaHTML(); }
+  else {
+    const dia = plano.dias.find(x => x.id === aba) || plano.dias[0];
+    const cor = COR[dia.tipo] || COR.push;
+    corpo = '<div class="daybar" style="background:'+cor+'"></div>' +
+      '<div class="presc" style="margin-bottom:10px;letter-spacing:.09em;text-transform:uppercase">'+esc(dia.desc)+'</div>' +
+      dia.ex.map(ex => cardHTML(ex, cor)).join('');
+  }
+  app.innerHTML =
+    '<div class="topo"><div><h1>Treino — '+esc(profile.nome||'')+'</h1><div class="sub">'+esc(plano.periodo)+' · '+esc(plano.treinador)+'</div></div>' +
+    '<button class="sair" data-a="sair">Sair</button></div>' +
+    '<div class="tabs">'+diasTabs+'</div>' + corpo +
+    '<div class="toast" id="toast"></div>';
+}
+
+function toast(msg, cor){
+  const t = $('#toast');
+  if(!t) return;
+  t.textContent = msg;
+  t.style.background = cor || 'var(--leg)';
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+function ligarEventosAuth(){
+  $('#app').querySelectorAll('[data-auth]').forEach(b => b.addEventListener('click', () => {
+    authMode = b.dataset.auth; authErro = ''; render();
+  }));
+  const envBtn = $('#af-enviar');
+  if(envBtn) envBtn.addEventListener('click', submeterAuth);
+  ['#af-email','#af-senha','#af-nome'].forEach(sel => {
+    const el = $(sel);
+    if(el) el.addEventListener('keydown', e => { if(e.key === 'Enter') submeterAuth(); });
+  });
+}
+
+// ---------------------------------------------------------------
+// EVENTOS GLOBAIS (cliques, inputs)
+// ---------------------------------------------------------------
+document.addEventListener('click', async e => {
+  const b = e.target.closest('button');
+  if(!b) return;
+  const a = b.dataset.a;
+
+  if(a === 'sair'){ await sair(); return; }
+
+  if(a === 'escolher-sub'){
+    substituicaoEscolhida[b.dataset.refeicao+'-'+b.dataset.item] = +b.dataset.sub;
+    render(); return;
+  }
+  if(a === 'usar-base'){
+    delete substituicaoEscolhida[b.dataset.refeicao+'-'+b.dataset.item];
+    render(); return;
+  }
+
+  if(b.dataset.t){
+    aba = b.dataset.t;
+    abertos = {};
+    render();
+    return;
+  }
+
+  if(view === 'client'){
+    const id = b.dataset.e;
+    if(a === 'hist' && id){ abertos[id] = !abertos[id]; document.getElementById('h-'+id).classList.toggle('open', abertos[id]); return; }
+    if(a === 'save' && id){ await registrarSerie(id); return; }
+    if(a === 'undo' && id){ await corrigirUltima(id); return; }
+    if((a==='p+'||a==='p-'||a==='r+'||a==='r-') && id){
+      const ex = acharEx(id);
+      if(!pendente[id]) pendente[id] = sugestao(ex);
+      const v = pendente[id];
+      if(a==='p+') v.p = incP(v.p,1);
+      if(a==='p-') v.p = incP(v.p,-1);
+      if(a==='r+') v.r = v.r + (ex.tempo?5:1);
+      if(a==='r-') v.r = Math.max(0, v.r - (ex.tempo?5:1));
+      render();
+      return;
+    }
+  }
+
+  if(view === 'trainer'){
+    if(a === 'abrir-cliente'){
+      clienteSelecionado = clientes.find(c => c.id === b.dataset.id);
+      somenteLeitura = true;
+      trainerTab = 'plano';
+      builder = null;
+      cadastroDraft = null;
+      await Promise.all([carregarDadosCliente(clienteSelecionado.id), carregarAnamnese(clienteSelecionado.id), carregarDieta(clienteSelecionado.id)]);
+      render();
+      return;
+    }
+    if(a === 'voltar-lista'){ trainerTab = 'lista'; clienteSelecionado = null; plano = null; builder = null; anamneseAtual = null; cadastroDraft = null; dietaAtual = null; dietaDraft = null; buscaAlimentoTexto = {}; buscaAlimentoResultados = {}; render(); return; }
+    if(a === 'aba-trainer'){ trainerTab = b.dataset.v; if(trainerTab==='progresso') aba = plano && plano.dias.length ? plano.dias[0].id : null; render(); return; }
+    if(a === 'add-dia'){ builder.dias.push(novoDiaVazio()); render(); return; }
+    if(a === 'rm-dia'){ builder.dias.splice(+b.dataset.dia,1); render(); return; }
+    if(a === 'add-ex'){ builder.dias[+b.dataset.dia].ex.push(novoExercicioVazio()); render(); return; }
+    if(a === 'rm-ex'){ builder.dias[+b.dataset.dia].ex.splice(+b.dataset.ex,1); render(); return; }
+    if(a === 'salvar-plano'){ await salvarPlanoCliente(); return; }
+    if(a === 'salvar-cadastro'){ await salvarCadastro(); return; }
+    if(a === 'add-refeicao'){ dietaDraft.refeicoes.push(novaRefeicaoVazia()); render(); return; }
+    if(a === 'rm-refeicao'){
+      const ri = +b.dataset.refeicao;
+      dietaDraft.refeicoes.splice(ri, 1);
+      delete buscaAlimentoTexto[ri]; delete buscaAlimentoResultados[ri];
+      render(); return;
+    }
+    if(a === 'rm-item'){ dietaDraft.refeicoes[+b.dataset.refeicao].itens.splice(+b.dataset.item, 1); render(); return; }
+    if(a === 'buscar-taco'){ buscarTaco(+b.dataset.refeicao); render(); return; }
+    if(a === 'add-taco'){
+      const ri = +b.dataset.refeicao, id = +b.dataset.id;
+      const al = alimentosTacoCache.find(x => x.id === id);
+      if(al) dietaDraft.refeicoes[ri].itens.push({tipo:'taco', alimento_id: al.id, nome: al.nome, quantidade_g: 100});
+      buscaAlimentoResultados[ri] = []; buscaAlimentoTexto[ri] = '';
+      render(); return;
+    }
+    if(a === 'add-item-livre'){
+      const ri = +b.dataset.refeicao;
+      dietaDraft.refeicoes[ri].itens.push({tipo:'livre', nome:'', kcal:0, proteina_g:0, carboidrato_g:0, lipideos_g:0});
+      render(); return;
+    }
+    if(a === 'salvar-dieta'){ await salvarDieta(); return; }
+    if(a === 'gerar-convite'){ await criarConvite(); return; }
+    if(a === 'copiar-ultimo-link'){
+      try{ await navigator.clipboard.writeText(ultimoLinkGerado); toast('Link copiado'); }
+      catch(e){ toast('Não consegui copiar — selecione o link manualmente', 'var(--push)'); }
+      return;
+    }
+    if(a === 'copiar-link-convite'){
+      const link = location.origin + location.pathname + '?convite=' + b.dataset.token;
+      try{ await navigator.clipboard.writeText(link); toast('Link copiado'); }
+      catch(e){ toast('Não consegui copiar — selecione o link manualmente', 'var(--push)'); }
+      return;
+    }
+
+    const id = b.dataset.e;
+    if(trainerTab === 'progresso' && id){
+      if(a === 'hist'){ abertos[id] = !abertos[id]; document.getElementById('h-'+id).classList.toggle('open', abertos[id]); return; }
+    }
+  }
+});
+
+document.addEventListener('input', e => {
+  const el = e.target;
+  if(el.dataset.resp){ conviteRespostas[el.dataset.resp] = el.value; return; }
+  if(el.dataset.cad && cadastroDraft){ cadastroDraft[el.dataset.cad] = el.value; return; }
+  if(el.dataset.buscaTaco !== undefined){ buscaAlimentoTexto[+el.dataset.buscaTaco] = el.value; return; }
+  if(el.dataset.diet && dietaDraft){ dietaDraft[el.dataset.diet] = el.value; return; }
+  if(el.dataset.dietR && dietaDraft){ dietaDraft.refeicoes[+el.dataset.refeicao][el.dataset.dietR] = el.value; return; }
+  if(el.dataset.dietItem && dietaDraft){
+    const item = dietaDraft.refeicoes[+el.dataset.refeicao].itens[+el.dataset.item];
+    item[el.dataset.dietItem] = (el.type === 'number') ? +el.value : el.value;
+    return;
+  }
+  if(el.dataset.f && el.dataset.e){
+    const id = el.dataset.e;
+    if(!pendente[id]) pendente[id] = sugestao(acharEx(id));
+    pendente[id][el.dataset.f] = el.value === '' ? 0 : +el.value;
+    return;
+  }
+  if(!el.dataset.b || !builder) return;
+  if(el.dataset.b === 'plano'){ builder[el.dataset.f] = el.value; return; }
+  if(el.dataset.b === 'dia'){ builder.dias[+el.dataset.dia][el.dataset.f] = el.value; return; }
+  if(el.dataset.b === 'ex'){
+    const alvo = builder.dias[+el.dataset.dia].ex[+el.dataset.ex];
+    alvo[el.dataset.f] = (el.type === 'number') ? +el.value : el.value;
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && e.target.dataset.buscaTaco !== undefined){
+    e.preventDefault();
+    buscarTaco(+e.target.dataset.buscaTaco);
+    render();
+  }
+});
+
+document.addEventListener('change', e => {
+  const el = e.target;
+  if(!el.dataset.b || !builder) return;
+  if(el.type === 'checkbox' && el.dataset.b === 'ex'){
+    builder.dias[+el.dataset.dia].ex[+el.dataset.ex][el.dataset.f] = el.checked;
+  }
+  if(el.tagName === 'SELECT' && el.dataset.b === 'dia'){
+    builder.dias[+el.dataset.dia][el.dataset.f] = el.value;
+    render();
+  }
+});
+</script>
+</body>
+</html>

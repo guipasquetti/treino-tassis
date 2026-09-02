@@ -36,6 +36,19 @@ desenhar o N:N de um jeito que trave adicionar essa camada de descoberta depois.
 Projeto irmão de referência (mesma stack, mesmo padrão de pastas): **OLIHealthHub**
 (`../OLIHealthHub`), usar como benchmark de organização quando houver dúvida.
 
+⚠️ **Existe um protótipo funcional anterior a este projeto**, preservado em
+[`prototype/`](prototype/) — HTML/JS puro, conectado ao mesmo Supabase, com login,
+convite+anamnese, execução de treino (histórico de cargas, cores push/pull/legs) e
+montagem de dieta com busca TACO já implementados informalmente. Consultar antes de
+desenhar as telas equivalentes no Expo — várias decisões de UX/produto já foram
+tomadas ali. Era o conteúdo original do repo GitHub `treino-tassis` (histórico git
+substituído em 02/set quando conectamos este projeto Expo ao mesmo repo).
+
+**Identidade visual:** referência escolhida pelo Guilherme (02/set) é o app nativo
+**Apple Fitness** (dark theme, anéis de progresso, tab bar em pill) — screenshots em
+[`docs/design-inspiration/`](docs/design-inspiration/). Backlog explícito — não aplicar
+agora, só quando a fase de identidade visual começar (ver §7).
+
 ## 2. Modelo de negócio e visão de produto (reunião com Tassis, 31/ago)
 
 **Dor atual do Tassis:** ferramentas fragmentadas — Live Clean (gestão/check-ins
@@ -104,7 +117,7 @@ Reels/TikTok.
 | Supabase URL | `https://fshwcaxcbnudvoyyqaxy.supabase.co` |
 | App scheme (deep link) | `apptreino://` |
 | Bundle iOS/Android | não definido ainda |
-| Repo git | local apenas, **sem remote** (`git remote -v` vazio) |
+| Repo git | `github.com/guipasquetti/treino-tassis` (público) |
 | Pasta local | `/Users/guilhermepasquetti/Developer/App Treino` |
 
 `.env` local (gitignored) já populado com `EXPO_PUBLIC_SUPABASE_URL` +
