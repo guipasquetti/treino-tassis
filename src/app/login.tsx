@@ -1,44 +1,50 @@
-import { useState } from "react";
-import { ActivityIndicator, StyleSheet, TextInput } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useState } from 'react';
+import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-import { Spacing } from "@/constants/theme";
-import { useTheme } from "@/hooks/use-theme";
-import { signIn } from "@/services/authService";
+import { Body, Button, Caption } from '@/components/ui';
+import { signIn } from '@/services/authService';
+import { FontSize, Palette, Radius, Spacing } from '@/theme';
 
 export default function LoginScreen() {
-  const theme = useTheme();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [erro, setErro] = useState<string | null>(null);
+  const [entrando, setEntrando] = useState(false);
 
-  async function handleSubmit() {
-    setError(null);
-    setLoading(true);
+  async function entrar() {
+    setErro(null);
+    setEntrando(true);
     try {
-      await signIn(email.trim(), password);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível entrar.");
+      await signIn(email.trim(), senha);
+    } catch (e) {
+      setErro(
+        e instanceof Error && e.message === 'Invalid login credentials'
+          ? 'E-mail ou senha incorretos.'
+          : e instanceof Error
+            ? e.message
+            : 'Não foi possível entrar.',
+      );
     } finally {
-      setLoading(false);
+      setEntrando(false);
     }
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="title" style={styles.title}>
-          App Treino
-        </ThemedText>
+    <SafeAreaView style={styles.screen}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.container}>
+        <View style={styles.brand}>
+          <Body style={styles.titulo}>Treino</Body>
+          <Caption>Seu plano, sua execução, sua evolução.</Caption>
+        </View>
 
-        <ThemedView type="backgroundElement" style={styles.form}>
+        <View style={styles.form}>
           <TextInput
-            style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+            style={styles.input}
             placeholder="E-mail"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={Palette.textTertiary}
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
@@ -46,61 +52,54 @@ export default function LoginScreen() {
             onChangeText={setEmail}
           />
           <TextInput
-            style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+            style={styles.input}
             placeholder="Senha"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={Palette.textTertiary}
             secureTextEntry
             autoCapitalize="none"
-            autoComplete="password"
-            value={password}
-            onChangeText={setPassword}
+            autoComplete="current-password"
+            value={senha}
+            onChangeText={setSenha}
+            onSubmitEditing={entrar}
           />
 
-          {error && (
-            <ThemedText type="small" themeColor="textSecondary">
-              {error}
-            </ThemedText>
-          )}
+          {erro ? <Caption color={Palette.danger}>{erro}</Caption> : null}
 
-          <ThemedText
-            type="linkPrimary"
-            onPress={loading ? undefined : handleSubmit}
-            style={styles.submit}>
-            {loading ? <ActivityIndicator /> : "Entrar"}
-          </ThemedText>
-        </ThemedView>
-      </SafeAreaView>
-    </ThemedView>
+          <Button label="Entrar" onPress={entrar} loading={entrando} />
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: Palette.background,
+  },
   container: {
     flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xl,
+    gap: Spacing.xxl,
   },
-  safeArea: {
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+  brand: {
+    gap: Spacing.xs,
   },
-  title: {
-    textAlign: "center",
+  titulo: {
+    fontSize: FontSize.display,
+    fontWeight: '800',
+    letterSpacing: -1,
   },
   form: {
-    borderRadius: Spacing.three,
-    padding: Spacing.four,
-    gap: Spacing.three,
+    gap: Spacing.md,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    fontSize: 16,
-  },
-  submit: {
-    textAlign: "center",
-    fontWeight: "700",
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.lg,
+    color: Palette.text,
+    fontSize: FontSize.body,
   },
 });
