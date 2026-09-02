@@ -205,7 +205,19 @@ src/
   regenerado batendo com ele — banco já reflete a visão white-label do §2, o app ainda não.
 - `git`: 2 commits, sem remote configurado — decidir onde hospedar (GitHub) antes do
   próximo handoff.
-- Sem auth flow, sem guarda de role, sem nenhuma tela de treino/nutrição ainda.
+- ✅ Auth flow básico implementado e testado (Expo web, `expo start --web`): `src/app/login.tsx`,
+  `src/store/authStore.ts`, `src/services/authService.ts`. Root layout (`src/app/_layout.tsx`)
+  redireciona sem sessão → `/login`, com sessão → `/(app)` (área autenticada única por
+  enquanto, ainda sem split trainer/client de telas — `authStore.isProfessional` já
+  identifica o papel, falta usar isso pra rotear diferente).
+- Rotas reorganizadas: telas antigas do scaffold (`index.tsx`, `explore.tsx`, tabs)
+  viraram grupo `src/app/(app)/`; `login.tsx` fica solto na raiz de `src/app/`.
+- ⚠️ **Gotcha real encontrado e corrigido:** Expo Router faz SSR até no `expo start --web`
+  (renderiza em Node, sem `window`). O client Supabase com `AsyncStorage` batia nisso e
+  derrubava o servidor inteiro (`ReferenceError: window is not defined`). Corrigido em
+  [`src/lib/supabase.ts`](src/lib/supabase.ts) com um `webSafeStorage` guardado por
+  `typeof window`, mesmo padrão já usado no `OLIHealthHub/src/services/supabase.ts`.
+- Ainda sem tela nenhuma de treino/nutrição real — só o scaffold placeholder.
 - Sem pagamento/cobrança automática ainda (schema tem `subscriptions.status`, mas nada
   muda esse status sozinho), sem contrato/LGPD.
 - Migração de schema versionada em [`supabase/migrations/20260902_multi_tenant_professionals_subscriptions.sql`](supabase/migrations/20260902_multi_tenant_professionals_subscriptions.sql)
@@ -225,14 +237,18 @@ Tabela abaixo é por par paciente↔profissional (já reflete o modelo N:N do §
 
 ## 10. Próximos passos
 
-1. `app/_layout.tsx` — auth + guarda de role/assinatura (usar `is_professional()`/
-   `is_client_of()` no client, não reimplementar a lógica no app), espelhando
-   `OLIHealthHub/app/_layout.tsx`.
-2. `src/store/authStore.ts` + `src/services/authService.ts` + `src/services/professionalService.ts`
-   (CRUD de `professional_plans`, gestão de `subscriptions`).
+1. Separar a área `(app)` por papel: hoje trainer e client caem no mesmo lugar; usar
+   `authStore.isProfessional` pra rotear pra uma home de profissional vs. de paciente
+   distintas (ou pelo menos telas condicionais).
+2. `src/services/professionalService.ts` (CRUD de `professional_plans`, gestão de
+   `subscriptions`) — hoje só existe `authService.ts`.
 3. Telas de onboarding por convite (RPCs do §5) — falta decidir onde no funil entra a
    escolha de plano/assinatura (§2 aponta que hoje é manual, sem cobrança recorrente).
-4. Remover as telas de exemplo do scaffold quando o fluxo real substituir.
-5. Decidir repo remoto (GitHub) e configurar EAS quando for hora de buildar.
-6. Cobrar do Tassis os itens do §7 — vários bloqueiam decisões de schema/UX.
-7. Avaliar se `is_trainer()` pode ser removida (não é mais usada em nenhuma RLS, ver §5).
+4. Tela de cadastro (`signUp`) — hoje só existe login; cadastro real nasce do fluxo de
+   convite (item 3), mas vale conferir se falta um cadastro direto também.
+5. Remover as telas de exemplo do scaffold (`(app)/index.tsx`, `(app)/explore.tsx`)
+   quando o fluxo real substituir.
+6. Configurar EAS quando for hora de buildar pra iOS/Android de verdade (hoje só roda
+   via `expo start --web`/Expo Go).
+7. Cobrar do Tassis os itens do §7 — vários bloqueiam decisões de schema/UX.
+8. Avaliar se `is_trainer()` pode ser removida (não é mais usada em nenhuma RLS, ver §5).
