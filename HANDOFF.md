@@ -196,6 +196,14 @@ src/
   slug `app-treino`, sem marca definida
 - Vídeos curtos de exercícios (15s)
 
+⚠️ **Urgente, achado em 02/set:** o projeto Supabase não tem SMTP customizado — o
+provedor de e-mail padrão é rate-limited e já falha (`connection_failed` no reset de
+senha, `over_email_send_rate_limit` até em `signUp` novo). Isso **vai travar o fluxo real
+de convite/onboarding** (§2/§9), que depende de confirmação de e-mail. Configurar SMTP
+próprio (Resend tem free tier, é o mais comum com Supabase) antes de implementar as
+telas de convite — sem isso o cadastro de aluno novo simplesmente não funciona em
+produção. Dashboard: Authentication → Settings → SMTP Settings.
+
 ## 8. Estado atual
 
 - Scaffold Expo padrão (SDK 57) renomeado de `app-treino-scaffold` → `app-treino`,
@@ -217,7 +225,17 @@ src/
   derrubava o servidor inteiro (`ReferenceError: window is not defined`). Corrigido em
   [`src/lib/supabase.ts`](src/lib/supabase.ts) com um `webSafeStorage` guardado por
   `typeof window`, mesmo padrão já usado no `OLIHealthHub/src/services/supabase.ts`.
-- Ainda sem tela nenhuma de treino/nutrição real — só o scaffold placeholder.
+- ✅ Home real por papel (02/set): `src/app/(app)/index.tsx` renderiza
+  [`ClientHome`](src/components/client-home.tsx) ou [`ProfessionalHome`](src/components/professional-home.tsx)
+  conforme `authStore.isProfessional`. Dados vêm de verdade do Supabase via
+  [`src/services/homeService.ts`](src/services/homeService.ts): aluno vê suas assinaturas
+  ativas (nome do profissional + plano), plano de treino vigente e contagem de séries
+  registradas; treinador vê a lista de alunos vinculados (nome, plano, status da
+  assinatura). Não testado ponta a ponta com login real nessa sessão (sem credencial
+  disponível) — só validado por typecheck + leitura das RLS; conferir visualmente com
+  login de verdade.
+- Ainda sem telas de treino/nutrição além da home (registrar série, montar plano, ver
+  dieta) — só o resumo na home.
 - Sem pagamento/cobrança automática ainda (schema tem `subscriptions.status`, mas nada
   muda esse status sozinho), sem contrato/LGPD.
 - Migração de schema versionada em [`supabase/migrations/20260902_multi_tenant_professionals_subscriptions.sql`](supabase/migrations/20260902_multi_tenant_professionals_subscriptions.sql)
@@ -237,18 +255,21 @@ Tabela abaixo é por par paciente↔profissional (já reflete o modelo N:N do §
 
 ## 10. Próximos passos
 
-1. Separar a área `(app)` por papel: hoje trainer e client caem no mesmo lugar; usar
-   `authStore.isProfessional` pra rotear pra uma home de profissional vs. de paciente
-   distintas (ou pelo menos telas condicionais).
-2. `src/services/professionalService.ts` (CRUD de `professional_plans`, gestão de
-   `subscriptions`) — hoje só existe `authService.ts`.
-3. Telas de onboarding por convite (RPCs do §5) — falta decidir onde no funil entra a
+1. **Configurar SMTP customizado** (ver alerta no §7) — bloqueia qualquer fluxo de
+   cadastro/convite real, prioridade antes do item 3 abaixo.
+2. Confirmar visualmente a home (`ClientHome`/`ProfessionalHome`) com login real —
+   feita nesta sessão mas não vista rodando com dados de verdade.
+3. Telas de treino/nutrição além da home: registrar série (draft→log), montar/editar
+   plano (treinador), ver plano alimentar completo, buscar TACO.
+4. `src/services/professionalService.ts` (CRUD de `professional_plans`, gestão de
+   `subscriptions`) — hoje `homeService.ts` só lê, não tem mutação nenhuma.
+5. Telas de onboarding por convite (RPCs do §5) — falta decidir onde no funil entra a
    escolha de plano/assinatura (§2 aponta que hoje é manual, sem cobrança recorrente).
-4. Tela de cadastro (`signUp`) — hoje só existe login; cadastro real nasce do fluxo de
-   convite (item 3), mas vale conferir se falta um cadastro direto também.
-5. Remover as telas de exemplo do scaffold (`(app)/index.tsx`, `(app)/explore.tsx`)
-   quando o fluxo real substituir.
-6. Configurar EAS quando for hora de buildar pra iOS/Android de verdade (hoje só roda
+6. Tela de cadastro (`signUp`) — hoje só existe login; cadastro real nasce do fluxo de
+   convite (item 5), mas vale conferir se falta um cadastro direto também.
+7. Remover a tela de exemplo restante do scaffold (`(app)/explore.tsx`) quando o fluxo
+   real substituir.
+8. Configurar EAS quando for hora de buildar pra iOS/Android de verdade (hoje só roda
    via `expo start --web`/Expo Go).
-7. Cobrar do Tassis os itens do §7 — vários bloqueiam decisões de schema/UX.
-8. Avaliar se `is_trainer()` pode ser removida (não é mais usada em nenhuma RLS, ver §5).
+9. Cobrar do Tassis os itens do §7 — vários bloqueiam decisões de schema/UX.
+10. Avaliar se `is_trainer()` pode ser removida (não é mais usada em nenhuma RLS, ver §5).
