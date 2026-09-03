@@ -498,7 +498,7 @@ usa hoje no Live Clean (`patient.liveclin.com`).
 | **Atendimento** | o profissional | notas da consulta | evento, texto |
 | **Check-in** | o paciente | questionário de 23 perguntas | **série temporal** |
 
-### Perguntas mapeadas (13 de 23)
+### Perguntas mapeadas (18 de 23)
 
 | # | Categoria | Tipo |
 |---|---|---|
@@ -515,6 +515,11 @@ usa hoje no Live Clean (`patient.liveclin.com`).
 | 11 | Consumo de vegetais | escolha ordinal, 3 opções (ordem invertida) |
 | 12 | Consumo de frutas | idem 11, **mesmo conjunto de opções** |
 | 13 | Desconforto abdominal | escolha + **follow-up condicional** |
+| 14 | Consistência de fezes | escolha categórica, 3 opções |
+| 15 | Frequência intestinal | escolha ordinal, 3 opções |
+| 16 | Consumo de álcool (dias) | escala **0–7** (dias da semana) |
+| 17 | Quantidade de álcool | escolha ordinal, 3 opções |
+| 18 | Alterações no cardápio | **texto livre — pedido de revisão do plano** |
 
 ### O template não é uma lista plana
 
@@ -548,6 +553,24 @@ Só que **a pergunta precisa declarar se é ordinal ou categórica** — não d�
   enquanto outras vão de pior → melhor. Não inferir ordem pela posição na lista — cada opção
   carrega o próprio valor.
 - Conjuntos de opções se repetem entre perguntas (11 e 12 são idênticas): vale poder reaproveitar.
+
+### O check-in alimenta a revisão do plano — isso exige versionamento
+
+A pergunta 18 pede explicitamente alterações no cardápio ("incluir um novo alimento, adicionar ou
+modificar uma refeição"). Ou seja, o check-in **não é só medição, é entrada de pedido de revisão**,
+e o ciclo real é: check-in → pedido → profissional revisa → publica versão nova.
+
+Consequência direta: `plans` e `planos_alimentares` precisam de **histórico de versões**. Hoje o
+save sobrescreve a linha única (e `client_id` é UNIQUE nas duas tabelas). Numa consultoria que
+revisa a cada quinzena, sobrescrever apaga o histórico inteiro do acompanhamento — o paciente não
+vê o que mudou e o profissional não vê o que já tentou. Resolver junto com a publicação
+(rascunho/publicado) da Fase 1, porque são a mesma mudança estrutural.
+
+### Melhorar em cima do original: condicional no álcool
+
+A pergunta 17 ("quantas bebidas num dia típico") aparece mesmo quando a 16 é "0 dias". Mesma
+mecânica de revelação condicional das perguntas 6 e 13 resolve — é um lugar barato de ficar melhor
+que a ferramenta que estamos substituindo.
 
 ### As duas conversas medem os mesmos eixos
 
