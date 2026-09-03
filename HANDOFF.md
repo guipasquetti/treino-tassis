@@ -485,3 +485,34 @@ enviado. Quando a Fase 2 (cobrança) entrar, quem define o status é a integraç
   físico (Fase 5) exige alterar a constraint.
 - `plans` e `planos_alimentares` não têm estado de publicação → hoje o aluno vê o plano no instante
   em que é salvo. Precisa de rascunho vs. publicado antes do primeiro paciente real entrar.
+
+## 13. Check-in recorrente (prints do Live Clean, 03/set)
+
+Prints em [`docs/referencias/`](docs/referencias/) — 5 das 23 perguntas do check-in que o Tassis
+usa hoje no Live Clean (`patient.liveclin.com`).
+
+**Correção de modelagem:** o §12 tratava atendimento e check-in como a mesma coisa. Não são.
+
+| | Quem preenche | Formato | Natureza do dado |
+|---|---|---|---|
+| **Atendimento** | o profissional | notas da consulta | evento, texto |
+| **Check-in** | o paciente | questionário de 23 perguntas | **série temporal** |
+
+Perguntas vistas: peso em jejum (número), disposição durante o dia (escala 5), desempenho em
+exercícios (escala 5), horas de sono (escala 1–10), qualidade do sono (escala 5).
+
+### Guardar como ordinal, não como texto
+
+As escalas precisam ser gravadas pela **posição** (1–5, 1–10). Rótulo ("Geralmente disposto(a)") e
+emoji são apresentação. Se gravar o texto, perde-se a possibilidade de plotar tendência entre
+check-ins — e a tendência é o produto todo: é ela que sustenta o dashboard de acompanhamento
+previsto no §2.
+
+### Padrão de UX que faz o paciente terminar
+
+Uma pergunta por cartão, contador de progresso (`4/23`), categoria nomeada com ícone, foto e nome do
+profissional no topo, resposta em um toque. Vinte e três campos numa página única seriam
+abandonados — o formato de cartão é o que faz o volume de perguntas caber. Copiar o formato, não o
+visual (a identidade é a do §1).
+
+**Pendente do Tassis:** as outras 18 perguntas.
