@@ -498,8 +498,35 @@ usa hoje no Live Clean (`patient.liveclin.com`).
 | **Atendimento** | o profissional | notas da consulta | evento, texto |
 | **Check-in** | o paciente | questionário de 23 perguntas | **série temporal** |
 
-Perguntas vistas: peso em jejum (número), disposição durante o dia (escala 5), desempenho em
-exercícios (escala 5), horas de sono (escala 1–10), qualidade do sono (escala 5).
+### Perguntas mapeadas (8 de 23)
+
+| # | Categoria | Tipo |
+|---|---|---|
+| 1 | Peso corporal | número (kg, em jejum) |
+| 2 | Disposição durante o dia | escolha, 5 opções com emoji |
+| 3 | Desempenho em exercícios | escolha, 5 opções com emoji |
+| 4 | Horas de sono | escala 1–10 ("Pouco" → "Muito") |
+| 5 | Qualidade do sono | escolha, 5 opções com emoji |
+| 6 | Aderência ao plano | escolha, 4 opções + **follow-up condicional** |
+| 7 | Refeições fora do plano | escala **0–9** ("Nenhuma" → "9 ou mais") |
+| 8 | Pular refeições | escolha, 3 opções sem emoji |
+
+### O template não é uma lista plana
+
+A pergunta 6 revela um campo de texto quando o paciente escolhe certas opções
+("Perfeito! Quais são as suas dificuldades?"). O motor precisa suportar **revelação
+condicional por opção**, não só uma sequência. Construir como lista plana obriga a refazer.
+
+Outras variações que o modelo tem que cobrir:
+- **Escalas não são padronizadas**: sono é 1–10, refeições fora do plano é 0–9. Mínimo, máximo e
+  rótulos das pontas são configuráveis por pergunta.
+- **Emoji é opcional por opção**: perguntas 6 e 8 são texto puro.
+
+### Aderência é o eixo, não um detalhe
+
+Três das oito perguntas vistas (6, 7, 8) medem se o plano está sendo seguido. O check-in é
+principalmente instrumento de aderência. A tela do profissional deve tratar aderência como métrica
+de primeira ordem — não enterrada no meio das 23 respostas.
 
 ### Guardar como ordinal, não como texto
 
