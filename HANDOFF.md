@@ -498,18 +498,23 @@ usa hoje no Live Clean (`patient.liveclin.com`).
 | **Atendimento** | o profissional | notas da consulta | evento, texto |
 | **Check-in** | o paciente | questionário de 23 perguntas | **série temporal** |
 
-### Perguntas mapeadas (8 de 23)
+### Perguntas mapeadas (13 de 23)
 
 | # | Categoria | Tipo |
 |---|---|---|
 | 1 | Peso corporal | número (kg, em jejum) |
-| 2 | Disposição durante o dia | escolha, 5 opções com emoji |
-| 3 | Desempenho em exercícios | escolha, 5 opções com emoji |
+| 2 | Disposição durante o dia | escolha ordinal, 5 opções com emoji |
+| 3 | Desempenho em exercícios | escolha ordinal, 5 opções com emoji |
 | 4 | Horas de sono | escala 1–10 ("Pouco" → "Muito") |
-| 5 | Qualidade do sono | escolha, 5 opções com emoji |
+| 5 | Qualidade do sono | escolha ordinal, 5 opções com emoji |
 | 6 | Aderência ao plano | escolha, 4 opções + **follow-up condicional** |
 | 7 | Refeições fora do plano | escala **0–9** ("Nenhuma" → "9 ou mais") |
-| 8 | Pular refeições | escolha, 3 opções sem emoji |
+| 8 | Pular refeições | escolha ordinal, 3 opções sem emoji |
+| 9 | Níveis de fome | escolha **categórica**, 4 opções (ver abaixo) |
+| 10 | Ingestão de líquidos | escala **0–5** ("Pouco" → "5 ou mais") |
+| 11 | Consumo de vegetais | escolha ordinal, 3 opções (ordem invertida) |
+| 12 | Consumo de frutas | idem 11, **mesmo conjunto de opções** |
+| 13 | Desconforto abdominal | escolha + **follow-up condicional** |
 
 ### O template não é uma lista plana
 
@@ -528,12 +533,29 @@ Três das oito perguntas vistas (6, 7, 8) medem se o plano está sendo seguido. 
 principalmente instrumento de aderência. A tela do profissional deve tratar aderência como métrica
 de primeira ordem — não enterrada no meio das 23 respostas.
 
-### Guardar como ordinal, não como texto
+### Guardar valor, não texto — mas nem tudo é ordinal
 
-As escalas precisam ser gravadas pela **posição** (1–5, 1–10). Rótulo ("Geralmente disposto(a)") e
-emoji são apresentação. Se gravar o texto, perde-se a possibilidade de plotar tendência entre
-check-ins — e a tendência é o produto todo: é ela que sustenta o dashboard de acompanhamento
-previsto no §2.
+As respostas precisam ser gravadas pelo **valor** da opção, não pelo rótulo. Rótulo
+("Geralmente disposto(a)") e emoji são apresentação; gravar o texto joga fora a possibilidade de
+plotar tendência, e a tendência é o produto todo.
+
+Só que **a pergunta precisa declarar se é ordinal ou categórica** — não dá pra assumir:
+
+- A pergunta 9 (níveis de fome) tem "Baixo", "Médio", "Alto" e também "Não sinto fome e tenho
+  dificuldade para comer". A última **não é ponta de escala**, é outro eixo (e clinicamente é
+  sinal de alerta). Tratada como ordinal, vira ruído no gráfico.
+- A **direção varia**: vegetais e frutas listam "Três ou mais porções" primeiro (melhor → pior),
+  enquanto outras vão de pior → melhor. Não inferir ordem pela posição na lista — cada opção
+  carrega o próprio valor.
+- Conjuntos de opções se repetem entre perguntas (11 e 12 são idênticas): vale poder reaproveitar.
+
+### As duas conversas medem os mesmos eixos
+
+O que o Tassis observa na sensibilização (§12: vegetais, fibras, hidratação, sono, relação com a
+comida) é quase exatamente o que o check-in mede depois. Se os dois instrumentos compartilharem o
+mesmo **vocabulário de áreas**, a sensibilização vira a linha de base do gráfico em vez de ficar
+solta — o profissional vê "onde começou → onde está" no mesmo eixo. Vale desenhar assim desde o
+início; é de graça agora e caro depois.
 
 ### Padrão de UX que faz o paciente terminar
 
