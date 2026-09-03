@@ -428,3 +428,45 @@ Itens criados pelo editor ganham `taco_id` e `quantidade_g` (campos opcionais, i
 por leitores antigos) pra permitir recalcular os macros quando a gramagem muda. Item sem
 `taco_id` é "livre" — o profissional digita quantidade em texto e os macros não são
 calculados.
+
+## 12. Fluxo de entrada do paciente (desenho fechado com o Guilherme, 02/set)
+
+Roadmap completo publicado como artifact: `https://claude.ai/code/artifact/683aa212-bdbf-4824-924d-52c268739d95`
+
+O funil real do Tassis (e da maioria dos nutricionistas), na ordem:
+
+1. **Consulta de sensibilização** — dentro do app. Ele explica a consultoria e entende a pessoa
+   (hábitos, expectativa, contexto, objeções) e registra num **atendimento**. Pode não virar venda:
+   nesse caso a pessoa fica como **lead** com histórico e data de retomada.
+2. **Gera o link** a partir do lead, escolhendo qual `professional_plans` está vendendo.
+3. **Paciente paga** — hoje manual, automatizado na Fase 2 do roadmap.
+4. **Anamnese** — formulário público por token, sem login. As seções mudam conforme o plano
+   (nutrição / treino / ambos).
+5. **App cria a conta** — perfil + anamnese + **assinatura** + costura do lead/atendimentos.
+6. **Espera de ~2 dias** — a home tem que dizer isso, não mostrar vazio.
+7. **Profissional monta** treino e dieta, vendo anamnese + suas notas da consulta.
+8. **Publica** — só então o paciente vê.
+
+### Sensibilização ≠ anamnese
+
+São dois formulários distintos, não um partido em dois. Sensibilização é qualitativa e serve pra
+vender/conhecer; anamnese é dirigida e alimenta o cálculo do plano. Na tela do profissional as duas
+aparecem juntas.
+
+### ⚠️ Bug aberto: convite não cria assinatura
+
+`finalizar_cadastro_convite()` cria `profiles` + `anamnese` e fecha o convite, mas **não insere em
+`subscriptions`**. Depois da migração multi-tenant a RLS exige assinatura ativa
+(`is_professional_of`), então **o profissional não enxerga o paciente que acabou de cadastrar**.
+Não explodiu ainda porque o fluxo não tem tela e o SMTP está quebrado. Corrigir junto com o item de
+ligar `convites` ao plano vendido (`convites` não tem `plan_id` hoje).
+
+### Restrições do banco que moldam esse desenho
+
+- `profiles.id` é **FK para `auth.users`** e a policy de insert exige `id = auth.uid()` → é
+  impossível o profissional criar o registro do paciente antes da conta existir. Por isso lead e
+  atendimento precisam de tabelas próprias, com `client_id` nulo até a conta nascer.
+- `profiles.role` tem CHECK que só aceita `client` | `trainer` → separar nutricionista de educador
+  físico (Fase 5) exige alterar a constraint.
+- `plans` e `planos_alimentares` não têm estado de publicação → hoje o aluno vê o plano no instante
+  em que é salvo. Precisa de rascunho vs. publicado antes do primeiro paciente real entrar.
