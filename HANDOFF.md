@@ -1,7 +1,7 @@
 # App Treino — Handoff
 
 > Documento de contexto para replicar o estado do projeto em outro chat.
-> Última atualização: 02/Setembro/2026.
+> Última atualização: 03/Setembro/2026.
 
 > **Fonte canônica:** este arquivo, na raiz do repositório. Todo agente (Codex ou Claude) deve lê-lo antes de alterar o projeto e atualizá-lo ao concluir mudanças relevantes, decisões, migrações, configuração de infraestrutura ou bloqueios.
 
