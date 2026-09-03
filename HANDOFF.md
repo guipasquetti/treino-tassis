@@ -619,10 +619,16 @@ para a engenharia:
 
 1. **A plataforma não aparece no termo.** Falta definir controlador (profissional) e operador
    (plataforma), e falta o contrato entre os dois.
-2. **Os dados estão nos EUA.** O Supabase do projeto está em `us-east-1` — transferência
-   internacional sob a LGPD, não informada no termo. **Decisão pendente: migrar para `sa-east-1`
-   ou informar.** Migrar com 2 usuários é trivial; com centenas, é projeto. O OLIHealthHub já roda
-   em `sa-east-1`.
+2. **Os dados ficam nos EUA — decidido em 03/set.** O Supabase está em `us-east-1`, o que é
+   transferência internacional sob a LGPD. Migrar para `sa-east-1` foi avaliado e **descartado**:
+   o plano gratuito permite 2 projetos ativos por organização e as duas vagas estão ocupadas
+   (`oli-health-hub` + `treino-tassis`); migrar exigiria pausar outra operação viva ou assinar o
+   Pro (~US$ 25/mês). **Consequência: informar a transferência no termo deixou de ser alternativa e
+   virou obrigação** — cláusula expressa de transferência internacional, com consentimento
+   específico, antes de entrar paciente novo.
+
+   *Não reabrir essa decisão sem o custo na mesa: a parte técnica é trivial (2 usuários, 27 logs,
+   zero arquivos em storage), o que trava é o limite do plano.*
 3. **Só cobre nutrição.** Treino tem risco de lesão e precisa de termo próprio (CREF).
 4. **Menor de idade não tratado** — e o check-in coleta foto de corpo. Recomendação: bloquear
    cadastro de menor de 18 até existir fluxo de consentimento de responsável.
@@ -635,3 +641,18 @@ para a engenharia:
 - **Exportação** dos dados do paciente (portabilidade + fim de assinatura)
 - Fotos de corpo com **acesso restrito e regra própria** de retenção
 - Nome/CRN/CREF preenchidos **a partir do cadastro do profissional**, nunca fixos no texto
+
+
+## 15. Schema versionado (03/set)
+
+[`supabase/migrations/00000000_baseline_schema.sql`](supabase/migrations/00000000_baseline_schema.sql)
+reconstrói o estado atual completo num projeto vazio: 11 tabelas, constraints, índices, 8 funções,
+o trigger `on_auth_user_created` e as 30 policies.
+
+Foi capturado por introspecção porque **o schema base nunca tinha sido versionado** — só as
+migrações 20260902 e 20260903 estavam no git; as tabelas originais, as policies e o
+`handle_new_user` existiam apenas dentro do projeto Supabase.
+
+Ferramentas ausentes nesta máquina: `pg_dump`, `psql` e o CLI do Supabase. Só há acesso via SQL
+pelo MCP. Se um dia for preciso migrar de projeto de verdade, instalar o CLI do Supabase primeiro —
+copiar `auth.users` e `auth.identities` na mão via SQL é frágil e não vale o risco.
