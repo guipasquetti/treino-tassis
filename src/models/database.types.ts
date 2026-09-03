@@ -118,6 +118,7 @@ export type Database = {
           email: string
           id: string
           nome: string
+          plan_id: string | null
           respondido_em: string | null
           respostas: Json | null
           status: string
@@ -130,6 +131,7 @@ export type Database = {
           email: string
           id?: string
           nome?: string
+          plan_id?: string | null
           respondido_em?: string | null
           respostas?: Json | null
           status?: string
@@ -142,6 +144,7 @@ export type Database = {
           email?: string
           id?: string
           nome?: string
+          plan_id?: string | null
           respondido_em?: string | null
           respostas?: Json | null
           status?: string
@@ -160,6 +163,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "convites_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "professional_plans"
             referencedColumns: ["id"]
           },
         ]
