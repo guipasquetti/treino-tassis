@@ -237,13 +237,16 @@ grupos `(client)`/`(pro)` e os dois `index.tsx` disputavam a rota `/` — result
   slug `app-treino`, sem marca definida
 - Vídeos curtos de exercícios (15s)
 
-⚠️ **Urgente, achado em 02/set:** o projeto Supabase não tem SMTP customizado — o
-provedor de e-mail padrão é rate-limited e já falha (`connection_failed` no reset de
-senha, `over_email_send_rate_limit` até em `signUp` novo). Isso **vai travar o fluxo real
-de convite/onboarding** (§2/§9), que depende de confirmação de e-mail. Configurar SMTP
-próprio (Resend tem free tier, é o mais comum com Supabase) antes de implementar as
-telas de convite — sem isso o cadastro de aluno novo simplesmente não funciona em
-produção. Dashboard: Authentication → Settings → SMTP Settings.
+⚠️ **E-mail: a causa raiz não é rate limit** (investigado em 03/set, corrige o diagnóstico
+anterior). A [documentação do Supabase](https://supabase.com/docs/guides/auth/auth-smtp)
+diz que o SMTP padrão **só entrega para endereços que são membros da organização**:
+
+> *"Unless you configure a custom SMTP server for your project, Supabase Auth will refuse to
+> deliver messages to addresses that are not part of the project's team."*
+
+Ou seja, o provedor padrão **nunca** entregaria e-mail a um paciente, nem com volume baixo.
+Os erros que vimos (`connection_failed` no reset de senha, `over_email_send_rate_limit` no
+signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver §16.
 
 ## 8. Estado atual
 
@@ -322,8 +325,9 @@ Tabela abaixo é por par paciente↔profissional (já reflete o modelo N:N do §
 
 ## 10. Próximos passos
 
-1. **Configurar SMTP customizado** (ver alerta no §7) — bloqueia qualquer fluxo de
-   cadastro/convite real, prioridade antes do item 3 abaixo.
+1. **Destravar o cadastro de paciente** (ver §16). Caminho curto: desligar a confirmação de
+   e-mail (`mailer_autoconfirm`), já que o convite por token é a prova de confiança. SMTP
+   próprio fica para quando o domínio existir — e domínio depende da marca (§7).
 2. Confirmar visualmente a home (`ClientHome`/`ProfessionalHome`) com login real —
    feita nesta sessão mas não vista rodando com dados de verdade.
 3. Telas de treino/nutrição além da home: registrar série (draft→log), montar/editar
@@ -656,3 +660,59 @@ migrações 20260902 e 20260903 estavam no git; as tabelas originais, as policie
 Ferramentas ausentes nesta máquina: `pg_dump`, `psql` e o CLI do Supabase. Só há acesso via SQL
 pelo MCP. Se um dia for preciso migrar de projeto de verdade, instalar o CLI do Supabase primeiro —
 copiar `auth.users` e `auth.identities` na mão via SQL é frágil e não vale o risco.
+
+
+## 16. E-mail e SMTP (investigado em 03/set)
+
+### A causa raiz
+
+O SMTP padrão do Supabase **só entrega para membros da organização do projeto**. Não é limite de
+volume — é limitação de destinatário, por design. Para paciente, ele nunca funcionaria.
+Confirmado na doc oficial: <https://supabase.com/docs/guides/auth/auth-smtp>
+
+### A dependência que ninguém tinha mapeado
+
+SMTP próprio exige **domínio de envio verificado** (registros DNS). Domínio depende do nome do
+app — que é justamente a pendência de marca com o Tassis (§7). Ou seja, **configurar SMTP de
+verdade está bloqueado pela decisão de marca**, não por falta de tempo.
+
+Contorno possível sem esperar a marca: usar um subdomínio de domínio já controlado
+(`app.olihealthhub.com.br`, ou o domínio do Tassis). Subdomínio dedicado é boa prática — isola a
+reputação de envio do domínio principal.
+
+### Caminho recomendado: duas etapas
+
+**Etapa 1 — agora, destrava a Fase 1 sem e-mail nenhum.**
+Desligar a confirmação de e-mail (Dashboard → Authentication → Sign In / Providers → Email →
+*Confirm email*; ou `mailer_autoconfirm` via Management API). O fluxo de cadastro é **por token de
+convite**: o profissional já conheceu o paciente, fez a call e recebeu o pagamento. O token é a
+prova de confiança, e `finalizar_cadastro_convite` ainda confere que o e-mail bate com o do convite.
+
+*Custo real dessa escolha, para decidir com consciência:* e-mail digitado errado gera conta
+inalcançável; recuperação de senha continua dependendo de SMTP; e alguém poderia criar conta via
+API com e-mail qualquer — mas sem convite não ganha assinatura, e a RLS não devolve nada
+(verificado: usuário autenticado avulso enxerga zero linhas em todas as tabelas). Aceitável no
+piloto, **não aceitável em escala**.
+
+**Etapa 2 — quando houver domínio.** Provedor SMTP (a doc lista Resend, AWS SES, Postmark,
+SendGrid, ZeptoMail, Brevo). Com Resend: host `smtp.resend.com`, porta `587`, usuário `resend`,
+senha = chave de API, remetente no domínio verificado.
+
+### Falta também configurar as URLs de retorno
+
+Independente do SMTP: o **Site URL** do projeto precisa apontar para `https://app-treino.expo.app`
+e as redirect URLs precisam estar na allowlist — senão o link de confirmação e de recuperação leva
+para o lugar errado. Dashboard → Authentication → URL Configuration.
+
+### O que um agente NÃO consegue fazer aqui
+
+Criar conta em provedor de e-mail e colar chave de API são ações fora do que um assistente executa.
+O MCP do Supabase também **não expõe configuração de auth** — não há ferramenta para SMTP, Site URL
+nem `mailer_autoconfirm`. Tudo isso é dashboard ou Management API com token pessoal:
+
+```
+PATCH https://api.supabase.com/v1/projects/<ref>/config/auth
+```
+
+Depois de configurado, dá para verificar por aqui: disparar um recovery de teste e conferir a
+entrega e os logs de auth.
