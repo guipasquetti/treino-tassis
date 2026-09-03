@@ -498,7 +498,7 @@ usa hoje no Live Clean (`patient.liveclin.com`).
 | **Atendimento** | o profissional | notas da consulta | evento, texto |
 | **Check-in** | o paciente | questionário de 23 perguntas | **série temporal** |
 
-### Perguntas mapeadas (18 de 23)
+### Perguntas mapeadas (22 de 23 — falta a 19)
 
 | # | Categoria | Tipo |
 |---|---|---|
@@ -520,6 +520,23 @@ usa hoje no Live Clean (`patient.liveclin.com`).
 | 16 | Consumo de álcool (dias) | escala **0–7** (dias da semana) |
 | 17 | Quantidade de álcool | escolha ordinal, 3 opções |
 | 18 | Alterações no cardápio | **texto livre — pedido de revisão do plano** |
+| 19 | *(não capturada)* | — |
+| 20 | Foto de perfil esquerdo | upload de imagem, opcional, até 8 MB |
+| 21 | Foto de perfil direito | upload de imagem, opcional, até 8 MB |
+| 22 | Foto de costas | upload de imagem, opcional, até 8 MB |
+| 23 | Feedback aberto | texto livre |
+
+Perguntas são **puláveis**, com diálogo de confirmação ("Você está prestes a pular esta pergunta").
+
+### O check-in devolve uma leitura ao paciente
+
+Ao enviar, o paciente vê **"Minha pontuação foi 78%"** e um resumo por categoria com rótulo
+qualitativo (Disposição: Bom · Desempenho: Ótimo · Sono: Bom · Qualidade do sono: Neutro ·
+Aderência: Neutro). Não é só coleta — é devolutiva imediata, e é o que faz valer a pena responder.
+Barato de copiar e provavelmente o maior ganho de retenção do formato.
+
+⚠️ As perguntas 20–22 coletam **fotos de corpo**. É o dado mais sensível que o sistema vai
+guardar, e tem implicação jurídica direta — ver a análise do termo de consentimento (§14).
 
 ### O template não é uma lista plana
 
@@ -588,3 +605,33 @@ abandonados — o formato de cartão é o que faz o volume de perguntas caber. C
 visual (a identidade é a do §1).
 
 **Pendente do Tassis:** as outras 18 perguntas.
+
+
+## 14. Termo de consentimento — análise (03/set)
+
+Tassis trouxe um modelo de termo gerado por IA, escrito para consultório de nutrição autônomo.
+Análise completa no artifact **"Termo de Consentimento do App Treino"**. Resumo do que importa
+para a engenharia:
+
+**Não é parecer jurídico — precisa de advogado antes de usar com paciente real.**
+
+### Lacunas críticas
+
+1. **A plataforma não aparece no termo.** Falta definir controlador (profissional) e operador
+   (plataforma), e falta o contrato entre os dois.
+2. **Os dados estão nos EUA.** O Supabase do projeto está em `us-east-1` — transferência
+   internacional sob a LGPD, não informada no termo. **Decisão pendente: migrar para `sa-east-1`
+   ou informar.** Migrar com 2 usuários é trivial; com centenas, é projeto. O OLIHealthHub já roda
+   em `sa-east-1`.
+3. **Só cobre nutrição.** Treino tem risco de lesão e precisa de termo próprio (CREF).
+4. **Menor de idade não tratado** — e o check-in coleta foto de corpo. Recomendação: bloquear
+   cadastro de menor de 18 até existir fluxo de consentimento de responsável.
+
+### Requisitos de implementação que o termo cria
+
+- Guardar **versão do termo aceita** + data, hora, IP e dispositivo do aceite
+- **Nunca sobrescrever** versões antigas do termo (mesma lógica do versionamento de plano)
+- Aceite vinculado à **assinatura**, não ao perfil — um consentimento por profissional (N:N)
+- **Exportação** dos dados do paciente (portabilidade + fim de assinatura)
+- Fotos de corpo com **acesso restrito e regra própria** de retenção
+- Nome/CRN/CREF preenchidos **a partir do cadastro do profissional**, nunca fixos no texto
