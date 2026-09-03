@@ -453,13 +453,28 @@ São dois formulários distintos, não um partido em dois. Sensibilização é q
 vender/conhecer; anamnese é dirigida e alimenta o cálculo do plano. Na tela do profissional as duas
 aparecem juntas.
 
-### ⚠️ Bug aberto: convite não cria assinatura
+### ✅ Corrigido em 03/set: convite agora cria a assinatura
 
-`finalizar_cadastro_convite()` cria `profiles` + `anamnese` e fecha o convite, mas **não insere em
-`subscriptions`**. Depois da migração multi-tenant a RLS exige assinatura ativa
-(`is_professional_of`), então **o profissional não enxerga o paciente que acabou de cadastrar**.
-Não explodiu ainda porque o fluxo não tem tela e o SMTP está quebrado. Corrigir junto com o item de
-ligar `convites` ao plano vendido (`convites` não tem `plan_id` hoje).
+`finalizar_cadastro_convite()` criava `profiles` + `anamnese` e fechava o convite, mas **não
+inseria em `subscriptions`** — e como a RLS multi-tenant exige assinatura ativa
+(`is_professional_of`), o profissional não enxergava o paciente que acabou de cadastrar.
+
+Migração `20260903_convite_cria_assinatura.sql`:
+- adiciona `convites.plan_id` (FK → `professional_plans`) — o convite passa a carregar qual produto
+  foi vendido, que é o que vai definir as seções da anamnese e os módulos liberados;
+- a função passa a inserir em `subscriptions` (paciente, `created_by` do convite, plano, `'ativa'`).
+
+**Detalhe que não pode ser "simplificado" depois:** a proteção contra duplicata usa
+`not exists (patient_id, professional_id)` em vez de `ON CONFLICT`. O índice único inclui `plan_id`
+e no Postgres NULLs são distintos entre si — com plano nulo, `ON CONFLICT` deixaria chamadas
+repetidas empilharem assinaturas.
+
+Verificado por simulação completa em transação com rollback (auth user novo → convite → RPC):
+assinatura criada com plano, perfil preenchido, anamnese gravada, convite concluído, o profissional
+enxerga tudo (`is_professional_of` = true) e a segunda chamada não duplica.
+
+⚠️ O status nasce `'ativa'` porque hoje o pagamento é confirmado manualmente antes do link ser
+enviado. Quando a Fase 2 (cobrança) entrar, quem define o status é a integração.
 
 ### Restrições do banco que moldam esse desenho
 
