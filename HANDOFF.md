@@ -208,6 +208,8 @@ versionado como referência.
 | `alimentos_taco` | tabela TACO de composição de alimentos (referência, seed) | 597 |
 | `convites` | onboarding: token → aluno responde → vira profile (§16, §8) | 0 |
 | `teleconsultas` | agenda de teleconsultas por Google Meet, RLS própria (§8) — 04/set | 0 |
+| `leads` | passo 1 do funil (§12): pré-conta, sem `profiles.id` ainda | 0 |
+| `atendimentos` | registro de cada consulta (pendura em lead ou em cliente já existente) | 0 |
 
 **RLS reescrita (02/set):** todas as policies que usavam `is_trainer()` (acesso global a
 qualquer trainer) foram trocadas por checks escopados por assinatura ativa:
@@ -457,6 +459,32 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
   preço, salvou, refletiu no card — depois revertido via SQL pra não deixar dado de teste
   em produção. Falta ainda o editor de substituições de alimento (as existentes são
   preservadas e exibidas, mas não dá pra criar/remover pela tela).
+- ✅ **Leads e atendimentos** ([`src/app/pro/leads.tsx`](src/app/pro/leads.tsx), 04/set) — passo 1
+  do funil (§12), a consulta de sensibilização antes de qualquer convite. Nova aba "Leads" no
+  `pro/_layout.tsx`. `leads` (nome/telefone/email, `status` lead|convertido|perdido,
+  `data_retomada`, `observacoes`) e `atendimentos` (nota de cada consulta, pendurada em
+  `lead_id` ou `client_id` — `atendimentos_alvo_check` exige pelo menos um) em
+  [`20260904_leads_atendimentos.sql`](supabase/migrations/20260904_leads_atendimentos.sql),
+  `leadsService.ts` novo. RLS igual a `professional_plans_write`: só o dono
+  (`professional_id = auth.uid()`) mexe — não usa `is_professional_of()` porque, por
+  definição, ainda pode não existir assinatura nenhuma. Restrição do §12 respeitada: lead
+  não tem `profiles.id`, por isso vive em tabela própria com `client_id` nulo até converter.
+  **"Gerar convite" a partir de um lead** pré-preenche nome/e-mail
+  (`pro/convite.tsx?leadId=...`) e grava `convites.lead_id`; `finalizar_cadastro_convite`
+  (mesma RPC) ganhou um passo a mais: se o convite tem `lead_id`, marca o lead
+  `convertido` e amarra o `client_id` recém-criado — sem isso o lead ficaria "aberto" pra
+  sempre mesmo já sendo paciente pagante. `get_advisors(security)` rodado depois da
+  migration: nenhum warning novo (mesma lista já aceita do §0).
+  **Testado ponta a ponta com dado real** do Tassis: lead criado pela tela, atendimento
+  registrado e listado com data/hora, convite gerado a partir do lead com nome/e-mail
+  prefill confirmado via DOM (`value` do input, não só o texto), `convites.lead_id` ↔
+  `leads.convite_id` batendo nos dois sentidos no banco. **A sincronização de conversão**
+  (`finalizar_cadastro_convite` marcando o lead como `convertido`) foi verificada por
+  simulação completa em transação com rollback (auth user novo → convite com `lead_id` →
+  RPC → lead virou `convertido` com `client_id` certo → rollback), mesmo método já usado
+  em 03/set pro `convites_cria_assinatura` — não criei conta de verdade, só simulei
+  dentro de uma transação desfeita. Tudo o que passou pela tela (lead, atendimento,
+  convite real) foi apagado do banco depois via SQL, nada de teste ficou em produção.
 - Sem pagamento/cobrança automática ainda (schema tem `subscriptions.status`, mas nada
   muda esse status sozinho), sem contrato/LGPD.
 - Toda migração de schema é versionada em `supabase/migrations/` (convenção: `AAAAMMDD_descrição.sql`,
@@ -616,11 +644,11 @@ O funil real do Tassis (e da maioria dos nutricionistas), na ordem:
 
 | Passo | Status |
 |---|---|
-| 1. Sensibilização/lead | ❌ não iniciado — sem tabela, sem tela |
-| 2. Gera o link | ✅ feito ([`pro/convite.tsx`](src/app/pro/convite.tsx)) — **simplificado**: parte direto do profissional escolhendo nome/e-mail/plano, sem passar por lead/atendimento (que não existem ainda) |
+| 1. Sensibilização/lead | ✅ feito ([`pro/leads.tsx`](src/app/pro/leads.tsx), 04/set) |
+| 2. Gera o link | ✅ feito ([`pro/convite.tsx`](src/app/pro/convite.tsx)) — agora pode nascer **de um lead** (prefill nome/e-mail, `?leadId=`) ou direto, escolhendo nome/e-mail/plano |
 | 3. Paciente paga | ❌ manual, como já era |
 | 4. Anamnese | ✅ feito ([`convite/[token].tsx`](src/app/convite/%5Btoken%5D.tsx)) — **simplificado**: mesmas seções pra todo mundo, ainda não varia por plano |
-| 5. App cria a conta | ✅ feito (perfil + anamnese + assinatura) — **falta** costurar lead/atendimento, porque eles não existem |
+| 5. App cria a conta | ✅ feito (perfil + anamnese + assinatura + fecha o lead como `convertido` quando o convite veio de um) |
 | 6. Espera de ~2 dias | ❌ não iniciado — home não avisa nada, ainda mostra vazio genérico |
 | 7. Profissional monta | ✅ já existia (editores de treino/dieta) |
 | 8. Publica | ❌ não iniciado — sem rascunho/publicado, plano fica visível assim que salva |

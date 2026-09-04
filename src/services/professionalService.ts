@@ -129,6 +129,8 @@ export async function criarConvite(params: {
   nome: string;
   email: string;
   planId: string | null;
+  /** Convite nascido de um lead (§12) — o RPC de fechamento usa isso pra marcar o lead como convertido. */
+  leadId?: string | null;
 }): Promise<ConviteCriado> {
   const { data, error } = await supabase
     .from('convites')
@@ -137,6 +139,7 @@ export async function criarConvite(params: {
       email: params.email,
       created_by: params.professionalId,
       plan_id: params.planId,
+      lead_id: params.leadId ?? null,
     })
     .select('id, token')
     .single();

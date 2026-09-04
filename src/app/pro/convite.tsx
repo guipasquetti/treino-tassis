@@ -1,8 +1,10 @@
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { Body, Button, Caption, Card, Field, Pill, Screen, SectionTitle } from '@/components/ui';
 import { criarConvite, listarPlanos, type PlanoProfissional } from '@/services/professionalService';
+import { vincularConviteAoLead } from '@/services/leadsService';
 import { useAuthStore } from '@/store/authStore';
 import { Palette, Radius, Spacing, FontSize } from '@/theme';
 
@@ -14,9 +16,10 @@ function baseUrl(): string {
 
 export default function ConviteScreen() {
   const user = useAuthStore((s) => s.user);
+  const params = useLocalSearchParams<{ leadId?: string; nome?: string; email?: string }>();
   const [planos, setPlanos] = useState<PlanoProfissional[]>([]);
-  const [nome, setNome] = useState('');
-  const [email, setEmail] = useState('');
+  const [nome, setNome] = useState(params.nome ?? '');
+  const [email, setEmail] = useState(params.email ?? '');
   const [planoId, setPlanoId] = useState<string | null>(null);
   const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -50,7 +53,9 @@ export default function ConviteScreen() {
         nome: nome.trim(),
         email: email.trim().toLowerCase(),
         planId: planoId,
+        leadId: params.leadId ?? null,
       });
+      if (params.leadId) await vincularConviteAoLead(params.leadId, convite.id);
       setLink(`${baseUrl()}/convite/${convite.token}`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não consegui gerar o convite.');

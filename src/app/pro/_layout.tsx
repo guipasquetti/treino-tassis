@@ -23,6 +23,13 @@ export default function ProLayout() {
         }}
       />
       <Tabs.Screen
+        name="leads"
+        options={{
+          title: 'Leads',
+          tabBarIcon: ({ color, size }) => <Ionicons name="people-circle" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="planos"
         options={{
           title: 'Planos',

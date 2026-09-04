@@ -112,6 +112,58 @@ export type Database = {
           },
         ]
       }
+      atendimentos: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          data_atendimento: string
+          id: string
+          lead_id: string | null
+          notas: string | null
+          professional_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          data_atendimento?: string
+          id?: string
+          lead_id?: string | null
+          notas?: string | null
+          professional_id: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          data_atendimento?: string
+          id?: string
+          lead_id?: string | null
+          notas?: string | null
+          professional_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atendimentos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atendimentos_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atendimentos_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       convites: {
         Row: {
           client_id: string | null
@@ -119,6 +171,7 @@ export type Database = {
           created_by: string | null
           email: string
           id: string
+          lead_id: string | null
           nome: string
           plan_id: string | null
           respondido_em: string | null
@@ -132,6 +185,7 @@ export type Database = {
           created_by?: string | null
           email: string
           id?: string
+          lead_id?: string | null
           nome?: string
           plan_id?: string | null
           respondido_em?: string | null
@@ -145,6 +199,7 @@ export type Database = {
           created_by?: string | null
           email?: string
           id?: string
+          lead_id?: string | null
           nome?: string
           plan_id?: string | null
           respondido_em?: string | null
@@ -168,10 +223,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "convites_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "convites_plan_id_fkey"
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "professional_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          client_id: string | null
+          convite_id: string | null
+          created_at: string
+          data_retomada: string | null
+          email: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          professional_id: string
+          status: string
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          convite_id?: string | null
+          created_at?: string
+          data_retomada?: string | null
+          email?: string | null
+          id?: string
+          nome: string
+          observacoes?: string | null
+          professional_id: string
+          status?: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          convite_id?: string | null
+          created_at?: string
+          data_retomada?: string | null
+          email?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          professional_id?: string
+          status?: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_convite_id_fkey"
+            columns: ["convite_id"]
+            isOneToOne: false
+            referencedRelation: "convites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
         ]
