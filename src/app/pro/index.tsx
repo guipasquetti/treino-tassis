@@ -68,10 +68,10 @@ export default function PainelScreen() {
       subtitle="Visão geral dos seus pacientes"
       right={
         <Pressable
-          onPress={() => router.push('/pro/convite')}
+          onPress={() => router.push('/pro/leads')}
           style={({ pressed }) => [styles.convidar, pressed && styles.convidarPressed]}>
           <Caption color={Palette.text} style={styles.convidarText}>
-            + Convidar
+            + Lead
           </Caption>
         </Pressable>
       }>

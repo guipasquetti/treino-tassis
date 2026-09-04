@@ -1,8 +1,8 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
-import { Body, Button, Caption, Card, Field, Pill, Screen, SectionTitle } from '@/components/ui';
+import { Body, Button, Caption, Card, EmptyState, Field, Pill, Screen, SectionTitle } from '@/components/ui';
 import { criarConvite, listarPlanos, type PlanoProfissional } from '@/services/professionalService';
 import { vincularConviteAoLead } from '@/services/leadsService';
 import { useAuthStore } from '@/store/authStore';
@@ -14,14 +14,20 @@ function baseUrl(): string {
   return 'https://app-treino.expo.app';
 }
 
+/**
+ * Convite só nasce de um lead (decisão do Guilherme, 04/set): antes da call de sensibilização
+ * não tem nome/e-mail/plano de verdade pra colocar aqui, e o lead não entenderia receber um
+ * link "frio". `leadId` vem do card do lead em `pro/leads.tsx` — sem ele, a tela só orienta a
+ * criar o lead primeiro, não deixa gerar convite às cegas.
+ */
 export default function ConviteScreen() {
   const user = useAuthStore((s) => s.user);
+  const router = useRouter();
   const params = useLocalSearchParams<{ leadId?: string; nome?: string; email?: string }>();
   const [planos, setPlanos] = useState<PlanoProfissional[]>([]);
   const [nome, setNome] = useState(params.nome ?? '');
   const [email, setEmail] = useState(params.email ?? '');
   const [planoId, setPlanoId] = useState<string | null>(null);
-  const [linkPagamento, setLinkPagamento] = useState('');
   const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
@@ -37,7 +43,7 @@ export default function ConviteScreen() {
   }, [carregarPlanos]);
 
   async function gerar() {
-    if (!user) return;
+    if (!user || !params.leadId) return;
     if (!nome.trim() || !email.trim()) {
       setErro('Preenche nome e e-mail.');
       return;
@@ -58,10 +64,9 @@ export default function ConviteScreen() {
         nome: nome.trim(),
         email: email.trim().toLowerCase(),
         planId: planoId,
-        leadId: params.leadId ?? null,
-        linkPagamento,
+        leadId: params.leadId,
       });
-      if (params.leadId) await vincularConviteAoLead(params.leadId, convite.id);
+      await vincularConviteAoLead(params.leadId, convite.id);
       setLink(`${baseUrl()}/convite/${convite.token}`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não consegui gerar o convite.');
@@ -70,13 +75,13 @@ export default function ConviteScreen() {
     }
   }
 
-  function novoConvite() {
-    setNome('');
-    setEmail('');
-    setPlanoId(null);
-    setLinkPagamento('');
-    setLink(null);
-    setErro(null);
+  if (!params.leadId) {
+    return (
+      <Screen title="Convidar aluno">
+        <EmptyState text="O convite parte de um lead — cria o lead e registra a call de sensibilização antes de gerar o link." />
+        <Button label="Ir para Leads" onPress={() => router.push('/pro/leads')} />
+      </Screen>
+    );
   }
 
   if (link) {
@@ -95,13 +100,13 @@ export default function ConviteScreen() {
           />
           <Caption>Toque no link e copie — mande pelo WhatsApp de sempre.</Caption>
         </Card>
-        <Button label="Gerar outro convite" onPress={novoConvite} />
+        <Button label="Voltar pros leads" onPress={() => router.push('/pro/leads')} />
       </Screen>
     );
   }
 
   return (
-    <Screen title="Convidar aluno" subtitle="Gera o link de anamnese pra um paciente novo">
+    <Screen title="Convidar aluno" subtitle="Gera o link de anamnese pra este lead">
       <Card>
         <Field label="Nome" value={nome} onChangeText={setNome} placeholder="Nome do paciente" />
         <Field
@@ -129,19 +134,6 @@ export default function ConviteScreen() {
         ) : (
           <Caption>Nenhum plano ativo — crie um em Planos antes de convidar.</Caption>
         )}
-      </Card>
-
-      <Card>
-        <SectionTitle>Link de pagamento (opcional)</SectionTitle>
-        <Caption>
-          Cola o link gerado no Asaas/Pix — o app não cobra nada nem guarda dado de cartão, só
-          essa URL. O lead vê o plano e o link antes de preencher a anamnese.
-        </Caption>
-        <Field
-          value={linkPagamento}
-          onChangeText={setLinkPagamento}
-          placeholder="https://sandbox.asaas.com/i/..."
-        />
       </Card>
 
       {erro ? <Caption color={Palette.danger}>{erro}</Caption> : null}

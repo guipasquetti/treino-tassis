@@ -123,19 +123,17 @@ export type ConviteCriado = { id: string; token: string };
  * Cria o convite (nome/e-mail do futuro paciente + plano vendido) e devolve o token — o
  * banco gera o token (`gen_random_uuid()`, ver migração `20260904_convite_token_default`),
  * não o client. RLS confere que `created_by` é o próprio profissional autenticado.
+ *
+ * Sempre nasce de um lead (§12, decisão de 04/set): não existe convite "frio" — nome/e-mail/
+ * plano só existem depois da call de sensibilização, e é o `leadId` que o RPC de fechamento
+ * usa pra marcar o lead como convertido.
  */
 export async function criarConvite(params: {
   professionalId: string;
   nome: string;
   email: string;
   planId: string | null;
-  /** Convite nascido de um lead (§12) — o RPC de fechamento usa isso pra marcar o lead como convertido. */
-  leadId?: string | null;
-  /**
-   * Link de pagamento gerado fora do app (Asaas/Pix/etc.) — mesmo padrão de
-   * `teleconsultas.link_meet`: o app nunca coleta dado de cartão, só guarda a URL.
-   */
-  linkPagamento?: string | null;
+  leadId: string;
 }): Promise<ConviteCriado> {
   const { data, error } = await supabase
     .from('convites')
@@ -144,8 +142,7 @@ export async function criarConvite(params: {
       email: params.email,
       created_by: params.professionalId,
       plan_id: params.planId,
-      lead_id: params.leadId ?? null,
-      link_pagamento: params.linkPagamento?.trim() || null,
+      lead_id: params.leadId,
     })
     .select('id, token')
     .single();

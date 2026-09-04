@@ -5,42 +5,17 @@ export type ConviteInfo = {
   nome: string;
   email: string;
   status: string;
-  /** Link de pagamento colado pelo profissional (Asaas/Pix/etc.) — nunca dado de cartão. */
-  linkPagamento: string | null;
-  /** Plano decidido na call de sensibilização (§12) — null em convites antigos sem plano. */
-  plano: {
-    nome: string;
-    precoCentavos: number | null;
-    periodicidade: string;
-    incluiTreino: boolean;
-    incluiDieta: boolean;
-  } | null;
 };
 
 /**
- * Lê nome/e-mail/status/plano/link de pagamento do convite pelo token. Chamada pública (sem
- * sessão) — a RPC é `security definer` e não confere `auth.uid()`; o token em si é o segredo.
- * Retorna `null` pra token inexistente (link inválido).
+ * Lê nome/e-mail/status do convite pelo token. Chamada pública (sem sessão) — a RPC é
+ * `security definer` e não confere `auth.uid()`; o token em si é o segredo. Retorna `null`
+ * pra token inexistente (link inválido).
  */
 export async function obterConvite(token: string): Promise<ConviteInfo | null> {
   const { data, error } = await supabase.rpc('obter_convite', { p_token: token });
   if (error || !data || data.length === 0) return null;
-  const row = data[0];
-  return {
-    nome: row.nome,
-    email: row.email,
-    status: row.status,
-    linkPagamento: row.link_pagamento,
-    plano: row.plano_nome
-      ? {
-          nome: row.plano_nome,
-          precoCentavos: row.plano_preco_centavos,
-          periodicidade: row.plano_periodicidade,
-          incluiTreino: row.plano_inclui_treino,
-          incluiDieta: row.plano_inclui_dieta,
-        }
-      : null,
-  };
+  return data[0];
 }
 
 /**
