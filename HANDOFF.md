@@ -590,6 +590,34 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
   - **Simplificação aceita**: o gate de Treino/Dieta é tudo-ou-nada (`plan_id` nulo bloqueia
     os dois) — não olha `inclui_treino`/`inclui_dieta` do plano confirmado pra liberar só
     um dos dois. Registrado como gap, não implementado agora.
+- ✅ **Convite reconhece conta existente** (04/set — resposta ao "e se o paciente já for
+  usuário do app, de outro profissional ou de antes?"). Cogitado busca por nome na base de
+  usuários e **descartado** pela lente de segurança/LGPD (§0): exporia "essa pessoa é
+  paciente do app" pra qualquer profissional, mesmo sem relação nenhuma com ela — vira
+  diretório navegável de quem usa a plataforma. Caminho adotado: o próprio link resolve —
+  `obter_convite` passa a devolver `conta_existe` (existe `auth.users` com aquele e-mail
+  específico). Não é busca aberta: só quem já tem o token — e portanto já sabe o e-mail
+  daquela pessoa — aprende isso, e só sobre um e-mail, o do próprio convite.
+  `finalizar_cadastro_convite` não precisou mudar: já só confere que a sessão bate com o
+  e-mail do convite, não importa se veio de `signUp` ou `signIn` — cria a assinatura nova
+  pra este profissional de qualquer forma. Se a pessoa já tinha `anamnese` de outro
+  profissional, o gate de onboarding (`aluno/_layout.tsx`) já pula direto pras abas.
+  [`convite/[token].tsx`](src/app/convite/%5Btoken%5D.tsx) mostra "Bem-vindo de volta" +
+  "Entrar" quando `contaExistente`, "Bem-vindo" + "Criar acesso" quando não — mesma tela,
+  branch só no texto/ação. Validação de senha mínima (8 caracteres) só se aplica a conta
+  nova; login usa a senha que a pessoa já tem, seja qual for o tamanho (protótipo antigo
+  pedia só 6, ver §16).
+  Migração [`20260904_convite_valida_conta_existente.sql`](supabase/migrations/20260904_convite_valida_conta_existente.sql).
+  `get_advisors(security)` conferido depois: nenhum warning novo.
+  **Testado com dado real**: o convite existente do próprio Guilherme
+  (`gui.pasquetti@gmail.com`, que já tem conta de aluno) mostrou corretamente "Bem-vindo de
+  volta, Guilherme" + botão "Entrar" ao abrir o link. Não finalizei o login (não tenho a
+  senha real dele) — a tela renderiza certo, mas o fluxo completo até `/aluno` fica pra ele
+  testar. ⚠️ Esse mesmo convite ficou com `status = 'preenchido'` (resquício do fluxo antigo,
+  anterior a hoje) — `finalizar_cadastro_convite` agora só aceita `status = 'pendente'`, então
+  esse convite específico não fecha mais como está; é lead/convite de teste do próprio
+  Guilherme, não apaguei sem perguntar — se não for mais útil, dá pra gerar um novo convite
+  pro mesmo lead a qualquer momento.
 - Sem pagamento/cobrança automática ainda (schema tem `subscriptions.status`, mas nada
   muda esse status sozinho), sem contrato/LGPD.
 - Toda migração de schema é versionada em `supabase/migrations/` (convenção: `AAAAMMDD_descrição.sql`,

@@ -712,6 +712,7 @@ export type Database = {
       obter_convite: {
         Args: { p_token: string }
         Returns: {
+          conta_existe: boolean
           email: string
           nome: string
           status: string
