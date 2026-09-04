@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import type { ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -181,6 +182,60 @@ export function StepperButton({ icon, onPress }: { icon: 'add' | 'remove'; onPre
       style={({ pressed }) => [styles.stepper, pressed && styles.cardPressed]}>
       <Ionicons name={icon} size={20} color={Palette.text} />
     </Pressable>
+  );
+}
+
+const THUMB = 24;
+
+/** Barra de arrastar para escolher um valor numérico dentro de [min, max]. */
+export function DragSlider({
+  value,
+  min,
+  max,
+  color,
+  onChange,
+  snap,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  color: string;
+  onChange: (v: number) => void;
+  /** Arredonda o valor bruto do arraste pro passo válido. Default: inteiro. */
+  snap?: (v: number) => number;
+}) {
+  const [width, setWidth] = useState(0);
+  const config = useRef({ min, max, onChange, snap, width });
+  config.current = { min, max, onChange, snap, width };
+
+  const responder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderMove: (evt) => {
+        const { min, max, onChange, snap, width } = config.current;
+        if (!width) return;
+        const x = Math.min(width, Math.max(0, evt.nativeEvent.locationX));
+        const raw = min + (x / width) * (max - min);
+        const arredondado = snap ? snap(raw) : Math.round(raw);
+        onChange(Math.min(max, Math.max(min, arredondado)));
+      },
+    }),
+  ).current;
+
+  const pct = max > min ? Math.min(1, Math.max(0, (value - min) / (max - min))) : 0;
+  const fillWidth = width * pct;
+
+  return (
+    <View
+      style={styles.sliderContainer}
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      {...responder.panHandlers}>
+      <View style={styles.sliderTrack}>
+        <View style={[styles.sliderFill, { width: fillWidth, backgroundColor: color }]} />
+      </View>
+      <View style={[styles.sliderThumb, { left: fillWidth - THUMB / 2, borderColor: color }]} />
+    </View>
   );
 }
 
@@ -385,6 +440,29 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sliderContainer: {
+    height: 44,
+    justifyContent: 'center',
+  },
+  sliderTrack: {
+    height: 8,
+    borderRadius: Radius.pill,
+    backgroundColor: Palette.surfaceElevated,
+    overflow: 'hidden',
+  },
+  sliderFill: {
+    height: 8,
+    borderRadius: Radius.pill,
+  },
+  sliderThumb: {
+    position: 'absolute',
+    top: (44 - THUMB) / 2,
+    width: THUMB,
+    height: THUMB,
+    borderRadius: THUMB / 2,
+    backgroundColor: Palette.text,
+    borderWidth: 3,
   },
   loading: {
     flex: 1,

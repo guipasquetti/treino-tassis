@@ -12,6 +12,8 @@ export type SetLog = {
   p: number;
   /** Repetições — ou segundos, quando `Exercicio.tempo` é true. */
   r: number;
+  /** Observação livre sobre a série, ex.: "senti dor no ombro". */
+  obs?: string;
 };
 
 export type Exercicio = {
@@ -32,6 +34,8 @@ export type Exercicio = {
   tempo?: boolean;
   /** Envolve ombro — usado pelo treinador como alerta de volume. */
   ombro?: boolean;
+  /** URL de um vídeo curto de execução (YouTube, Drive, etc.). */
+  video?: string;
 };
 
 export type DiaTreino = {

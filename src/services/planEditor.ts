@@ -99,6 +99,7 @@ export function prepararParaSalvar(plano: PlanoEditavel): DiaTreino[] {
       if (ex.ombro) normalizado.ombro = true;
       if (ex.tempo) normalizado.tempo = true;
       if (ex.nota?.trim()) normalizado.nota = ex.nota.trim();
+      if (ex.video?.trim()) normalizado.video = ex.video.trim();
       return normalizado;
     }),
   }));
@@ -121,7 +122,7 @@ export function planoParaEdicao(dias: DiaTreino[], periodo: string, treinador: s
     dias: dias.map((d) => ({
       ...d,
       desc: d.desc ?? '',
-      ex: d.ex.map((e) => ({ ...e, nota: e.nota ?? '' })),
+      ex: d.ex.map((e) => ({ ...e, nota: e.nota ?? '', video: e.video ?? '' })),
     })),
   };
 }

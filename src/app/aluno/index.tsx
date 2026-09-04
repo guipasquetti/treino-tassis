@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 
 import {
   Body,
   Button,
   Caption,
   Card,
+  DragSlider,
   EmptyState,
+  Field,
   Loading,
   Pill,
   Screen,
@@ -22,13 +24,13 @@ import {
 } from '@/models/domain';
 import {
   avaliar,
-  ajustarPeso,
   concluidoHoje,
   corrigirUltimaSerie,
   getWorkoutData,
   registrarSerie,
   seriesDeHoje,
   sessaoAnterior,
+  snapPeso,
   sugerirSerie,
   type WorkoutData,
 } from '@/services/workoutService';
@@ -192,6 +194,15 @@ function ExercicioCard({
 
       {ex.nota ? <Caption color={Palette.orange}>{ex.nota}</Caption> : null}
 
+      {ex.video ? (
+        <Button
+          label="Ver vídeo"
+          variant="ghost"
+          color={cor}
+          onPress={() => Linking.openURL(ex.video!)}
+        />
+      ) : null}
+
       {anterior ? (
         <Caption>
           Última ({formatarData(anterior.data)}):{' '}
@@ -210,6 +221,7 @@ function ExercicioCard({
           {logadas.map((s, i) => (
             <View key={i} style={styles.logadaChip}>
               <Caption color={Palette.text}>{formatarSet(ex, s)}</Caption>
+              {s.obs ? <Caption color={Palette.textSecondary}>{s.obs}</Caption> : null}
             </View>
           ))}
         </View>
@@ -220,19 +232,19 @@ function ExercicioCard({
       ) : (
         <View style={styles.registro}>
           {!ex.tempo && (
-            <View style={styles.stepperRow}>
-              <Caption>Carga</Caption>
-              <View style={styles.stepperControls}>
-                <StepperButton
-                  icon="remove"
-                  onPress={() => setPendente({ ...sugerida, p: ajustarPeso(sugerida.p, -1) })}
-                />
-                <Body style={styles.stepperValue}>{sugerida.p}kg</Body>
-                <StepperButton
-                  icon="add"
-                  onPress={() => setPendente({ ...sugerida, p: ajustarPeso(sugerida.p, 1) })}
-                />
+            <View style={styles.sliderRow}>
+              <View style={styles.sliderLabel}>
+                <Caption>Carga</Caption>
+                <Body>{sugerida.p}kg</Body>
               </View>
+              <DragSlider
+                value={sugerida.p}
+                min={0}
+                max={300}
+                color={cor}
+                snap={snapPeso}
+                onChange={(p) => setPendente({ ...sugerida, p })}
+              />
             </View>
           )}
 
@@ -255,6 +267,13 @@ function ExercicioCard({
               />
             </View>
           </View>
+
+          <Field
+            label="Observação (opcional)"
+            value={sugerida.obs ?? ''}
+            onChangeText={(obs) => setPendente({ ...sugerida, obs: obs || undefined })}
+            placeholder="Ex.: senti dor no ombro"
+          />
 
           <Button
             label={`Registrar ${logadas.length + 1}ª série${restantes === 1 ? ' (última)' : ''}`}
@@ -327,10 +346,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
     borderRadius: Radius.sm,
+    gap: 2,
   },
   registro: {
     gap: Spacing.md,
     marginTop: Spacing.xs,
+  },
+  sliderRow: {
+    gap: Spacing.xs,
+  },
+  sliderLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   stepperRow: {
     flexDirection: 'row',

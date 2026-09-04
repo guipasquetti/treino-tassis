@@ -221,6 +221,13 @@ export default function EditorPlanoScreen() {
                 placeholder="Ex.: sempre com sobrecarga"
               />
 
+              <Field
+                label="Vídeo (URL)"
+                value={ex.video ?? ''}
+                onChangeText={(video) => atualizarExercicio(i, j, { video })}
+                placeholder="Link do vídeo de execução"
+              />
+
               <ToggleRow
                 label="Cronometrado (segundos)"
                 value={!!ex.tempo}

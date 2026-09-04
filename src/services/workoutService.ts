@@ -99,13 +99,19 @@ export function avaliar(ex: Exercicio, anterior: Sessao | null): Avaliacao {
   };
 }
 
+function passoPeso(p: number): number {
+  return p >= 20 ? 2.5 : 1;
+}
+
 function incrementarPeso(p: number, dir: number): number {
-  const passo = p >= 20 ? 2.5 : 1;
+  const passo = passoPeso(p);
   return Math.max(0, +(p + dir * passo).toFixed(1));
 }
 
-export function ajustarPeso(p: number, dir: number): number {
-  return incrementarPeso(p, dir);
+/** Arredonda um peso solto (ex.: vindo da barra de arrastar) pro passo válido mais próximo. */
+export function snapPeso(p: number): number {
+  const passo = passoPeso(p);
+  return Math.max(0, +(Math.round(p / passo) * passo).toFixed(1));
 }
 
 /** Sugestão de peso/reps pra próxima série, a partir do histórico. */
