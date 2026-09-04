@@ -131,6 +131,11 @@ export async function criarConvite(params: {
   planId: string | null;
   /** Convite nascido de um lead (§12) — o RPC de fechamento usa isso pra marcar o lead como convertido. */
   leadId?: string | null;
+  /**
+   * Link de pagamento gerado fora do app (Asaas/Pix/etc.) — mesmo padrão de
+   * `teleconsultas.link_meet`: o app nunca coleta dado de cartão, só guarda a URL.
+   */
+  linkPagamento?: string | null;
 }): Promise<ConviteCriado> {
   const { data, error } = await supabase
     .from('convites')
@@ -140,6 +145,7 @@ export async function criarConvite(params: {
       created_by: params.professionalId,
       plan_id: params.planId,
       lead_id: params.leadId ?? null,
+      link_pagamento: params.linkPagamento?.trim() || null,
     })
     .select('id, token')
     .single();

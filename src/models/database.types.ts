@@ -172,6 +172,7 @@ export type Database = {
           email: string
           id: string
           lead_id: string | null
+          link_pagamento: string | null
           nome: string
           plan_id: string | null
           respondido_em: string | null
@@ -186,6 +187,7 @@ export type Database = {
           email: string
           id?: string
           lead_id?: string | null
+          link_pagamento?: string | null
           nome?: string
           plan_id?: string | null
           respondido_em?: string | null
@@ -200,6 +202,7 @@ export type Database = {
           email?: string
           id?: string
           lead_id?: string | null
+          link_pagamento?: string | null
           nome?: string
           plan_id?: string | null
           respondido_em?: string | null
@@ -703,7 +706,13 @@ export type Database = {
         Args: { p_token: string }
         Returns: {
           email: string
+          link_pagamento: string
           nome: string
+          plano_inclui_dieta: boolean
+          plano_inclui_treino: boolean
+          plano_nome: string
+          plano_periodicidade: string
+          plano_preco_centavos: number
           status: string
         }[]
       }

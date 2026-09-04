@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Linking, Platform, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Body, Button, Caption, Card, Field, Loading, Screen, SectionTitle } from '@/components/ui';
@@ -24,7 +24,12 @@ import { FontSize, Palette, Radius, Spacing } from '@/theme';
  * fora do Supabase: sem AsyncStorage, sem persistência local do conteúdo de saúde.
  */
 
-type Etapa = 'carregando' | 'formulario' | 'senha' | 'concluindo' | 'invalido';
+type Etapa = 'carregando' | 'contratacao' | 'formulario' | 'senha' | 'concluindo' | 'invalido';
+
+function formatarPreco(centavos: number | null): string {
+  if (centavos === null) return 'Sem preço definido';
+  return `R$ ${(centavos / 100).toFixed(2).replace('.', ',')}`;
+}
 
 export default function ConviteScreen() {
   const { token } = useLocalSearchParams<{ token: string }>();
@@ -45,7 +50,11 @@ export default function ConviteScreen() {
         return;
       }
       setConvite(info);
-      setEtapa(info.status === 'preenchido' ? 'senha' : 'formulario');
+      if (info.status === 'preenchido') {
+        setEtapa('senha');
+      } else {
+        setEtapa(info.plano ? 'contratacao' : 'formulario');
+      }
     });
   }, [token]);
 
@@ -146,6 +155,39 @@ export default function ConviteScreen() {
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
+    );
+  }
+
+  if (etapa === 'contratacao' && convite?.plano) {
+    const modulos = [
+      convite.plano.incluiTreino ? 'Treino' : null,
+      convite.plano.incluiDieta ? 'Dieta' : null,
+    ].filter(Boolean);
+    return (
+      <Screen title="Seu plano" subtitle={`Combinado com ${convite.nome.split(' ')[0] || 'seu profissional'}`}>
+        <Card>
+          <SectionTitle>{convite.plano.nome}</SectionTitle>
+          <Body color={Palette.text}>
+            {formatarPreco(convite.plano.precoCentavos)} · {convite.plano.periodicidade}
+          </Body>
+          <Caption>{modulos.length ? modulos.join(' + ') : 'Módulos combinados na conversa'}</Caption>
+        </Card>
+
+        <Card>
+          <Caption>
+            Antes de preencher a anamnese, finaliza a contratação — o pagamento é feito fora do
+            app, com o mesmo link que seu profissional te passou.
+          </Caption>
+          {convite.linkPagamento ? (
+            <Button label="Pagar agora" onPress={() => Linking.openURL(convite.linkPagamento!)} />
+          ) : null}
+          <Button
+            label="Já contratei, continuar"
+            variant={convite.linkPagamento ? 'ghost' : 'solid'}
+            onPress={() => setEtapa('formulario')}
+          />
+        </Card>
+      </Screen>
     );
   }
 

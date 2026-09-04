@@ -485,6 +485,30 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
   em 03/set pro `convites_cria_assinatura` — não criei conta de verdade, só simulei
   dentro de uma transação desfeita. Tudo o que passou pela tela (lead, atendimento,
   convite real) foi apagado do banco depois via SQL, nada de teste ficou em produção.
+- ✅ **Etapa de contratação no link de convite** (04/set — decisão do Guilherme depois de
+  descrever o fluxo real: profissional guia a escolha do plano na call, manda o link, o lead
+  contrata **e** preenche a anamnese no mesmo link). Antes o link só tinha anamnese; agora, se
+  o convite carrega um plano, a primeira tela é "Seu plano" (nome/preço/periodicidade/módulos
+  + botão "Pagar agora" quando há link de pagamento + "Já contratei, continuar") — só depois
+  cai na anamnese. Convite sem plano (legado/teste) pula direto pra anamnese, sem quebrar.
+  Migração [`20260904_convite_contratacao.sql`](supabase/migrations/20260904_convite_contratacao.sql):
+  `convites.link_pagamento` (texto) e `obter_convite` (RPC pública) passou a devolver também
+  nome/preço/periodicidade/módulos do plano e o link de pagamento.
+  ⚠️ Lente de segurança/LGPD (§0): **o app nunca coleta dado de cartão** — mesmo padrão já
+  usado pra `teleconsultas.link_meet` (§8, 04/set): o profissional gera o link de cobrança
+  fora do app (Asaas/Pix/o que for) e só a URL é armazenada. Zero superfície PCI nova.
+  `get_advisors(security)` rodado depois: nenhum warning novo (a RPC já era `anon`-chamável
+  por design, só ganhou colunas). **Não existe confirmação real de pagamento** — "Já
+  contratei, continuar" é auto-declarado pelo lead, sem verificação; é o mesmo nível de
+  confiança que já existia (`subscriptions` nasce `'ativa'` sem checagem, decisão do §12) —
+  só ficou mais visível/honesto sobre a etapa, não criou um risco novo. Verificação real de
+  pagamento (webhook do gateway mudando `subscriptions.status`) é a Fase 2 do roadmap, fora
+  de escopo agora.
+  **Testado ponta a ponta com dado real**: convite gerado pela tela do Tassis com plano +
+  link de pagamento de teste, `plan_id`/`link_pagamento` conferidos no banco, link público
+  aberto numa aba nova mostrando a tela "Seu plano" com preço/módulos certos e os dois
+  botões, avançou pra anamnese ao clicar "Já contratei, continuar". Convite de teste apagado
+  do banco depois.
 - Sem pagamento/cobrança automática ainda (schema tem `subscriptions.status`, mas nada
   muda esse status sozinho), sem contrato/LGPD.
 - Toda migração de schema é versionada em `supabase/migrations/` (convenção: `AAAAMMDD_descrição.sql`,
@@ -645,8 +669,8 @@ O funil real do Tassis (e da maioria dos nutricionistas), na ordem:
 | Passo | Status |
 |---|---|
 | 1. Sensibilização/lead | ✅ feito ([`pro/leads.tsx`](src/app/pro/leads.tsx), 04/set) |
-| 2. Gera o link | ✅ feito ([`pro/convite.tsx`](src/app/pro/convite.tsx)) — agora pode nascer **de um lead** (prefill nome/e-mail, `?leadId=`) ou direto, escolhendo nome/e-mail/plano |
-| 3. Paciente paga | ❌ manual, como já era |
+| 2. Gera o link | ✅ feito ([`pro/convite.tsx`](src/app/pro/convite.tsx)) — nasce **de um lead** (prefill nome/e-mail, `?leadId=`) ou direto; plano passa a ser **obrigatório** se o profissional tem algum ativo (é decidido na call, não depois); link de pagamento (opcional) colado ali também |
+| 3. Paciente paga | ⚠️ ainda manual/fora do app, mas agora tem **etapa própria no link** ("Seu plano") antes da anamnese — mostra o plano combinado e o botão de pagar |
 | 4. Anamnese | ✅ feito ([`convite/[token].tsx`](src/app/convite/%5Btoken%5D.tsx)) — **simplificado**: mesmas seções pra todo mundo, ainda não varia por plano |
 | 5. App cria a conta | ✅ feito (perfil + anamnese + assinatura + fecha o lead como `convertido` quando o convite veio de um) |
 | 6. Espera de ~2 dias | ❌ não iniciado — home não avisa nada, ainda mostra vazio genérico |

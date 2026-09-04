@@ -21,6 +21,7 @@ export default function ConviteScreen() {
   const [nome, setNome] = useState(params.nome ?? '');
   const [email, setEmail] = useState(params.email ?? '');
   const [planoId, setPlanoId] = useState<string | null>(null);
+  const [linkPagamento, setLinkPagamento] = useState('');
   const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
@@ -45,6 +46,10 @@ export default function ConviteScreen() {
       setErro('E-mail parece inválido.');
       return;
     }
+    if (planos.length && !planoId) {
+      setErro('Escolhe o plano — foi decidido na call de sensibilização.');
+      return;
+    }
     setErro(null);
     setCriando(true);
     try {
@@ -54,6 +59,7 @@ export default function ConviteScreen() {
         email: email.trim().toLowerCase(),
         planId: planoId,
         leadId: params.leadId ?? null,
+        linkPagamento,
       });
       if (params.leadId) await vincularConviteAoLead(params.leadId, convite.id);
       setLink(`${baseUrl()}/convite/${convite.token}`);
@@ -68,6 +74,7 @@ export default function ConviteScreen() {
     setNome('');
     setEmail('');
     setPlanoId(null);
+    setLinkPagamento('');
     setLink(null);
     setErro(null);
   }
@@ -122,6 +129,19 @@ export default function ConviteScreen() {
         ) : (
           <Caption>Nenhum plano ativo — crie um em Planos antes de convidar.</Caption>
         )}
+      </Card>
+
+      <Card>
+        <SectionTitle>Link de pagamento (opcional)</SectionTitle>
+        <Caption>
+          Cola o link gerado no Asaas/Pix — o app não cobra nada nem guarda dado de cartão, só
+          essa URL. O lead vê o plano e o link antes de preencher a anamnese.
+        </Caption>
+        <Field
+          value={linkPagamento}
+          onChangeText={setLinkPagamento}
+          placeholder="https://sandbox.asaas.com/i/..."
+        />
       </Card>
 
       {erro ? <Caption color={Palette.danger}>{erro}</Caption> : null}
