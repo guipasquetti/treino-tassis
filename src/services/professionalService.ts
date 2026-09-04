@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { Tables, TablesInsert } from '@/models/database.types';
+import type { Tables, TablesInsert, TablesUpdate } from '@/models/database.types';
 
 export type PlanoProfissional = Tables<'professional_plans'>;
 
@@ -114,5 +114,40 @@ export async function alternarPlanoAtivo(planoId: string, ativo: boolean): Promi
     .from('professional_plans')
     .update({ ativo })
     .eq('id', planoId);
+  if (error) throw error;
+}
+
+export type ConviteCriado = { id: string; token: string };
+
+/**
+ * Cria o convite (nome/e-mail do futuro paciente + plano vendido) e devolve o token — o
+ * banco gera o token (`gen_random_uuid()`, ver migração `20260904_convite_token_default`),
+ * não o client. RLS confere que `created_by` é o próprio profissional autenticado.
+ */
+export async function criarConvite(params: {
+  professionalId: string;
+  nome: string;
+  email: string;
+  planId: string | null;
+}): Promise<ConviteCriado> {
+  const { data, error } = await supabase
+    .from('convites')
+    .insert({
+      nome: params.nome,
+      email: params.email,
+      created_by: params.professionalId,
+      plan_id: params.planId,
+    })
+    .select('id, token')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function atualizarPlano(
+  planoId: string,
+  updates: TablesUpdate<'professional_plans'>
+): Promise<void> {
+  const { error } = await supabase.from('professional_plans').update(updates).eq('id', planoId);
   if (error) throw error;
 }

@@ -121,6 +121,16 @@ export function formatarData(iso: string): string {
   return `${dia}/${mes}/${ano.slice(2)}`;
 }
 
+/** "10/09 às 14:30" a partir de um timestamptz — usado na agenda de teleconsultas. */
+export function formatarDataHora(iso: string): string {
+  const d = new Date(iso);
+  const dia = String(d.getDate()).padStart(2, '0');
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const hora = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${dia}/${mes} às ${hora}:${min}`;
+}
+
 /** "60kg × 12" ou "45s" para exercício por tempo. */
 export function formatarSet(ex: Exercicio, set: SetLog): string {
   if (ex.tempo) return `${set.r}s`;

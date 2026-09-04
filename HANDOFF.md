@@ -1,11 +1,53 @@
 # App Treino — Handoff
 
 > Documento de contexto para replicar o estado do projeto em outro chat.
-> Última atualização: 03/Setembro/2026.
+> Última atualização: 04/Setembro/2026.
 
 > **Fonte canônica:** este arquivo, na raiz do repositório. Todo agente (Codex ou Claude) deve lê-lo antes de alterar o projeto e atualizá-lo ao concluir mudanças relevantes, decisões, migrações, configuração de infraestrutura ou bloqueios.
 
 ---
+
+## 0. Princípio obrigatório: segurança e LGPD
+
+⚠️ **Decisão do Guilherme (04/set), inegociável:** segurança e conformidade LGPD são lente
+padrão em **toda** decisão de arquitetura/escopo deste projeto — não só quando alguém pedir
+explicitamente. O banco guarda dado sensível de saúde (anamnese: condição médica,
+medicamento, cirurgia, alergia; fotos de corpo previstas no check-in do §13; métricas
+corporais). Antes de propor ou construir qualquer feature/tabela/RPC nova, checar:
+
+- **Quem lê esse dado?** RLS cobre o caso, ou fica exposto a mais gente que deveria?
+- **Cria superfície pública nova?** (ex.: link de anamnese por token, hoje sem login —
+  já é um risco conhecido, ver §14)
+- **Tem base legal?** Lead/atendimento capturando nota de saúde antes de qualquer
+  consentimento é exatamente o tipo de lacuna que já foi identificada no funil (§12/§14) —
+  não introduzir uma nova sem perceber.
+- **Cruza fronteira?** Residência de dados em `us-east-1` já é transferência internacional
+  sob a LGPD — decisão registrada em §14, não reabrir sem novo cálculo de custo.
+
+Isso não significa travar todo trabalho de feature até existir termo/advogado — significa que
+toda mudança relevante anota o ângulo de segurança/LGPD aqui no handoff, pra não ficar
+esquecido em silêncio.
+
+✅ **Primeira aplicação prática (04/set):** rodado `get_advisors(security)` do Supabase como
+baseline. Achado real corrigido: `handle_new_user()` — o trigger interno que cria o profile
+no signup — estava exposto como RPC pública (`anon`/`authenticated`/`PUBLIC` tinham
+`EXECUTE`), sem necessidade nenhuma (é `RETURNS trigger`, só roda via `on_auth_user_created`).
+`REVOKE EXECUTE` de `anon`, `authenticated` e `PUBLIC`; sobrou só `postgres`/`service_role`.
+Também revogado `EXECUTE` de `anon` (mantido pra `authenticated`, que a RLS usa de verdade)
+nos 4 helpers `is_trainer()`/`is_professional()`/`is_professional_of()`/`is_client_of()` —
+não são chamados por nenhuma função pública (`obter_convite`/`submeter_anamnese`/
+`finalizar_cadastro_convite`, conferido no código-fonte) e `anon` não tem motivo pra invocar.
+Verificado depois: app recarregado com sessão real (Tassis) continua lendo dado normal — RLS
+pra usuário autenticado não foi afetada, porque `REVOKE` em função não interfere na execução
+de trigger nem na avaliação de policy pelo dono/definer.
+
+⚠️ **Ainda aberto no advisor** (aceito, já era conhecido): os 3 RPCs do fluxo de convite
+(`obter_convite`, `submeter_anamnese`, `finalizar_cadastro_convite`) continuam
+`anon`-chamáveis por design — é o fluxo de token sem login. E os 4 helpers continuam
+`authenticated`-chamáveis por design — é o que a RLS usa. **Novo, não corrigido:** "Leaked
+Password Protection" desligada no Auth — Supabase checaria senha contra HaveIBeenPwned.
+Fica de fora do MCP (é config de dashboard); ligar em Authentication → Policies → Password
+Security quando alguém for mexer lá.
 
 ## 1. Visão geral
 
@@ -82,7 +124,9 @@ Harris-Benedict (atletas), Cunningham (baixo % gordura). Integra tabelas TACO (j
 - Fator de cocção (peso do alimento cru vs. cozido)
 - Notificações inteligentes de hidratação/alimentação baseadas no horário de
   acordar/dormir do paciente
-- Dashboard pro profissional sinalizando picos de ansiedade/fome via notificações
+- Dashboard pro profissional sinalizando picos de ansiedade/fome via notificações — a versão
+  de check-in disso ainda não existe; um painel de gestão mais simples (sem esse sinal
+  específico) já existe, ver §8
 - Módulo treino: histórico de cargas + vídeos curtos (15s) de execução gravados pelo
   próprio Tassis/parceira (Gabi) — não genéricos
 
@@ -150,19 +194,20 @@ versionado como referência.
 
 ## 5. Modelo de dados (Supabase — já em produção com dados reais)
 
-| Tabela | Papel | Linhas (02/set) |
+| Tabela | Papel | Linhas (04/set) |
 |---|---|---|
 | `profiles` | conta (trainer/client), dados físicos (peso/altura) | 2 |
 | `professionals` | tenant — profile que virou profissional (`especialidade`) | 1 |
 | `professional_plans` | produtos que um profissional vende (`inclui_dieta`/`inclui_treino`, preço) | 1 (backfill "Padrão (migração)") |
 | `subscriptions` | vínculo real paciente↔profissional↔plano, com `status` | 1 |
 | `plans` | plano de treino por período (`dias` jsonb), agora com `professional_id` | 1 |
-| `workout_logs` | séries executadas e finalizadas por dia/exercício | 21 |
+| `workout_logs` | séries executadas e finalizadas por dia/exercício | 32 |
 | `workout_drafts` | autosave do treino em andamento antes de virar log | 2 |
 | `anamnese` | questionário de saúde, 1:1 por cliente, **compartilhado entre profissionais** (decisão 02/set) | 1 |
 | `planos_alimentares` | plano alimentar (metas de macro + `refeicoes` jsonb), agora com `professional_id` | 1 |
 | `alimentos_taco` | tabela TACO de composição de alimentos (referência, seed) | 597 |
-| `convites` | onboarding: token → aluno responde → vira profile | 0 |
+| `convites` | onboarding: token → aluno responde → vira profile (§16, §8) | 0 |
+| `teleconsultas` | agenda de teleconsultas por Google Meet, RLS própria (§8) — 04/set | 0 |
 
 **RLS reescrita (02/set):** todas as policies que usavam `is_trainer()` (acesso global a
 qualquer trainer) foram trocadas por checks escopados por assinatura ativa:
@@ -200,22 +245,35 @@ Scaffold do Expo foi **removido por completo** em 02/set — nada de `themed-tex
 ```
 src/
   app/                        expo-router — rotas = telas
-    _layout.tsx               Stack raiz: auth, tema dark, correção de área por papel
+    _layout.tsx               Stack raiz: auth, tema dark, correção de área por papel,
+                               exceção pra rota pública /convite (não é redirecionada)
     index.tsx                 rota "/": decide login vs /aluno vs /pro (declarativo)
     login.tsx
+    convite/[token].tsx       PÚBLICA, sem login — anamnese por token (ver §8)
     aluno/                    área do ALUNO (abas: Treino · Dieta · Perfil)
       _layout.tsx  index.tsx (treino)  dieta.tsx  perfil.tsx
-    pro/                      área do PROFISSIONAL (abas: Alunos · Planos · Perfil)
-      _layout.tsx  index.tsx (alunos)  planos.tsx  perfil.tsx
+    pro/                      área do PROFISSIONAL (abas: Painel · Planos · Perfil — 3,
+                               não 5; Alunos e Agenda foram fundidos no Painel em 04/set)
+      _layout.tsx
+      index.tsx               Painel: placar, alertas, agenda de teleconsultas, lista de
+                               alunos — tudo numa tela (ver §8, decisão "por enquanto")
+      planos.tsx               CRUD de professional_plans
+      perfil.tsx
+      convite.tsx              gera link de convite (não é aba — href:null)
+      aluno/[id]/index.tsx     editor de plano de treino (não é aba — href:null)
+      aluno/[id]/dieta.tsx     editor de plano alimentar (não é aba — href:null)
   theme/index.ts              design system (paleta, spacing, radius, cores por treino)
   components/
-    ui/index.tsx              Screen, Card, Button, Pill, Stat, Stepper, Caption...
+    ui/index.tsx              Screen, Card, Button, Field, Pill, Stat, Caption...
     perfil-screen.tsx         perfil compartilhado pelos dois papéis
   models/
     database.types.ts         gerado do schema Supabase
-    domain.ts                 tipos dos jsonb + helpers (formatarSet, somaMacros...)
+    domain.ts                 tipos dos jsonb + helpers (formatarSet, somaMacros,
+                               formatarDataHora...)
+    anamnese.ts                schema do formulário de anamnese (10 seções, 56 campos)
   services/                   1 arquivo por domínio
     authService.ts  workoutService.ts  nutritionService.ts  professionalService.ts
+    conviteService.ts  teleconsultaService.ts  gestaoService.ts
   store/authStore.ts          zustand (sessão, profile, isProfessional)
   lib/supabase.ts             client tipado (com guard de SSR, ver §8)
 ```
@@ -223,6 +281,10 @@ src/
 **Rotas são segmentos explícitos (`/aluno`, `/pro`), não route groups.** Foi tentado com
 grupos `(client)`/`(pro)` e os dois `index.tsx` disputavam a rota `/` — resultado era
 "Unmatched Route". Não voltar pra grupos sem resolver essa colisão.
+
+**Todo arquivo novo em `src/app/pro/` vira aba automaticamente**, a menos que ganhe
+`<Tabs.Screen name="..." options={{ href: null }} />` explícito em `pro/_layout.tsx` — já
+mordeu duas vezes (`convite.tsx`, extinto `agenda.tsx`), ver §8.
 
 ## 7. Pendências do Tassis (bloqueiam trabalho downstream)
 
@@ -250,20 +312,9 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
 
 ## 8. Estado atual
 
-- Scaffold Expo padrão (SDK 57) renomeado de `app-treino-scaffold` → `app-treino`,
-  ainda com as telas de exemplo (`src/app/index.tsx`, `explore.tsx`) — **nada de
-  domínio implementado ainda**.
-- Supabase conectado e tipado; schema multi-tenant aplicado (§5) e `database.types.ts`
-  regenerado batendo com ele — banco já reflete a visão white-label do §2, o app ainda não.
-- `git`: 2 commits, sem remote configurado — decidir onde hospedar (GitHub) antes do
-  próximo handoff.
-- ✅ Auth flow básico implementado e testado (Expo web, `expo start --web`): `src/app/login.tsx`,
-  `src/store/authStore.ts`, `src/services/authService.ts`. Root layout (`src/app/_layout.tsx`)
-  redireciona sem sessão → `/login`, com sessão → `/(app)` (área autenticada única por
-  enquanto, ainda sem split trainer/client de telas — `authStore.isProfessional` já
-  identifica o papel, falta usar isso pra rotear diferente).
-- Rotas reorganizadas: telas antigas do scaffold (`index.tsx`, `explore.tsx`, tabs)
-  viraram grupo `src/app/(app)/`; `login.tsx` fica solto na raiz de `src/app/`.
+- Histórico do início do projeto (scaffold Expo renomeado, rotas provisórias em grupo
+  `(app)`, primeiros commits sem remote) — tudo isso foi substituído já na v1 utilizável
+  (02/set, ver abaixo) e não descreve mais o estado do código. Mantido só o gotcha real:
 - ⚠️ **Gotcha real encontrado e corrigido:** Expo Router faz SSR até no `expo start --web`
   (renderiza em Node, sem `window`). O client Supabase com `AsyncStorage` batia nisso e
   derrubava o servidor inteiro (`ReferenceError: window is not defined`). Corrigido em
@@ -276,9 +327,11 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
     histórico. Grava via draft→log igual ao protótipo (ver §11).
   - **Aluno · Dieta** ([`dieta.tsx`](src/app/aluno/dieta.tsx)): totais do dia vs. metas de
     macro, refeições, itens com quantidade/macros e substituições.
-  - **Profissional · Alunos** ([`src/app/pro/index.tsx`](src/app/pro/index.tsx)): contagem
-    total/ativos/inativos e card por aluno com plano, status e dias desde o último treino
-    (sinaliza quem sumiu há 7+ dias — a dor de "quem não responde" do §2).
+  - **Profissional · Alunos** — tela original, contagem total/ativos/inativos e card por
+    aluno com plano/status/dias desde o último treino (sinaliza quem sumiu há 7+ dias — a
+    dor de "quem não responde" do §2). ⚠️ **Fundida no Painel em 04/set** — o conteúdo desse
+    bullet hoje mora em [`src/app/pro/index.tsx`](src/app/pro/index.tsx) junto com Agenda,
+    ver a entrada "Painel de gestão" mais abaixo, que é a descrição atual.
   - **Profissional · Planos** ([`planos.tsx`](src/app/pro/planos.tsx)): lista, criação e
     ativar/desativar dos `professional_plans` (nome, preço, periodicidade, módulos).
   - **Perfil** (ambos): dados do profile, vínculos e sair.
@@ -293,24 +346,125 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
   - Tassis → só o dado do aluno vinculado + o próprio.
   Isso foi checado **antes** de publicar, porque a `anamnese` tem dado de saúde
   (condições médicas, medicamentos, cirurgias) numa URL pública.
-- ⚠️ **Telas ainda não vistas com login real**: quem construiu não tinha credencial.
-  Validado por typecheck + render SSR das rotas (200, sem "Unmatched Route") + as
-  verificações de RLS acima. **Conferir visualmente.**
+- ✅ **Os dois lados vistos com login real (03–04/set)**: `expo start --web`, conta do
+  Guilherme (aluno do Tassis) e conta do próprio Tassis (profissional) — as 6 telas
+  (Treino/Dieta/Perfil do aluno, Alunos/Planos/Perfil do profissional) renderizam com dado
+  de produção batendo com §5/§11.
+- ✅ **Bug encontrado e corrigido (04/set):** [`src/app/aluno/index.tsx`](src/app/aluno/index.tsx)
+  e [`src/app/pro/planos.tsx`](src/app/pro/planos.tsx) usavam `user!.id` direto no JSX sem
+  guardar contra `user` nulo. Se a sessão trocar (sign-out → sign-in de outro papel) com a
+  tela ainda montada na mesma aba, o estado local (`data`/`planos`) ficava com o resultado
+  antigo enquanto `user` já tinha virado `null` por um instante — quebrava com
+  `Cannot read properties of null (reading 'id')`. Reproduzido ao logar como aluno, depois
+  como Tassis, sem reload de página. Não afetava login direto (a rota `/` só redireciona
+  depois de `profileLoaded`), mas era risco real em device compartilhado ou troca de conta
+  na mesma aba. Corrigido nas duas telas: `useEffect` reseta o estado quando `user` vira
+  `null`, e o guard de render (`if (loading || !user) return <Loading />`) cobre o resto.
+  Verificado: typecheck limpo (`npx tsc --noEmit`) + 4 reloads seguidos sem erro no console.
 - ✅ **Editor de plano de treino** ([`src/app/pro/aluno/[id].tsx`](src/app/pro/aluno/%5Bid%5D.tsx)):
   tocar num aluno na lista abre o editor — dias (tipo, grupos musculares), exercícios,
   séries, faixa de reps, warm/feeder, flags cronometrado/ombro. Preserva ids (ver §11).
+- ✅ **Formulário público de anamnese por token** ([`src/app/convite/[token].tsx`](src/app/convite/%5Btoken%5D.tsx),
+  04/set): sem login, uma página só (sem wizard, sem campo obrigatório) — fiel ao protótipo
+  (`prototype/index.html`, `PERGUNTAS_ANAMNESE`), 10 seções, 56 campos, mesmos `id`s exatos
+  (schema em [`src/models/anamnese.ts`](src/models/anamnese.ts), porque `finalizar_cadastro_convite`
+  lê algumas chaves por nome). Fluxo: `obter_convite` → formulário → `submeter_anamnese` →
+  tela de criar senha → `signUp` → `finalizar_cadastro_convite` → `/aluno`. RPCs embaladas em
+  [`conviteService.ts`](src/services/conviteService.ts). `src/app/_layout.tsx` ganhou exceção
+  pra rota `/convite` não ser redirecionada pelo guard de auth (ela cuida da própria
+  navegação, inclusive no instante entre `signUp` e `finalizar_cadastro_convite`).
+  **Testado ponta a ponta até a etapa de senha** com convite de QA criado via SQL e apagado
+  depois — carrega convite real, grava respostas (só as preenchidas, confirmado no banco),
+  avança pra tela de senha com e-mail certo, e trata token inexistente ("Link indisponível").
+  **Não testado a criação de conta em si** (`signUp`/`finalizar_cadastro_convite`) — entra na
+  regra de não criar contas mesmo em ambiente de teste; confere quando o Tassis mandar um
+  convite de verdade.
+  ⚠️ Lente de segurança/LGPD (§0) aplicada: nada das respostas é persistido fora do Supabase
+  (sem AsyncStorage) — só o necessário roda no estado do componente. Senha mínima subida pra
+  8 caracteres (era 6 no protótipo). Mantido como risco aceito e já documentado (§16): RPCs
+  públicas sem CAPTCHA/rate limit, token sem TTL — não é bloqueador pro piloto, mas fica
+  registrado.
+- ✅ **Tela do profissional que gera o convite** ([`src/app/pro/convite.tsx`](src/app/pro/convite.tsx),
+  04/set): nome + e-mail + escolha de `professional_plans` ativo (Pill), acessível pelo botão
+  "+ Convidar" em Alunos. `criarConvite()` em [`professionalService.ts`](src/services/professionalService.ts)
+  insere direto em `convites` (RLS já cobre: `created_by = auth.uid()`), sem precisar de RPC.
+  **Token passou a ser gerado no banco**, não no client — migração
+  [`20260904_convite_token_default.sql`](supabase/migrations/20260904_convite_token_default.sql)
+  (`gen_random_uuid()` como default da coluna `token`); motivo: `crypto.randomUUID()` não é
+  garantido em todo runtime React Native, gerar no Postgres é mais forte e não depende do
+  client. `database.types.ts` regenerado depois da migration (sempre necessário, ver §5).
+  ⚠️ Gotcha de roteamento encontrado: qualquer arquivo dentro de `src/app/pro/` vira aba
+  automaticamente no `<Tabs>` do `pro/_layout.tsx` — `convite.tsx` apareceu como 4ª aba até eu
+  adicionar `<Tabs.Screen name="convite" options={{ href: null }} />`, mesmo padrão já usado
+  pra `aluno/[id]`. **Testado ponta a ponta com dado real** (convite de QA criado pela própria
+  tela, aberto o link gerado, chegou na anamnese certa, depois apagado do banco).
+- ✅ **Agenda de teleconsultas por Google Meet** (04/set — nasceu em `pro/agenda.tsx`, depois
+  fundida em [`src/app/pro/index.tsx`](src/app/pro/index.tsx), ver entrada do Painel abaixo).
+  Escolhe aluno, data, hora, cola o link do Meet (gerado à
+  parte em `meet.google.com/new` — decisão explícita de não integrar via OAuth com Google
+  Calendar por ora, ver abaixo) e observações opcionais; marca depois como realizada/cancelada
+  (sem policy de delete — histórico preservado, mesma lógica de nunca sobrescrever do §14).
+  Tabela `teleconsultas` + RLS em
+  [`20260904_teleconsultas.sql`](supabase/migrations/20260904_teleconsultas.sql) (paciente lê
+  a própria, profissional lê/edita as que criou, `is_professional_of` barra agendar pra
+  paciente de outro profissional). `teleconsultaService.ts` novo. Aluno vê a próxima consulta
+  (data/hora + botão "Entrar na chamada") no [`perfil-screen.tsx`](src/components/perfil-screen.tsx)
+  compartilhado. **Testado ponta a ponta**: criado, apareceu na agenda, RLS simulada por JWT
+  confirma que o paciente certo vê e um usuário aleatório não vê nada — depois apagado do
+  banco. `get_advisors(security)` rodado depois da migration: nenhum warning novo.
+  ⚠️ Gotcha de roteamento repetido: `agenda.tsx` também precisou de `<Tabs.Screen>` explícito
+  em `pro/_layout.tsx` (mesmo motivo do `convite.tsx` acima) — **todo arquivo novo em
+  `src/app/pro/` que não for uma aba de verdade precisa de `href: null` no layout, ou vira
+  aba fantasma sozinho.**
+  📌 **Decisão registrada (04/set):** vídeo em si nunca passa pelo Supabase/app — só a URL do
+  Meet é armazenada, gerada fora do app pelo profissional. Integração real com Google Calendar
+  (OAuth por profissional, evento + link automáticos) foi avaliada e adiada de propósito:
+  exigiria projeto Google Cloud, tela de consentimento OAuth e guardar `refresh_token` com
+  segurança (dado de credencial, novo tipo de risco) — descartado por ora em favor da versão
+  mais simples e com menos superfície de segurança nova (§0).
+- ✅ **Painel de gestão** ([`src/app/pro/index.tsx`](src/app/pro/index.tsx), 04/set). Resposta
+  a "existe uma visão consolidada dos pacientes?" — não existia, estava fragmentada em §2
+  (dashboard de ansiedade/fome, F4, não iniciada) e F1b (tendência do check-in, também não
+  iniciada). Esta é a versão que dá pra construir agora, **sem tabela nova** — só agrega o que
+  já existe: placar (total/ativos/sem plano/sem treino 7d+/convites pendentes), "Atenção
+  necessária" (sem treino há 7+ dias, sem nenhum plano montado, sinal de saúde não-vazio na
+  anamnese — `condicoes_medicas`/`lesoes_dores`), agenda de teleconsultas completa (com ações
+  Entrar/Realizada/Cancelar + form de agendar) e lista de todos os alunos com indicador
+  Treino/Dieta montados ou não. `gestaoService.ts` (`obterPainelGestao`), reaproveita
+  `listarAlunos` e `listarAgenda` já existentes.
+  ✅ **Fundido em uma tela só (04/set, mesmo dia):** o Painel nasceu como 5ª aba separada de
+  Alunos e Agenda; a pedido do Guilherme, as três foram **unificadas em `pro/index.tsx`** —
+  "por enquanto", ele mesmo marcou, então pode voltar a separar se a lista de alunos ou a
+  agenda crescerem demais pra caber numa tela só. `pro/painel.tsx` e `pro/agenda.tsx` foram
+  apagados (conteúdo migrado, nada ficou duplicado); o app do profissional agora tem **3
+  abas**: Painel, Planos, Perfil. `pro/_layout.tsx` simplificado de volta.
+  `PainelGestao.proximasConsultas` (top 5, só agendadas) virou `PainelGestao.agenda` (lista
+  completa, todos os status) porque a tela fundida precisa das ações de status, não só leitura.
+  **Testado com dado real** do Tassis nas duas versões (separada e depois fundida): placar
+  bateu (1/1/0/0/0), contador de convites pendentes reagiu a um convite de teste criado e
+  apagado via SQL (0→1→0), form de agendar teleconsulta abre inline sem sair da tela, zero
+  erro de console numa aba nova e limpa. RLS não muda — cada query já usa as policies
+  existentes (`is_professional_of`, `professional_id = auth.uid()`), o painel só lê o que o
+  profissional já podia ver espalhado nas outras telas.
 - ✅ **Editor de dieta** ([`src/app/pro/aluno/[id]/dieta.tsx`](src/app/pro/aluno/%5Bid%5D/dieta.tsx)):
   metas de macro do dia, refeições, itens vindos da busca TACO (macros calculados a partir
   do valor por 100g) ou item livre. Detalhe do aluno agora tem duas telas com alternador
   (Treino | Dieta).
-- Ainda falta **editar** um `professional_plans` existente (hoje só cria novo e
-  liga/desliga) e o editor de substituições de alimento (as existentes são preservadas e
-  exibidas, mas não dá pra criar/remover pela tela).
+- ✅ **Editar `professional_plans` existente (04/set)**: `atualizarPlano()` em
+  [`professionalService.ts`](src/services/professionalService.ts) + botão "Editar" no card
+  em [`pro/planos.tsx`](src/app/pro/planos.tsx), reaproveitando o form de criação
+  (`PlanoForm` compartilhado). Testado ponta a ponta com a conta real do Tassis: editou
+  preço, salvou, refletiu no card — depois revertido via SQL pra não deixar dado de teste
+  em produção. Falta ainda o editor de substituições de alimento (as existentes são
+  preservadas e exibidas, mas não dá pra criar/remover pela tela).
 - Sem pagamento/cobrança automática ainda (schema tem `subscriptions.status`, mas nada
   muda esse status sozinho), sem contrato/LGPD.
-- Migração de schema versionada em [`supabase/migrations/20260902_multi_tenant_professionals_subscriptions.sql`](supabase/migrations/20260902_multi_tenant_professionals_subscriptions.sql)
-  (aplicada manualmente via SQL Editor do Supabase — apply automático via MCP foi bloqueado
-  pelo classificador de auto mode do Claude Code).
+- Toda migração de schema é versionada em `supabase/migrations/` (convenção: `AAAAMMDD_descrição.sql`,
+  ver lista completa em §15). A primeira ([`20260902_...`](supabase/migrations/20260902_multi_tenant_professionals_subscriptions.sql))
+  precisou ser aplicada manualmente via SQL Editor do Supabase — `apply_migration` do MCP foi
+  bloqueado pelo classificador de auto mode do Claude Code naquela sessão. As seguintes
+  (03/set e 04/set) foram aplicadas sem esse bloqueio via `execute_sql` do MCP — não é um
+  bloqueio permanente, parece ter sido específico daquela chamada/sessão.
 
 ## 9. Escopo funcional v1 (proposto, não implementado)
 
@@ -325,19 +479,26 @@ Tabela abaixo é por par paciente↔profissional (já reflete o modelo N:N do §
 
 ## 10. Próximos passos
 
-1. **Destravar o cadastro de paciente** (ver §16). Caminho curto: desligar a confirmação de
-   e-mail (`mailer_autoconfirm`), já que o convite por token é a prova de confiança. SMTP
-   próprio fica para quando o domínio existir — e domínio depende da marca (§7).
-2. Confirmar visualmente a home (`ClientHome`/`ProfessionalHome`) com login real —
-   feita nesta sessão mas não vista rodando com dados de verdade.
+1. ✅ **Feito em 03/set:** cadastro de paciente destravado (ver §16) — confirmação de e-mail
+   desligada e URLs de retorno configuradas. SMTP próprio fica para quando o domínio existir —
+   e domínio depende da marca (§7).
+2. ✅ **Home confirmada visualmente em 03–04/set**, os dois lados, com login real
+   (`expo start --web`): Aluno (Treino/Dieta/Perfil) e Profissional (Alunos/Planos/Perfil,
+   login do próprio Tassis) — dado de produção batendo com §5/§11. Achado no processo, ver
+   bug abaixo em §8.
 3. Telas de treino/nutrição além da home: registrar série (draft→log), montar/editar
    plano (treinador), ver plano alimentar completo, buscar TACO.
-4. `src/services/professionalService.ts` (CRUD de `professional_plans`, gestão de
-   `subscriptions`) — hoje `homeService.ts` só lê, não tem mutação nenhuma.
-5. Telas de onboarding por convite (RPCs do §5) — falta decidir onde no funil entra a
-   escolha de plano/assinatura (§2 aponta que hoje é manual, sem cobrança recorrente).
-6. Tela de cadastro (`signUp`) — hoje só existe login; cadastro real nasce do fluxo de
-   convite (item 5), mas vale conferir se falta um cadastro direto também.
+4. ✅ **Feito em 04/set:** CRUD de `professional_plans` completo (criar, editar, ativar/
+   desativar). Falta ainda gestão de `subscriptions` (cancelar/reativar aluno) — hoje só
+   nasce via `finalizar_cadastro_convite`, sem tela pra mudar depois.
+5. ✅ **Feito em 04/set, dos dois lados:** tela pública de anamnese por convite (§8, lado
+   paciente) + tela do profissional pra gerar o link (§8, lado profissional). O funil do §12
+   fecha ponta a ponta agora: profissional convida → paciente preenche anamnese → cria conta
+   → assinatura nasce → aparece na lista do profissional. Falta só automação de pagamento
+   (Fase 2, fora de escopo agora) e leads/atendimentos (item ainda não iniciado, sem
+   depender do Tassis pra começar).
+6. ~~Tela de cadastro (`signUp`)~~ — coberta pelo fluxo de convite do item 5. Cadastro
+   direto (fora de convite) segue não previsto pelo produto — Tassis sempre inicia o vínculo.
 7. Remover a tela de exemplo restante do scaffold (`(app)/explore.tsx`) quando o fluxo
    real substituir.
 8. Configurar EAS quando for hora de buildar pra iOS/Android de verdade (hoje só roda
@@ -450,6 +611,19 @@ O funil real do Tassis (e da maioria dos nutricionistas), na ordem:
 6. **Espera de ~2 dias** — a home tem que dizer isso, não mostrar vazio.
 7. **Profissional monta** treino e dieta, vendo anamnese + suas notas da consulta.
 8. **Publica** — só então o paciente vê.
+
+### Estado de implementação por passo (04/set)
+
+| Passo | Status |
+|---|---|
+| 1. Sensibilização/lead | ❌ não iniciado — sem tabela, sem tela |
+| 2. Gera o link | ✅ feito ([`pro/convite.tsx`](src/app/pro/convite.tsx)) — **simplificado**: parte direto do profissional escolhendo nome/e-mail/plano, sem passar por lead/atendimento (que não existem ainda) |
+| 3. Paciente paga | ❌ manual, como já era |
+| 4. Anamnese | ✅ feito ([`convite/[token].tsx`](src/app/convite/%5Btoken%5D.tsx)) — **simplificado**: mesmas seções pra todo mundo, ainda não varia por plano |
+| 5. App cria a conta | ✅ feito (perfil + anamnese + assinatura) — **falta** costurar lead/atendimento, porque eles não existem |
+| 6. Espera de ~2 dias | ❌ não iniciado — home não avisa nada, ainda mostra vazio genérico |
+| 7. Profissional monta | ✅ já existia (editores de treino/dieta) |
+| 8. Publica | ❌ não iniciado — sem rascunho/publicado, plano fica visível assim que salva |
 
 ### Sensibilização ≠ anamnese
 
@@ -661,6 +835,12 @@ Ferramentas ausentes nesta máquina: `pg_dump`, `psql` e o CLI do Supabase. Só 
 pelo MCP. Se um dia for preciso migrar de projeto de verdade, instalar o CLI do Supabase primeiro —
 copiar `auth.users` e `auth.identities` na mão via SQL é frágil e não vale o risco.
 
+⚠️ O baseline é um **snapshot de 03/set** — não se atualiza sozinho. Migrações aplicadas depois
+dele (`20260903_convite_cria_assinatura.sql`, `20260904_convite_token_default.sql`,
+`20260904_teleconsultas.sql`) não estão refletidas nas contagens acima (11 tabelas/30 policies);
+pra reconstruir o schema completo hoje, aplicar o baseline **e depois** todas as migrações
+datadas seguintes, em ordem.
+
 
 ## 16. E-mail e SMTP (investigado em 03/set)
 
@@ -683,10 +863,10 @@ reputação de envio do domínio principal.
 ### Caminho recomendado: duas etapas
 
 **Etapa 1 — agora, destrava a Fase 1 sem e-mail nenhum.**
-Desligar a confirmação de e-mail (Dashboard → Authentication → Sign In / Providers → Email →
-*Confirm email*; ou `mailer_autoconfirm` via Management API). O fluxo de cadastro é **por token de
-convite**: o profissional já conheceu o paciente, fez a call e recebeu o pagamento. O token é a
-prova de confiança, e `finalizar_cadastro_convite` ainda confere que o e-mail bate com o do convite.
+✅ **Feito em 03/set:** confirmação de e-mail desligada (Dashboard → Authentication → Sign In /
+Providers → Email → *Confirm email*). O fluxo de cadastro é **por token de convite**: o
+profissional já conheceu o paciente, fez a call e recebeu o pagamento. O token é a prova de
+confiança, e `finalizar_cadastro_convite` ainda confere que o e-mail bate com o do convite.
 
 *Custo real dessa escolha, para decidir com consciência:* e-mail digitado errado gera conta
 inalcançável; recuperação de senha continua dependendo de SMTP; e alguém poderia criar conta via
@@ -698,11 +878,10 @@ piloto, **não aceitável em escala**.
 SendGrid, ZeptoMail, Brevo). Com Resend: host `smtp.resend.com`, porta `587`, usuário `resend`,
 senha = chave de API, remetente no domínio verificado.
 
-### Falta também configurar as URLs de retorno
+### URLs de retorno
 
-Independente do SMTP: o **Site URL** do projeto precisa apontar para `https://app-treino.expo.app`
-e as redirect URLs precisam estar na allowlist — senão o link de confirmação e de recuperação leva
-para o lugar errado. Dashboard → Authentication → URL Configuration.
+✅ **Feito em 03/set:** Site URL configurado como `https://app-treino.expo.app` e a mesma URL
+adicionada às redirect URLs. Dashboard → Authentication → URL Configuration.
 
 ### O que um agente NÃO consegue fazer aqui
 

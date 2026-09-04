@@ -191,6 +191,7 @@ export function Field({
   onChangeText,
   placeholder,
   keyboardType,
+  multiline,
   style,
 }: {
   label?: string;
@@ -198,18 +199,23 @@ export function Field({
   onChangeText: (v: string) => void;
   placeholder?: string;
   keyboardType?: 'default' | 'number-pad' | 'decimal-pad';
+  /** Vira textarea de 3 linhas — usado nas perguntas de resposta longa da anamnese. */
+  multiline?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   return (
     <View style={[styles.field, style]}>
       {label ? <Text style={styles.fieldLabel}>{label}</Text> : null}
       <TextInput
-        style={styles.input}
+        style={[styles.input, multiline && styles.inputMultiline]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor={Palette.textTertiary}
         keyboardType={keyboardType}
+        multiline={multiline}
+        numberOfLines={multiline ? 3 : undefined}
+        textAlignVertical={multiline ? 'top' : undefined}
       />
     </View>
   );
@@ -402,6 +408,10 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     color: Palette.text,
     fontSize: FontSize.body,
+  },
+  inputMultiline: {
+    minHeight: 72,
+    paddingTop: Spacing.md,
   },
   toggleRow: {
     flexDirection: 'row',

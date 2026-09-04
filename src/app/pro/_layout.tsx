@@ -18,8 +18,8 @@ export default function ProLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Alunos',
-          tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} />,
+          title: 'Painel',
+          tabBarIcon: ({ color, size }) => <Ionicons name="grid" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -36,7 +36,8 @@ export default function ProLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
         }}
       />
-      {/* Detalhe do aluno: acessível por push a partir da lista, não são abas. */}
+      {/* Detalhe do aluno e geração de convite: acessíveis por push, não são abas. */}
+      <Tabs.Screen name="convite" options={{ href: null, headerShown: false }} />
       <Tabs.Screen
         name="aluno/[id]/index"
         options={{

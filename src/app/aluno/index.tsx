@@ -50,10 +50,15 @@ export default function TreinoScreen() {
   }, [user]);
 
   useEffect(() => {
+    if (!user) {
+      setData(null);
+      setLoading(true);
+      return;
+    }
     carregar();
-  }, [carregar]);
+  }, [user, carregar]);
 
-  if (loading) return <Loading />;
+  if (loading || !user) return <Loading />;
 
   const dias = data?.plano?.dias ?? [];
   if (!dias.length) {

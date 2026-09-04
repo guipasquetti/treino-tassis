@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 
 import { Body, Button, Caption, Card, Screen, SectionTitle } from '@/components/ui';
+import { formatarDataHora } from '@/models/domain';
 import { listarAlunos, listarMeusProfissionais } from '@/services/professionalService';
 import { signOut } from '@/services/authService';
+import { proximaTeleconsulta, type Teleconsulta } from '@/services/teleconsultaService';
 import { useAuthStore } from '@/store/authStore';
 import { Palette, Spacing } from '@/theme';
 
@@ -14,6 +16,7 @@ export function PerfilScreen() {
   const profile = useAuthStore((s) => s.profile);
   const isProfessional = useAuthStore((s) => s.isProfessional);
   const [vinculos, setVinculos] = useState<Vinculo[]>([]);
+  const [proximaConsulta, setProximaConsulta] = useState<Teleconsulta | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -35,6 +38,7 @@ export function PerfilScreen() {
           })),
         ),
       );
+      proximaTeleconsulta(user.id).then(setProximaConsulta);
     }
   }, [user?.id, isProfessional]);
 
@@ -56,6 +60,17 @@ export function PerfilScreen() {
           </View>
         ))}
       </Card>
+
+      {!isProfessional && proximaConsulta ? (
+        <Card>
+          <SectionTitle>Próxima consulta</SectionTitle>
+          <Body>{formatarDataHora(proximaConsulta.data_hora)}</Body>
+          <Button
+            label="Entrar na chamada"
+            onPress={() => Linking.openURL(proximaConsulta.link_meet)}
+          />
+        </Card>
+      ) : null}
 
       <SectionTitle>{isProfessional ? 'Alunos' : 'Meus profissionais'}</SectionTitle>
       {vinculos.length ? (

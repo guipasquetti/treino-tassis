@@ -7,6 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -135,7 +137,7 @@ export type Database = {
           respondido_em?: string | null
           respostas?: Json | null
           status?: string
-          token: string
+          token?: string
         }
         Update: {
           client_id?: string | null
@@ -433,6 +435,54 @@ export type Database = {
           },
           {
             foreignKeyName: "subscriptions_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teleconsultas: {
+        Row: {
+          created_at: string
+          data_hora: string
+          id: string
+          link_meet: string
+          observacoes: string
+          patient_id: string
+          professional_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          data_hora: string
+          id?: string
+          link_meet: string
+          observacoes?: string
+          patient_id: string
+          professional_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          data_hora?: string
+          id?: string
+          link_meet?: string
+          observacoes?: string
+          patient_id?: string
+          professional_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teleconsultas_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teleconsultas_professional_id_fkey"
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"

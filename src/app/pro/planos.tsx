@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, Switch, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 
 import { Body, Button, Caption, Card, EmptyState, Loading, Screen, SectionTitle } from '@/components/ui';
 import {
   alternarPlanoAtivo,
+  atualizarPlano,
   criarPlano,
   listarPlanos,
   type PlanoProfissional,
@@ -29,10 +30,15 @@ export default function PlanosScreen() {
   }, [user]);
 
   useEffect(() => {
+    if (!user) {
+      setPlanos([]);
+      setLoading(true);
+      return;
+    }
     carregar();
-  }, [carregar]);
+  }, [user, carregar]);
 
-  if (loading) return <Loading />;
+  if (loading || !user) return <Loading />;
 
   return (
     <Screen title="Planos" subtitle="O que você vende aos alunos">
@@ -58,8 +64,27 @@ export default function PlanosScreen() {
   );
 }
 
+type PlanoFormValues = {
+  nome: string;
+  preco: string;
+  periodicidade: string;
+  incluiTreino: boolean;
+  incluiDieta: boolean;
+};
+
+function valoresIniciais(plano?: PlanoProfissional): PlanoFormValues {
+  return {
+    nome: plano?.nome ?? '',
+    preco: plano ? (plano.preco_centavos !== null ? String(plano.preco_centavos / 100) : '') : '',
+    periodicidade: plano?.periodicidade ?? 'mensal',
+    incluiTreino: plano?.inclui_treino ?? true,
+    incluiDieta: plano?.inclui_dieta ?? false,
+  };
+}
+
 function PlanoCard({ plano, onMudou }: { plano: PlanoProfissional; onMudou: () => Promise<void> }) {
   const [salvando, setSalvando] = useState(false);
+  const [editando, setEditando] = useState(false);
 
   async function alternar(ativo: boolean) {
     setSalvando(true);
@@ -69,6 +94,21 @@ function PlanoCard({ plano, onMudou }: { plano: PlanoProfissional; onMudou: () =
     } finally {
       setSalvando(false);
     }
+  }
+
+  if (editando) {
+    return (
+      <PlanoForm
+        titulo="Editar plano"
+        valores={valoresIniciais(plano)}
+        onCancelar={() => setEditando(false)}
+        onSalvar={async (dados) => {
+          await atualizarPlano(plano.id, dados);
+          setEditando(false);
+          await onMudou();
+        }}
+      />
+    );
   }
 
   const modulos = [
@@ -90,7 +130,12 @@ function PlanoCard({ plano, onMudou }: { plano: PlanoProfissional; onMudou: () =
       <Caption color={Palette.text}>
         {formatarPreco(plano.preco_centavos)} · {plano.periodicidade}
       </Caption>
-      <Caption>{modulos.length ? modulos.join(' + ') : 'Nenhum módulo incluído'}</Caption>
+      <View style={styles.header}>
+        <Caption>{modulos.length ? modulos.join(' + ') : 'Nenhum módulo incluído'}</Caption>
+        <Pressable onPress={() => setEditando(true)} hitSlop={8}>
+          <Caption color={Palette.accent}>Editar</Caption>
+        </Pressable>
+      </View>
     </Card>
   );
 }
@@ -104,11 +149,41 @@ function NovoPlanoForm({
   onCriado: () => Promise<void>;
   onCancelar: () => void;
 }) {
-  const [nome, setNome] = useState('');
-  const [preco, setPreco] = useState('');
-  const [periodicidade, setPeriodicidade] = useState('mensal');
-  const [incluiTreino, setIncluiTreino] = useState(true);
-  const [incluiDieta, setIncluiDieta] = useState(false);
+  return (
+    <PlanoForm
+      titulo="Novo plano"
+      valores={valoresIniciais()}
+      onCancelar={onCancelar}
+      onSalvar={async (dados) => {
+        await criarPlano({ ...dados, professional_id: professionalId });
+        await onCriado();
+      }}
+    />
+  );
+}
+
+function PlanoForm({
+  titulo,
+  valores,
+  onSalvar,
+  onCancelar,
+}: {
+  titulo: string;
+  valores: PlanoFormValues;
+  onSalvar: (dados: {
+    nome: string;
+    preco_centavos: number | null;
+    periodicidade: string;
+    inclui_treino: boolean;
+    inclui_dieta: boolean;
+  }) => Promise<void>;
+  onCancelar: () => void;
+}) {
+  const [nome, setNome] = useState(valores.nome);
+  const [preco, setPreco] = useState(valores.preco);
+  const [periodicidade, setPeriodicidade] = useState(valores.periodicidade);
+  const [incluiTreino, setIncluiTreino] = useState(valores.incluiTreino);
+  const [incluiDieta, setIncluiDieta] = useState(valores.incluiDieta);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -121,15 +196,13 @@ function NovoPlanoForm({
     setSalvando(true);
     try {
       const precoNumero = Number(preco.replace(',', '.'));
-      await criarPlano({
-        professional_id: professionalId,
+      await onSalvar({
         nome: nome.trim(),
         inclui_treino: incluiTreino,
         inclui_dieta: incluiDieta,
         preco_centavos: preco && !Number.isNaN(precoNumero) ? Math.round(precoNumero * 100) : null,
         periodicidade,
       });
-      await onCriado();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não consegui salvar o plano.');
     } finally {
@@ -139,7 +212,7 @@ function NovoPlanoForm({
 
   return (
     <Card>
-      <SectionTitle>Novo plano</SectionTitle>
+      <SectionTitle>{titulo}</SectionTitle>
 
       <TextInput
         style={styles.input}

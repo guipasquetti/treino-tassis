@@ -37,6 +37,11 @@ export default function RootLayout() {
     // A rota "/" (raiz undefined) decide sozinha pra onde ir — ver src/app/index.tsx.
     if (raiz === undefined) return;
 
+    // Fluxo público de convite: sem sessão até o fim (ou sessão momentânea criada no meio
+    // do próprio fluxo, antes de finalizar_cadastro_convite rodar). Não pode ser
+    // redirecionado por aqui — a própria tela navega quando termina.
+    if (raiz === 'convite') return;
+
     if (!session) {
       if (raiz !== 'login') router.replace('/login');
       return;
