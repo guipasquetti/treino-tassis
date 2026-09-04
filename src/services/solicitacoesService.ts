@@ -3,8 +3,22 @@ import { supabase } from '@/lib/supabase';
 export type SolicitacaoProfissional = {
   token: string;
   profissionalNome: string;
+  especialidade: string;
   createdAt: string;
 };
+
+/**
+ * `professionals.especialidade` é texto livre (§5 do HANDOFF, sem enum ainda) — mapeia os
+ * valores conhecidos pra rótulo legível; especialidade nova/futura aparece como veio, em vez
+ * de sumir.
+ */
+export function rotuloEspecialidade(especialidade: string): string {
+  const rotulos: Record<string, string> = {
+    personal_trainer: 'Educador físico',
+    nutricionista: 'Nutricionista',
+  };
+  return rotulos[especialidade] ?? especialidade;
+}
 
 /**
  * Convites pendentes endereçados ao e-mail do usuário autenticado — o caso de quem já tinha
@@ -17,6 +31,7 @@ export async function listarSolicitacoesPendentes(): Promise<SolicitacaoProfissi
   return data.map((row) => ({
     token: row.token,
     profissionalNome: row.profissional_nome,
+    especialidade: row.especialidade,
     createdAt: row.created_at,
   }));
 }

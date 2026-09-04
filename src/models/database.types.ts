@@ -722,6 +722,7 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: {
           created_at: string
+          especialidade: string
           profissional_nome: string
           token: string
         }[]

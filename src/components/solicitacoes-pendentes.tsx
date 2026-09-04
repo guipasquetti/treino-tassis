@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { Body, Button, Caption, Card, Screen, SectionTitle } from '@/components/ui';
 import { formatarDataHora } from '@/models/domain';
 import { finalizarCadastroConvite } from '@/services/conviteService';
-import { recusarConvite, type SolicitacaoProfissional } from '@/services/solicitacoesService';
+import { recusarConvite, rotuloEspecialidade, type SolicitacaoProfissional } from '@/services/solicitacoesService';
 import { Palette, Spacing } from '@/theme';
 
 /**
@@ -68,7 +68,7 @@ function SolicitacaoCard({
   return (
     <Card>
       <SectionTitle>{solicitacao.profissionalNome}</SectionTitle>
-      <Body>Quer te acompanhar como profissional.</Body>
+      <Body>Quer te acompanhar como {rotuloEspecialidade(solicitacao.especialidade)}.</Body>
       <Caption>Pedido em {formatarDataHora(solicitacao.createdAt)}</Caption>
       {erro ? <Caption color={Palette.danger}>{erro}</Caption> : null}
       <View style={styles.acoes}>

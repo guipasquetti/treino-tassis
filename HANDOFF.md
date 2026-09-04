@@ -645,6 +645,20 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
     quiser (token `cd291a36-3f41-44fa-97a6-fec2a9bb5736`). **Não testado pela UI**: o login
     em si e a tela `SolicitacoesPendentes` renderizada de verdade — dependem de sessão real
     do Guilherme, que só ele pode fazer (nunca digito senha de ninguém, nem a minha).
+  - ✅ **Corrigido depois do teste real do Guilherme (mesmo dia)**: a tela mostrou "Seu
+    profissional" em vez do nome — achado real, não bug desta feature: `profiles.nome` do
+    próprio Tassis estava **vazio no banco** (dado de produção, provavelmente porque o
+    cadastro dele é anterior ao trigger que preenche `nome` a partir do metadata do
+    `signUp`). Corrigido com o nome real dele, já existente em `plans.treinador` ("Tassis
+    Morales") — não inventado, só copiado de outro lugar que já guardava o dado certo.
+    Pedido junto: mostrar a especialidade (Nutri x Treinador). `obter_solicitacoes_pendentes`
+    ganhou a coluna `especialidade` ([`20260904_solicitacao_com_especialidade.sql`](supabase/migrations/20260904_solicitacao_com_especialidade.sql));
+    `rotuloEspecialidade()` em [`solicitacoesService.ts`](src/services/solicitacoesService.ts)
+    traduz o texto livre de `professionals.especialidade` (`personal_trainer` → "Educador
+    físico", `nutricionista` → "Nutricionista") — valor desconhecido aparece como veio, não
+    some. Card agora mostra "Tassis Morales... Quer te acompanhar como Educador físico."
+    Verificado via nova simulação de JWT do Guilherme (mesmo método, sem mexer no pedido
+    real): nome e especialidade batendo.
 - Sem pagamento/cobrança automática ainda (schema tem `subscriptions.status`, mas nada
   muda esse status sozinho), sem contrato/LGPD.
 - Toda migração de schema é versionada em `supabase/migrations/` (convenção: `AAAAMMDD_descrição.sql`,
