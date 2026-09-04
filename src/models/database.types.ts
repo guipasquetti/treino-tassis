@@ -718,6 +718,15 @@ export type Database = {
           status: string
         }[]
       }
+      obter_solicitacoes_pendentes: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          profissional_nome: string
+          token: string
+        }[]
+      }
+      recusar_convite: { Args: { p_token: string }; Returns: boolean }
       submeter_anamnese: {
         Args: { p_respostas: Json; p_token: string }
         Returns: boolean

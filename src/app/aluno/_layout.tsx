@@ -1,31 +1,45 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Loading } from '@/components/ui';
 import { OnboardingAnamnese } from '@/components/onboarding-anamnese';
+import { SolicitacoesPendentes } from '@/components/solicitacoes-pendentes';
 import { possuiAnamnese } from '@/services/onboardingService';
+import { listarSolicitacoesPendentes, type SolicitacaoProfissional } from '@/services/solicitacoesService';
 import { useAuthStore } from '@/store/authStore';
 import { Palette } from '@/theme';
 
 /**
- * Gate de onboarding (§12, 04/set): aluno sem anamnese ainda vê o formulário aqui, não as
- * abas. Uma vez enviado, `temAnamnese` vira `true` no state local e libera as abas — sem
- * precisar de reload, porque a RPC já gravou no banco.
+ * Dois gates antes das abas (§12, 04/set):
+ * 1. Solicitações pendentes — alguém que já tinha conta recebeu convite de um profissional
+ *    novo (`SolicitacoesPendentes`); aceita/recusa sem senha, sem código.
+ * 2. Anamnese — quem ainda não respondeu vê `OnboardingAnamnese` no lugar das abas.
+ * Ambos ficam em state local, sem reload: a ação já grava no banco, só reconsulta.
  */
 export default function ClientLayout() {
   const user = useAuthStore((s) => s.user);
+  const [solicitacoes, setSolicitacoes] = useState<SolicitacaoProfissional[] | null>(null);
   const [temAnamnese, setTemAnamnese] = useState<boolean | null>(null);
+
+  const carregarSolicitacoes = useCallback(() => {
+    listarSolicitacoesPendentes().then(setSolicitacoes);
+  }, []);
 
   useEffect(() => {
     if (!user) {
+      setSolicitacoes(null);
       setTemAnamnese(null);
       return;
     }
+    carregarSolicitacoes();
     possuiAnamnese(user.id).then(setTemAnamnese);
-  }, [user]);
+  }, [user, carregarSolicitacoes]);
 
-  if (!user || temAnamnese === null) return <Loading />;
+  if (!user || solicitacoes === null || temAnamnese === null) return <Loading />;
+  if (solicitacoes.length) {
+    return <SolicitacoesPendentes solicitacoes={solicitacoes} onMudou={carregarSolicitacoes} />;
+  }
   if (!temAnamnese) return <OnboardingAnamnese onConcluido={() => setTemAnamnese(true)} />;
 
   return (

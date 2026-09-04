@@ -590,34 +590,61 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
   - **Simplificação aceita**: o gate de Treino/Dieta é tudo-ou-nada (`plan_id` nulo bloqueia
     os dois) — não olha `inclui_treino`/`inclui_dieta` do plano confirmado pra liberar só
     um dos dois. Registrado como gap, não implementado agora.
-- ✅ **Convite reconhece conta existente** (04/set — resposta ao "e se o paciente já for
-  usuário do app, de outro profissional ou de antes?"). Cogitado busca por nome na base de
-  usuários e **descartado** pela lente de segurança/LGPD (§0): exporia "essa pessoa é
-  paciente do app" pra qualquer profissional, mesmo sem relação nenhuma com ela — vira
-  diretório navegável de quem usa a plataforma. Caminho adotado: o próprio link resolve —
-  `obter_convite` passa a devolver `conta_existe` (existe `auth.users` com aquele e-mail
-  específico). Não é busca aberta: só quem já tem o token — e portanto já sabe o e-mail
-  daquela pessoa — aprende isso, e só sobre um e-mail, o do próprio convite.
-  `finalizar_cadastro_convite` não precisou mudar: já só confere que a sessão bate com o
-  e-mail do convite, não importa se veio de `signUp` ou `signIn` — cria a assinatura nova
-  pra este profissional de qualquer forma. Se a pessoa já tinha `anamnese` de outro
-  profissional, o gate de onboarding (`aluno/_layout.tsx`) já pula direto pras abas.
-  [`convite/[token].tsx`](src/app/convite/%5Btoken%5D.tsx) mostra "Bem-vindo de volta" +
-  "Entrar" quando `contaExistente`, "Bem-vindo" + "Criar acesso" quando não — mesma tela,
-  branch só no texto/ação. Validação de senha mínima (8 caracteres) só se aplica a conta
-  nova; login usa a senha que a pessoa já tem, seja qual for o tamanho (protótipo antigo
-  pedia só 6, ver §16).
-  Migração [`20260904_convite_valida_conta_existente.sql`](supabase/migrations/20260904_convite_valida_conta_existente.sql).
-  `get_advisors(security)` conferido depois: nenhum warning novo.
-  **Testado com dado real**: o convite existente do próprio Guilherme
-  (`gui.pasquetti@gmail.com`, que já tem conta de aluno) mostrou corretamente "Bem-vindo de
-  volta, Guilherme" + botão "Entrar" ao abrir o link. Não finalizei o login (não tenho a
-  senha real dele) — a tela renderiza certo, mas o fluxo completo até `/aluno` fica pra ele
-  testar. ⚠️ Esse mesmo convite ficou com `status = 'preenchido'` (resquício do fluxo antigo,
-  anterior a hoje) — `finalizar_cadastro_convite` agora só aceita `status = 'pendente'`, então
-  esse convite específico não fecha mais como está; é lead/convite de teste do próprio
-  Guilherme, não apaguei sem perguntar — se não for mais útil, dá pra gerar um novo convite
-  pro mesmo lead a qualquer momento.
+- ✅ **Convite reconhece conta existente** (04/set — resposta a "e se o paciente já for
+  usuário do app, de outro profissional ou de antes?", com **duas correções de desenho no
+  mesmo dia** antes de chegar na versão que ficou).
+  - Cogitado busca por nome na base de usuários e **descartado** pela lente de segurança/
+    LGPD (§0): exporia "essa pessoa é paciente do app" pra qualquer profissional, mesmo sem
+    relação nenhuma com ela — vira diretório navegável de quem usa a plataforma.
+  - Primeira tentativa: o link mostraria "Entrar" com a senha real de quem já tem conta.
+    **Revertida no mesmo dia** — pedir a senha de uma conta existente dentro de um link
+    mandado por outra pessoa tem exatamente a cara de phishing, e eu nunca testei essa parte
+    (recuso terminantemente digitar senha de qualquer conta, inclusive a do próprio
+    Guilherme, em qualquer campo — ver regras de segurança da sessão).
+  - Segunda ideia (código alfanumérico gerado pelo profissional, trocado por sessão via
+    `admin.generateLink`/`verifyOtp`) foi **cogitada e não implementada** — exigiria Edge
+    Function nova (primeira do projeto) segurando a `service_role key`. Descartada pela
+    ideia seguinte, mais simples e sem infra nova.
+  - **Versão que ficou**: profissional não pede senha nem código de ninguém. Se o e-mail já
+    tem conta, a pessoa simplesmente entra no app do jeito de sempre (login normal) e vê
+    **dentro do app** um pedido pendente do novo profissional — aceita ou recusa, sem
+    reautenticar nada. `convite/[token].tsx`, quando `contaExistente`, só diz "você já tem
+    conta, entra pelo login" com um botão pra `/login` — nunca mostra campo de senha pra
+    conta existente.
+  - **RPCs novas** (`SECURITY DEFINER`, mesmo padrão de sempre): `obter_solicitacoes_pendentes()`
+    devolve os convites `pendente` endereçados ao e-mail autenticado (`auth.uid()` →
+    `auth.users.email`) — não é busca, só responde sobre o próprio e-mail de quem chama;
+    `recusar_convite(p_token)` fecha o convite como `recusado` (checou que o e-mail bate,
+    igual `finalizar_cadastro_convite`). "Aceitar" reaproveita `finalizar_cadastro_convite`
+    sem nenhuma mudança — ele já só confere sessão-vs-e-mail-do-convite, indiferente a
+    `signUp` ou `signIn`.
+  - Precisou abrir o CHECK constraint de `convites.status` (só aceitava
+    `pendente`/`preenchido`/`concluido`) pra incluir `recusado`.
+  - **Novo componente** [`SolicitacoesPendentes`](src/components/solicitacoes-pendentes.tsx),
+    gate em `aluno/_layout.tsx` **antes** do gate de anamnese: se há solicitação pendente,
+    mostra ela no lugar das abas (e no lugar do onboarding); resolvida (aceita ou recusada),
+    cai pro gate seguinte normalmente.
+  - `obter_solicitacoes_pendentes` precisou de `coalesce(nullif(nome,''), 'Seu profissional')`
+    — achado real: `profiles.nome` do próprio Tassis está vazio no banco (dado de produção,
+    não causado por essa mudança), mesmo padrão de fallback já usado em `listarAlunos`.
+  - `gestaoService.ts`: contagem de "convites pendentes" no Painel corrigida de
+    `neq('status','concluido')` pra `eq('status','pendente')` — com `recusado` existindo
+    agora, a versão antiga contaria recusa como pendência.
+  - Migrações: [`20260904_convite_valida_conta_existente.sql`](supabase/migrations/20260904_convite_valida_conta_existente.sql)
+    (`obter_convite` ganha `conta_existe`) e
+    [`20260904_solicitacao_acesso_existente.sql`](supabase/migrations/20260904_solicitacao_acesso_existente.sql)
+    (as duas RPCs novas + o CHECK). `get_advisors(security)` conferido depois de cada uma:
+    nenhum warning de categoria nova, só a mesma classe já aceita (RPC `security definer`
+    anon-chamável, inofensiva porque tudo é escopado em `auth.uid()`).
+  - **Testado com dado real**: convite novo gerado (via SQL, direto — não tinha sessão do
+    Tassis no browser) pro lead real do Guilherme (`gui.pasquetti@gmail.com`, que já tem
+    conta). Abrir o link mostrou "Você já tem conta, Guilherme" + botão pro login, sem campo
+    de senha nenhum. `obter_solicitacoes_pendentes` e `recusar_convite` verificados via
+    simulação de JWT do próprio Guilherme, dentro de transação com rollback — não recusei o
+    pedido de verdade, ele continua `pendente`, aberto pro Guilherme aceitar pela UI quando
+    quiser (token `cd291a36-3f41-44fa-97a6-fec2a9bb5736`). **Não testado pela UI**: o login
+    em si e a tela `SolicitacoesPendentes` renderizada de verdade — dependem de sessão real
+    do Guilherme, que só ele pode fazer (nunca digito senha de ninguém, nem a minha).
 - Sem pagamento/cobrança automática ainda (schema tem `subscriptions.status`, mas nada
   muda esse status sozinho), sem contrato/LGPD.
 - Toda migração de schema é versionada em `supabase/migrations/` (convenção: `AAAAMMDD_descrição.sql`,

@@ -51,7 +51,7 @@ export async function obterPainelGestao(professionalId: string): Promise<PainelG
         .from('convites')
         .select('id')
         .eq('created_by', professionalId)
-        .neq('status', 'concluido'),
+        .eq('status', 'pendente'),
       listarAgenda(professionalId),
     ]);
 
