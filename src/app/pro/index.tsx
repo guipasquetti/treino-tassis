@@ -5,6 +5,7 @@ import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { Body, Button, Caption, Card, EmptyState, Field, Loading, Pill, Screen, SectionTitle, Stat } from '@/components/ui';
 import { formatarDataHora } from '@/models/domain';
 import { obterPainelGestao, type PainelGestao, type ResumoAluno } from '@/services/gestaoService';
+import { confirmarPlanoSolicitado } from '@/services/professionalService';
 import { atualizarStatusTeleconsulta, criarTeleconsulta, type TeleconsultaComPaciente } from '@/services/teleconsultaService';
 import { useAuthStore } from '@/store/authStore';
 import { Palette, Radius, Spacing } from '@/theme';
@@ -84,8 +85,18 @@ export default function PainelScreen() {
         <View style={styles.stats}>
           <Stat value={String(painel.semTreino7d)} label="Sem treino 7d+" color={Palette.orange} />
           <Stat value={String(painel.leadsPendentes)} label="Convites pendentes" color={Palette.blue} />
+          <Stat value={String(painel.solicitacoesPendentes)} label="Pedidos de plano" color={Palette.blue} />
         </View>
       </Card>
+
+      {painel.alunos.some((a) => !a.planoNome && a.planoSolicitadoId) ? (
+        <>
+          <SectionTitle>Pedidos de plano</SectionTitle>
+          {painel.alunos
+            .filter((a) => !a.planoNome && a.planoSolicitadoId)
+            .map((a) => <PedidoPlanoCard key={a.subscriptionId} aluno={a} onMudou={carregar} />)}
+        </>
+      ) : null}
 
       <SectionTitle>Atenção necessária</SectionTitle>
       {alertas.length ? (
@@ -159,6 +170,37 @@ function AlunoCard({ aluno }: { aluno: ResumoAluno }) {
           ? `Último treino: ${dias === 0 ? 'hoje' : `há ${dias} dia${dias === 1 ? '' : 's'}`}`
           : 'Nunca registrou um treino'}
       </Caption>
+    </Card>
+  );
+}
+
+/**
+ * Aluno respondeu a anamnese e pediu um plano no onboarding (§12), mas ninguém confirmou
+ * ainda — enquanto isso, treino e dieta ficam bloqueados pro aluno. "Confirmar" grava
+ * `plan_id` de verdade (`confirmarPlanoSolicitado`), que é o que libera.
+ */
+function PedidoPlanoCard({ aluno, onMudou }: { aluno: ResumoAluno; onMudou: () => Promise<void> }) {
+  const router = useRouter();
+  const [salvando, setSalvando] = useState(false);
+
+  async function confirmar() {
+    if (!aluno.planoSolicitadoId) return;
+    setSalvando(true);
+    try {
+      await confirmarPlanoSolicitado(aluno.subscriptionId, aluno.planoSolicitadoId);
+      await onMudou();
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <Card onPress={() => router.push(`/pro/aluno/${aluno.clientId}`)}>
+      <View style={styles.header}>
+        <Body style={styles.nome}>{aluno.nome}</Body>
+        <Caption color={Palette.blue}>Pediu: {aluno.planoSolicitadoNome}</Caption>
+      </View>
+      <Button label={`Confirmar ${aluno.planoSolicitadoNome}`} onPress={confirmar} loading={salvando} />
     </Card>
   );
 }

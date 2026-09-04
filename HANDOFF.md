@@ -199,7 +199,7 @@ versionado como referência.
 | `profiles` | conta (trainer/client), dados físicos (peso/altura) | 2 |
 | `professionals` | tenant — profile que virou profissional (`especialidade`) | 1 |
 | `professional_plans` | produtos que um profissional vende (`inclui_dieta`/`inclui_treino`, preço) | 1 (backfill "Padrão (migração)") |
-| `subscriptions` | vínculo real paciente↔profissional↔plano, com `status` | 1 |
+| `subscriptions` | vínculo real paciente↔profissional↔plano, com `status`; `plan_id` (confirmado pelo profissional) e `plano_solicitado_id` (pedido pelo paciente, 04/set) | 1 |
 | `plans` | plano de treino por período (`dias` jsonb), agora com `professional_id` | 1 |
 | `workout_logs` | séries executadas e finalizadas por dia/exercício | 32 |
 | `workout_drafts` | autosave do treino em andamento antes de virar log | 2 |
@@ -227,9 +227,14 @@ inteligentes, papéis `nutricionista`/`educador_fisico` explícitos (hoje `profe
 **RPCs:**
 - `is_trainer()` — legado, não usado mais em policy nenhuma (ver acima)
 - `is_professional_of(p_patient_id)` / `is_client_of(p_professional_id)` / `is_professional()` — novas, usadas nas RLS
-- `obter_convite(p_token)` — lê convite pelo token
-- `submeter_anamnese(p_token, p_respostas)` — aluno responde anamnese via convite
-- `finalizar_cadastro_convite(p_token)` — fecha convite → vira `profiles`
+- `obter_convite(p_token)` — lê nome/e-mail/status do convite pelo token
+- `submeter_anamnese(p_token, p_respostas)` — **legado desde 04/set**: gravava anamnese
+  ANTES da conta existir; ninguém mais chama isso no client (anamnese agora é pós-login,
+  ver `submeter_anamnese_autenticado`), mas a função continua no banco, inofensiva
+- `finalizar_cadastro_convite(p_token)` — fecha convite → cria `profiles` + `subscriptions`
+  (`plan_id` nulo); desde 04/set não lê mais `convites.respostas` (anamnese saiu daqui)
+- `submeter_anamnese_autenticado(p_respostas, p_plano_id)` — **novo, 04/set**: paciente
+  autenticado grava a própria anamnese + `subscriptions.plano_solicitado_id`, dentro do app
 
 Advisor de segurança do Supabase aponta que `is_professional_of`/`is_client_of`/
 `is_professional` (e as antigas) são `SECURITY DEFINER` chamáveis via RPC por `anon`/
@@ -251,31 +256,36 @@ src/
                                exceção pra rota pública /convite (não é redirecionada)
     index.tsx                 rota "/": decide login vs /aluno vs /pro (declarativo)
     login.tsx
-    convite/[token].tsx       PÚBLICA, sem login — anamnese por token (ver §8)
+    convite/[token].tsx       PÚBLICA, sem login — só criação de conta (04/set; anamnese
+                               saiu daqui, ver §8/§12)
     aluno/                    área do ALUNO (abas: Treino · Dieta · Perfil)
-      _layout.tsx  index.tsx (treino)  dieta.tsx  perfil.tsx
-    pro/                      área do PROFISSIONAL (abas: Painel · Planos · Perfil — 3,
-                               não 5; Alunos e Agenda foram fundidos no Painel em 04/set)
+      _layout.tsx              gate de onboarding (sem anamnese → OnboardingAnamnese, com
+                               anamnese → Tabs) + index.tsx (treino)  dieta.tsx  perfil.tsx
+    pro/                      área do PROFISSIONAL (abas: Painel · Leads · Planos · Perfil)
       _layout.tsx
-      index.tsx               Painel: placar, alertas, agenda de teleconsultas, lista de
-                               alunos — tudo numa tela (ver §8, decisão "por enquanto")
+      index.tsx               Painel: placar, pedidos de plano, alertas, agenda de
+                               teleconsultas, lista de alunos — tudo numa tela (§8)
+      leads.tsx                leads + atendimentos (§12) — aba, 04/set
       planos.tsx               CRUD de professional_plans
       perfil.tsx
-      convite.tsx              gera link de convite (não é aba — href:null)
+      convite.tsx              gera link de convite a partir de um lead (não é aba — href:null)
       aluno/[id]/index.tsx     editor de plano de treino (não é aba — href:null)
       aluno/[id]/dieta.tsx     editor de plano alimentar (não é aba — href:null)
   theme/index.ts              design system (paleta, spacing, radius, cores por treino)
   components/
     ui/index.tsx              Screen, Card, Button, Field, Pill, Stat, Caption...
     perfil-screen.tsx         perfil compartilhado pelos dois papéis
+    onboarding-anamnese.tsx   anamnese + escolha de plano, dentro do app (04/set, §12)
   models/
     database.types.ts         gerado do schema Supabase
     domain.ts                 tipos dos jsonb + helpers (formatarSet, somaMacros,
                                formatarDataHora...)
-    anamnese.ts                schema do formulário de anamnese (10 seções, 56 campos)
+    anamnese.ts                schema do formulário de anamnese (10 seções, 56 campos) —
+                               respondido dentro do app desde 04/set, não mais por token
   services/                   1 arquivo por domínio
     authService.ts  workoutService.ts  nutritionService.ts  professionalService.ts
-    conviteService.ts  teleconsultaService.ts  gestaoService.ts
+    conviteService.ts  teleconsultaService.ts  gestaoService.ts  leadsService.ts
+    onboardingService.ts      anamnese + plano pós-login (04/set)
   store/authStore.ts          zustand (sessão, profile, isProfessional)
   lib/supabase.ts             client tipado (com guard de SSR, ver §8)
 ```
@@ -507,13 +517,79 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
   [`professionalService.ts`](src/services/professionalService.ts) tornou `leadId`
   obrigatório (não é mais opcional). O atalho "+ Convidar" do Painel agora aponta pra
   `/pro/leads` (era `/pro/convite` direto) — não existe mais porta lateral que pule o
-  lead. Plano continua obrigatório na hora de gerar o convite (isso não mudou: é uma das
-  "opções desenhadas na conversa", só o pagamento-em-tela que estava errado).
+  lead.
   **Testado ponta a ponta**: `/pro/convite` sem lead mostra o aviso certo; lead criado →
-  "Gerar convite" prefila nome/e-mail → convite salvo com `plan_id`/`lead_id` corretos no
-  banco → link público abre direto na anamnese (sem tela de plano/pagamento no meio).
+  "Gerar convite" prefila nome/e-mail → convite salvo com `lead_id` correto no banco →
+  link público abre direto na senha (sem tela de plano/pagamento no meio).
   `get_advisors(security)` conferido depois do revert: warnings idênticos aos de antes
   desse dia, nada novo. Tudo de teste apagado do banco depois.
+  ⚠️ **Corrigido de novo, mesmo dia, ver bullet seguinte**: nem plano na tela de convite
+  ficou certo — o Guilherme esclareceu que plano é escolhido pelo PACIENTE, dentro do
+  app, depois de logar — não pelo profissional na hora de gerar o link.
+- ✅ **Anamnese e escolha de plano migram pra dentro do app autenticado** (04/set, terceira
+  correção do funil no mesmo dia). Descrição do Guilherme do fluxo real: o lead recebe o
+  link **depois** da call de sensibilização já com conta pra criar (não anamnese pra
+  preencher às cegas); cria a conta, entra, e SÓ ENTÃO responde a anamnese e escolhe o
+  plano que quer comprar — tudo dentro do app, sem sair dele. O profissional revisa e
+  decide se libera.
+  - `pro/convite.tsx` voltou a ser só nome/e-mail (plano saiu de vez daqui).
+  - `convite/[token].tsx` (link público) virou só "criar conta" — sem anamnese, sem
+    formulário nenhum. `finalizar_cadastro_convite` foi simplificado: não lê mais
+    `convites.respostas`/anamnese, só cria a `subscriptions` (`plan_id` nulo) e fecha o
+    convite/lead.
+  - **Onboarding novo dentro do app**: [`aluno/_layout.tsx`](src/app/aluno/_layout.tsx)
+    checa se o cliente já tem `anamnese` (`possuiAnamnese`); se não tiver, mostra
+    [`OnboardingAnamnese`](src/components/onboarding-anamnese.tsx) no lugar das abas —
+    mesmas seções de sempre ([`models/anamnese.ts`](src/models/anamnese.ts)) + escolha de
+    plano (`professional_plans` do profissional vinculado), tudo num envio só.
+  - `subscriptions.plano_solicitado_id` (coluna nova) guarda o que o PACIENTE pediu —
+    soft, não libera nada sozinho. `subscriptions.plan_id` continua sendo o que vale de
+    verdade (hard) — só o profissional muda isso, confirmando no Painel
+    ([`PedidoPlanoCard`](src/app/pro/index.tsx), seção "Pedidos de plano" — nova stat +
+    lista com botão "Confirmar").
+  - **RPC nova** `submeter_anamnese_autenticado(p_respostas, p_plano_id)`
+    (`SECURITY DEFINER`, escopada em `auth.uid()`) grava a anamnese e o
+    `plano_solicitado_id` — RLS **não deixa** paciente escrever direto em `anamnese` nem
+    `subscriptions` (conferido antes de construir: só existe
+    `anamnese_insert_professional`/`anamnese_update_professional` e `subscriptions_write`
+    com `professional_id = auth.uid()`), então sem essa RPC o paciente poderia tentar
+    setar o próprio `plan_id` e se auto-liberar — exatamente o que essa RPC evita ao só
+    tocar em `plano_solicitado_id`, nunca em `plan_id`.
+  - **RLS ajustada**: `professional_plans_select` não deixava o paciente ver os planos do
+    próprio profissional antes de já ter um `plan_id` setado (ovo-e-galinha — precisava
+    ver o plano pra pedir, mas só via depois de confirmado). Adicionado
+    `is_client_of(professional_id)` como alternativa — mesmo critério já usado em outras
+    tabelas, sem RLS nova de verdade.
+  - Migrações: [`20260904_anamnese_pos_login.sql`](supabase/migrations/20260904_anamnese_pos_login.sql)
+    (coluna + RPCs) e
+    [`20260904_paciente_ve_planos_do_profissional.sql`](supabase/migrations/20260904_paciente_ve_planos_do_profissional.sql)
+    (RLS). `get_advisors(security)` conferido depois de cada uma: só o warning padrão
+    (RPC nova anon-chamável, mesma classe já aceita das outras) — nenhuma categoria nova.
+  - **Testado ponta a ponta com dado real do Tassis**: lead → convite (só nome/e-mail) →
+    link público → criar conta → onboarding aparece automaticamente (não as abas) →
+    anamnese + plano enviados → `subscriptions.plano_solicitado_id` gravado certo →
+    Treino/Dieta mostram "Aguardando confirmação do profissional" → confirmação simulada
+    via transação com JWT do Tassis (mesma técnica de verificação já usada antes,
+    `subscriptions_write` permitiu o update) → `plan_id` setado → reload → Treino/Dieta
+    voltam a mostrar o estado normal ("ainda não montou plano"). Conta de teste e todo o
+    resto apagados do banco depois — o lead real "Guilherme" (criado pelo próprio
+    Guilherme) não foi tocado.
+  - ⚠️ **Observado, não corrigido**: no primeiro carregamento do onboarding logo após o
+    `signUp`, a lista de planos apareceu vazia por um instante (sessão ainda propagando
+    pro client Supabase) — um reload resolveu, e o mesmo padrão de corrida já é conhecido
+    (comentário em `authStore.ts` sobre por que o profile é carregado via `setTimeout`).
+    Não implementei retry — se aparecer de novo em uso real, vale revisitar.
+  - **Não testado pela UI**: o clique do botão "Confirmar" no Painel (`PedidoPlanoCard`)
+    em si — a sessão do browser virou a do paciente de teste durante o teste (mesmo
+    localStorage), e eu não tenho a senha real do Tassis pra logar de volta como
+    profissional. A escrita subjacente (`update subscriptions set plan_id = ...`) foi
+    verificada via simulação de JWT do Tassis, e o botão chama exatamente essa mesma
+    chamada (`confirmarPlanoSolicitado`), no mesmo padrão já usado por
+    `alternarPlanoAtivo`/`atualizarPlano`. Vale um clique manual de verificação quando o
+    Tassis testar de novo.
+  - **Simplificação aceita**: o gate de Treino/Dieta é tudo-ou-nada (`plan_id` nulo bloqueia
+    os dois) — não olha `inclui_treino`/`inclui_dieta` do plano confirmado pra liberar só
+    um dos dois. Registrado como gap, não implementado agora.
 - Sem pagamento/cobrança automática ainda (schema tem `subscriptions.status`, mas nada
   muda esse status sozinho), sem contrato/LGPD.
 - Toda migração de schema é versionada em `supabase/migrations/` (convenção: `AAAAMMDD_descrição.sql`,
@@ -669,18 +745,22 @@ O funil real do Tassis (e da maioria dos nutricionistas), na ordem:
 7. **Profissional monta** treino e dieta, vendo anamnese + suas notas da consulta.
 8. **Publica** — só então o paciente vê.
 
-### Estado de implementação por passo (04/set)
+### Estado de implementação por passo (04/set — ordem real, terceira versão no mesmo dia)
+
+A ordem mudou de verdade nesta última correção: anamnese e escolha de plano deixaram de
+acontecer ANTES da conta existir — agora acontecem DEPOIS, dentro do app autenticado.
 
 | Passo | Status |
 |---|---|
-| 1. Sensibilização/lead | ✅ feito ([`pro/leads.tsx`](src/app/pro/leads.tsx), 04/set) |
-| 2. Gera o link | ✅ feito ([`pro/convite.tsx`](src/app/pro/convite.tsx)) — só nasce **de um lead** (`?leadId=` obrigatório, prefill nome/e-mail); plano obrigatório se há algum ativo, decidido na call |
-| 3. Paciente paga | ❌ manual, fora do app — sem tela/etapa própria (tentativa de link de pagamento em tela foi revertida no mesmo dia, ver §8) |
-| 4. Anamnese | ✅ feito ([`convite/[token].tsx`](src/app/convite/%5Btoken%5D.tsx)) — **simplificado**: mesmas seções pra todo mundo, ainda não varia por plano |
-| 5. App cria a conta | ✅ feito (perfil + anamnese + assinatura + fecha o lead como `convertido` quando o convite veio de um) |
-| 6. Espera de ~2 dias | ❌ não iniciado — home não avisa nada, ainda mostra vazio genérico |
-| 7. Profissional monta | ✅ já existia (editores de treino/dieta) |
-| 8. Publica | ❌ não iniciado — sem rascunho/publicado, plano fica visível assim que salva |
+| 1. Sensibilização/lead | ✅ feito ([`pro/leads.tsx`](src/app/pro/leads.tsx), 04/set) — cria lead + atendimento na call |
+| 2. Gera o link | ✅ feito ([`pro/convite.tsx`](src/app/pro/convite.tsx)) — só nome/e-mail, sempre a partir de um lead (`?leadId=` obrigatório) |
+| 3. Lead cria a conta | ✅ feito ([`convite/[token].tsx`](src/app/convite/%5Btoken%5D.tsx)) — link público só pede senha; assinatura nasce `'ativa'` com `plan_id` nulo |
+| 4. Anamnese + escolha de plano | ✅ feito ([`OnboardingAnamnese`](src/components/onboarding-anamnese.tsx), dentro do app, autenticado) — grava `plano_solicitado_id` (pedido, não confirmado) |
+| 5. Profissional confirma o plano | ✅ feito (Painel, seção "Pedidos de plano") — grava `plan_id` de verdade, libera Treino/Dieta |
+| 6. Paciente paga | ❌ manual, fora do app — confirmação de pagamento acontece antes do profissional clicar "Confirmar" no passo 5, sem integração |
+| 7. Espera de ~2 dias | ❌ não iniciado — home não avisa nada, ainda mostra vazio genérico |
+| 8. Profissional monta | ✅ já existia (editores de treino/dieta) |
+| 9. Publica | ❌ não iniciado — sem rascunho/publicado, plano fica visível assim que salva |
 
 ### Sensibilização ≠ anamnese
 

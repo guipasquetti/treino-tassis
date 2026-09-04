@@ -14,6 +14,8 @@ export type PainelGestao = {
   semPlano: number;
   semTreino7d: number;
   leadsPendentes: number;
+  /** Pediu um plano no onboarding (§12) mas o profissional ainda não confirmou. */
+  solicitacoesPendentes: number;
   /** Agenda completa (todos os status), ordenada por data — a tela decide o que mostrar. */
   agenda: TeleconsultaComPaciente[];
   alunos: ResumoAluno[];
@@ -79,6 +81,7 @@ export async function obterPainelGestao(professionalId: string): Promise<PainelG
       return dias === null || dias > 7;
     }).length,
     leadsPendentes: convites?.length ?? 0,
+    solicitacoesPendentes: resumos.filter((a) => !a.planoNome && a.planoSolicitadoId).length,
     agenda,
     alunos: resumos,
   };

@@ -1,9 +1,9 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, TextInput } from 'react-native';
 
-import { Body, Button, Caption, Card, EmptyState, Field, Pill, Screen, SectionTitle } from '@/components/ui';
-import { criarConvite, listarPlanos, type PlanoProfissional } from '@/services/professionalService';
+import { Body, Button, Caption, Card, EmptyState, Field, Screen, SectionTitle } from '@/components/ui';
+import { criarConvite } from '@/services/professionalService';
 import { vincularConviteAoLead } from '@/services/leadsService';
 import { useAuthStore } from '@/store/authStore';
 import { Palette, Radius, Spacing, FontSize } from '@/theme';
@@ -16,31 +16,22 @@ function baseUrl(): string {
 
 /**
  * Convite só nasce de um lead (decisão do Guilherme, 04/set): antes da call de sensibilização
- * não tem nome/e-mail/plano de verdade pra colocar aqui, e o lead não entenderia receber um
- * link "frio". `leadId` vem do card do lead em `pro/leads.tsx` — sem ele, a tela só orienta a
- * criar o lead primeiro, não deixa gerar convite às cegas.
+ * não tem nome/e-mail de verdade pra colocar aqui, e o lead não entenderia receber um link
+ * "frio". `leadId` vem do card do lead em `pro/leads.tsx` — sem ele, a tela só orienta a criar
+ * o lead primeiro, não deixa gerar convite às cegas.
+ *
+ * Sem plano aqui (04/set, segunda correção): o paciente escolhe o plano dentro do app, depois
+ * de criar a conta — ver `OnboardingAnamnese`. Esta tela só identifica quem vai receber o link.
  */
 export default function ConviteScreen() {
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
   const params = useLocalSearchParams<{ leadId?: string; nome?: string; email?: string }>();
-  const [planos, setPlanos] = useState<PlanoProfissional[]>([]);
   const [nome, setNome] = useState(params.nome ?? '');
   const [email, setEmail] = useState(params.email ?? '');
-  const [planoId, setPlanoId] = useState<string | null>(null);
   const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
-
-  const carregarPlanos = useCallback(async () => {
-    if (!user) return;
-    const todos = await listarPlanos(user.id);
-    setPlanos(todos.filter((p) => p.ativo));
-  }, [user]);
-
-  useEffect(() => {
-    carregarPlanos();
-  }, [carregarPlanos]);
 
   async function gerar() {
     if (!user || !params.leadId) return;
@@ -52,10 +43,6 @@ export default function ConviteScreen() {
       setErro('E-mail parece inválido.');
       return;
     }
-    if (planos.length && !planoId) {
-      setErro('Escolhe o plano — foi decidido na call de sensibilização.');
-      return;
-    }
     setErro(null);
     setCriando(true);
     try {
@@ -63,7 +50,6 @@ export default function ConviteScreen() {
         professionalId: user.id,
         nome: nome.trim(),
         email: email.trim().toLowerCase(),
-        planId: planoId,
         leadId: params.leadId,
       });
       await vincularConviteAoLead(params.leadId, convite.id);
@@ -98,7 +84,10 @@ export default function ConviteScreen() {
             selectTextOnFocus
             multiline
           />
-          <Caption>Toque no link e copie — mande pelo WhatsApp de sempre.</Caption>
+          <Caption>
+            Toque no link e copie — mande pelo WhatsApp de sempre. O plano é escolhido pelo
+            próprio aluno dentro do app, depois de criar a conta.
+          </Caption>
         </Card>
         <Button label="Voltar pros leads" onPress={() => router.push('/pro/leads')} />
       </Screen>
@@ -106,7 +95,7 @@ export default function ConviteScreen() {
   }
 
   return (
-    <Screen title="Convidar aluno" subtitle="Gera o link de anamnese pra este lead">
+    <Screen title="Convidar aluno" subtitle="Gera o link de acesso pra este lead">
       <Card>
         <Field label="Nome" value={nome} onChangeText={setNome} placeholder="Nome do paciente" />
         <Field
@@ -118,24 +107,6 @@ export default function ConviteScreen() {
         />
       </Card>
 
-      <Card>
-        <SectionTitle>Plano vendido</SectionTitle>
-        {planos.length ? (
-          <View style={styles.planos}>
-            {planos.map((plano) => (
-              <Pill
-                key={plano.id}
-                label={plano.nome}
-                active={planoId === plano.id}
-                onPress={() => setPlanoId((atual) => (atual === plano.id ? null : plano.id))}
-              />
-            ))}
-          </View>
-        ) : (
-          <Caption>Nenhum plano ativo — crie um em Planos antes de convidar.</Caption>
-        )}
-      </Card>
-
       {erro ? <Caption color={Palette.danger}>{erro}</Caption> : null}
       <Button label="Gerar convite" onPress={gerar} loading={criando} />
     </Screen>
@@ -143,11 +114,6 @@ export default function ConviteScreen() {
 }
 
 const styles = StyleSheet.create({
-  planos: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-  },
   linkInput: {
     backgroundColor: Palette.surfaceElevated,
     borderRadius: Radius.sm,

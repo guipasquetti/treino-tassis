@@ -4,23 +4,36 @@ import { StyleSheet, View } from 'react-native';
 import { Body, Caption, Card, EmptyState, Loading, Screen, SectionTitle, Stat } from '@/components/ui';
 import { somaMacros, type ItemRefeicao, type Refeicao } from '@/models/domain';
 import { getPlanoAlimentar, type PlanoAlimentar } from '@/services/nutritionService';
+import { temPlanoConfirmado } from '@/services/professionalService';
 import { useAuthStore } from '@/store/authStore';
 import { MacroColors, Palette, Radius, Spacing } from '@/theme';
 
 export default function DietaScreen() {
   const user = useAuthStore((s) => s.user);
   const [plano, setPlano] = useState<PlanoAlimentar | null>(null);
+  const [liberado, setLiberado] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    getPlanoAlimentar(user.id).then((resultado) => {
-      setPlano(resultado);
-      setLoading(false);
-    });
+    Promise.all([getPlanoAlimentar(user.id), temPlanoConfirmado(user.id)]).then(
+      ([resultado, confirmado]) => {
+        setPlano(resultado);
+        setLiberado(confirmado);
+        setLoading(false);
+      }
+    );
   }, [user?.id]);
 
   if (loading) return <Loading />;
+
+  if (!liberado) {
+    return (
+      <Screen title="Dieta">
+        <EmptyState text="Aguardando seu profissional confirmar o plano contratado pra liberar a dieta." />
+      </Screen>
+    );
+  }
 
   if (!plano || !plano.refeicoes.length) {
     return (

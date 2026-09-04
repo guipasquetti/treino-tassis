@@ -1,11 +1,12 @@
 /**
- * Schema do formulário de anamnese (convite público, sem login).
+ * Schema do formulário de anamnese — respondido DENTRO do app, autenticado, no onboarding
+ * (`OnboardingAnamnese`, ver `aluno/_layout.tsx`), não mais num link público (§12, 04/set).
  *
  * Fiel ao protótipo (`prototype/index.html`, array `PERGUNTAS_ANAMNESE`): mesmas seções,
  * mesmos campos, mesmo `id` — o `id` de cada campo é a chave gravada no JSONB
- * `convites.respostas`, e `finalizar_cadastro_convite` (SQL) lê algumas dessas chaves por
- * nome exato (`nome_completo`, `telefone`, `data_nascimento`, `altura_cm`, `peso_atual`,
- * `objetivo_principal`, `pratica_atividade`, `limitacao_fisica`, `patologias`,
+ * `anamnese.respostas_completas`, e a RPC `submeter_anamnese_autenticado` lê algumas dessas
+ * chaves por nome exato (`nome_completo`, `telefone`, `data_nascimento`, `altura_cm`,
+ * `peso_atual`, `objetivo_principal`, `pratica_atividade`, `limitacao_fisica`, `patologias`,
  * `medicamentos`, `cirurgias`, `historico_familiar`, `nao_consome`,
  * `intolerancias_alergias`, `observacoes_finais`). Não renomear sem atualizar a função SQL.
  *

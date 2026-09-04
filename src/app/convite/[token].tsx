@@ -1,30 +1,24 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Body, Button, Caption, Card, Field, Loading, Screen, SectionTitle } from '@/components/ui';
-import { SECOES_ANAMNESE, type RespostasAnamnese } from '@/models/anamnese';
+import { Body, Button, Caption, Loading } from '@/components/ui';
 import { signUp } from '@/services/authService';
-import {
-  finalizarCadastroConvite,
-  obterConvite,
-  submeterAnamnese,
-  type ConviteInfo,
-} from '@/services/conviteService';
+import { finalizarCadastroConvite, obterConvite, type ConviteInfo } from '@/services/conviteService';
 import { FontSize, Palette, Radius, Spacing } from '@/theme';
 
 /**
- * Tela pública de convite — sem login. Espelha o fluxo do protótipo
- * (`prototype/index.html`, `iniciarFluxoConvite`/`enviarAnamnese`/`criarSenhaConvite`):
- * anamnese numa página só (sem wizard, sem campo obrigatório) → cria senha → vira conta.
+ * Tela pública de convite — sem login, só cria a conta (§12, 04/set). A anamnese e a escolha
+ * de plano deixaram de acontecer aqui: acontecem DENTRO do app, autenticado, logo depois do
+ * primeiro login (ver `OnboardingAnamnese` em `aluno/_layout.tsx`) — o lead baixa o app,
+ * cria a conta, entra, e só então responde tudo, sem sair do app.
  *
- * O token na URL é o único segredo desse fluxo (as RPCs de leitura/escrita são públicas
- * por design — ver `conviteService.ts` e §0/§16 do HANDOFF). Nada aqui grava as respostas
- * fora do Supabase: sem AsyncStorage, sem persistência local do conteúdo de saúde.
+ * O token na URL é o único segredo desse fluxo (a RPC de leitura é pública por design — ver
+ * `conviteService.ts` e §0/§16 do HANDOFF).
  */
 
-type Etapa = 'carregando' | 'formulario' | 'senha' | 'concluindo' | 'invalido';
+type Etapa = 'carregando' | 'senha' | 'concluindo' | 'invalido';
 
 export default function ConviteScreen() {
   const { token } = useLocalSearchParams<{ token: string }>();
@@ -32,7 +26,6 @@ export default function ConviteScreen() {
 
   const [etapa, setEtapa] = useState<Etapa>('carregando');
   const [convite, setConvite] = useState<ConviteInfo | null>(null);
-  const [respostas, setRespostas] = useState<RespostasAnamnese>({});
   const [senha, setSenha] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -45,31 +38,9 @@ export default function ConviteScreen() {
         return;
       }
       setConvite(info);
-      setEtapa(info.status === 'preenchido' ? 'senha' : 'formulario');
+      setEtapa('senha');
     });
   }, [token]);
-
-  const atualizarResposta = useCallback((id: string, valor: string) => {
-    setRespostas((atual) => ({ ...atual, [id]: valor }));
-  }, []);
-
-  async function enviarRespostas() {
-    if (!token) return;
-    setErro(null);
-    setEnviando(true);
-    try {
-      const ok = await submeterAnamnese(token, respostas);
-      if (!ok) {
-        setEtapa('invalido');
-        return;
-      }
-      setEtapa('senha');
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Não consegui enviar suas respostas.');
-    } finally {
-      setEnviando(false);
-    }
-  }
 
   async function criarAcesso() {
     if (!token || !convite) return;
@@ -80,8 +51,7 @@ export default function ConviteScreen() {
     setErro(null);
     setEnviando(true);
     try {
-      const nome = respostas.nome_completo || convite.nome;
-      const { session } = await signUp(convite.email, senha, nome);
+      const { session } = await signUp(convite.email, senha, convite.nome);
       if (!session) {
         setErro('Conta criada — confirme seu e-mail e depois entre normalmente pra concluir.');
         return;
@@ -118,66 +88,33 @@ export default function ConviteScreen() {
     );
   }
 
-  if (etapa === 'senha') {
-    return (
-      <SafeAreaView style={styles.screen}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.container}>
-          <View style={styles.brand}>
-            <Body style={styles.titulo}>Quase lá</Body>
-            <Caption>Crie uma senha pra acessar seu treino e sua dieta.</Caption>
-          </View>
-          <View style={styles.form}>
-            <Caption>{convite?.email}</Caption>
-            <TextInput
-              style={styles.senhaInput}
-              value={senha}
-              onChangeText={setSenha}
-              placeholder="Senha (mín. 8 caracteres)"
-              placeholderTextColor={Palette.textTertiary}
-              secureTextEntry
-              autoCapitalize="none"
-              autoComplete="new-password"
-              onSubmitEditing={criarAcesso}
-            />
-            {erro ? <Caption color={Palette.danger}>{erro}</Caption> : null}
-            <Button label="Criar acesso" onPress={criarAcesso} loading={enviando} />
-          </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <Screen title="Anamnese" subtitle={convite ? `Convite de ${convite.nome}` : undefined}>
-      <Card>
-        <Caption>
-          Suas respostas são usadas só pelo profissional que te convidou, pra montar seu plano.
-          Nenhum campo é obrigatório — responda o que fizer sentido.
-        </Caption>
-      </Card>
-
-      {SECOES_ANAMNESE.map((secao) => (
-        <Card key={secao.titulo}>
-          <SectionTitle>{secao.titulo}</SectionTitle>
-          {secao.campos.map((campo) => (
-            <Field
-              key={campo.id}
-              label={campo.label}
-              value={respostas[campo.id] ?? ''}
-              onChangeText={(v) => atualizarResposta(campo.id, v)}
-              placeholder={campo.placeholder}
-              keyboardType={campo.tipo === 'numero' ? 'decimal-pad' : 'default'}
-              multiline={campo.tipo === 'area'}
-            />
-          ))}
-        </Card>
-      ))}
-
-      {erro ? <Caption color={Palette.danger}>{erro}</Caption> : null}
-      <Button label="Enviar respostas" onPress={enviarRespostas} loading={enviando} />
-    </Screen>
+    <SafeAreaView style={styles.screen}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.container}>
+        <View style={styles.brand}>
+          <Body style={styles.titulo}>Bem-vindo, {convite?.nome.split(' ')[0]}</Body>
+          <Caption>Crie uma senha pra acessar o app — a anamnese e o plano vêm em seguida.</Caption>
+        </View>
+        <View style={styles.form}>
+          <Caption>{convite?.email}</Caption>
+          <TextInput
+            style={styles.senhaInput}
+            value={senha}
+            onChangeText={setSenha}
+            placeholder="Senha (mín. 8 caracteres)"
+            placeholderTextColor={Palette.textTertiary}
+            secureTextEntry
+            autoCapitalize="none"
+            autoComplete="new-password"
+            onSubmitEditing={criarAcesso}
+          />
+          {erro ? <Caption color={Palette.danger}>{erro}</Caption> : null}
+          <Button label="Criar acesso" onPress={criarAcesso} loading={enviando} />
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 

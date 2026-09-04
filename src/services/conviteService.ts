@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import type { RespostasAnamnese } from '@/models/anamnese';
 
 export type ConviteInfo = {
   nome: string;
@@ -16,20 +15,6 @@ export async function obterConvite(token: string): Promise<ConviteInfo | null> {
   const { data, error } = await supabase.rpc('obter_convite', { p_token: token });
   if (error || !data || data.length === 0) return null;
   return data[0];
-}
-
-/**
- * Grava as respostas da anamnese no convite (ainda sem conta — token é a única prova de
- * posse). Só grava se `status = 'pendente'`; reenvio com o mesmo token depois de já
- * enviado retorna `false` sem sobrescrever.
- */
-export async function submeterAnamnese(token: string, respostas: RespostasAnamnese): Promise<boolean> {
-  const { data, error } = await supabase.rpc('submeter_anamnese', {
-    p_token: token,
-    p_respostas: respostas,
-  });
-  if (error) throw error;
-  return data === true;
 }
 
 /**

@@ -523,6 +523,7 @@ export type Database = {
           id: string
           patient_id: string
           plan_id: string | null
+          plano_solicitado_id: string | null
           professional_id: string
           started_at: string
           status: string
@@ -533,6 +534,7 @@ export type Database = {
           id?: string
           patient_id: string
           plan_id?: string | null
+          plano_solicitado_id?: string | null
           professional_id: string
           started_at?: string
           status?: string
@@ -543,6 +545,7 @@ export type Database = {
           id?: string
           patient_id?: string
           plan_id?: string | null
+          plano_solicitado_id?: string | null
           professional_id?: string
           started_at?: string
           status?: string
@@ -558,6 +561,13 @@ export type Database = {
           {
             foreignKeyName: "subscriptions_plan_id_fkey"
             columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "professional_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_plano_solicitado_id_fkey"
+            columns: ["plano_solicitado_id"]
             isOneToOne: false
             referencedRelation: "professional_plans"
             referencedColumns: ["id"]
@@ -709,6 +719,10 @@ export type Database = {
       }
       submeter_anamnese: {
         Args: { p_respostas: Json; p_token: string }
+        Returns: boolean
+      }
+      submeter_anamnese_autenticado: {
+        Args: { p_plano_id?: string; p_respostas: Json }
         Returns: boolean
       }
     }

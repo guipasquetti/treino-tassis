@@ -32,19 +32,25 @@ import {
   sugerirSerie,
   type WorkoutData,
 } from '@/services/workoutService';
+import { temPlanoConfirmado } from '@/services/professionalService';
 import { useAuthStore } from '@/store/authStore';
 import { Palette, Radius, Spacing, trainingColor } from '@/theme';
 
 export default function TreinoScreen() {
   const user = useAuthStore((s) => s.user);
   const [data, setData] = useState<WorkoutData | null>(null);
+  const [liberado, setLiberado] = useState(true);
   const [loading, setLoading] = useState(true);
   const [diaAtivo, setDiaAtivo] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     if (!user) return;
-    const resultado = await getWorkoutData(user.id);
+    const [resultado, confirmado] = await Promise.all([
+      getWorkoutData(user.id),
+      temPlanoConfirmado(user.id),
+    ]);
     setData(resultado);
+    setLiberado(confirmado);
     setDiaAtivo((atual) => atual ?? resultado.plano?.dias[0]?.id ?? null);
     setLoading(false);
   }, [user]);
@@ -59,6 +65,14 @@ export default function TreinoScreen() {
   }, [user, carregar]);
 
   if (loading || !user) return <Loading />;
+
+  if (!liberado) {
+    return (
+      <Screen title="Treino">
+        <EmptyState text="Aguardando seu profissional confirmar o plano contratado pra liberar o treino." />
+      </Screen>
+    );
+  }
 
   const dias = data?.plano?.dias ?? [];
   if (!dias.length) {

@@ -9,6 +9,9 @@ export type AlunoVinculado = {
   nome: string;
   status: string;
   planoNome: string | null;
+  /** Plano que o próprio paciente pediu no onboarding (§12) — ainda não confirmado. */
+  planoSolicitadoId: string | null;
+  planoSolicitadoNome: string | null;
   /** Data da última série registrada, se houver. */
   ultimoTreino: string | null;
 };
@@ -24,7 +27,10 @@ export async function listarAlunos(professionalId: string): Promise<AlunoVincula
   if (!subscriptions.length) return [];
 
   const clientIds = subscriptions.map((s) => s.patient_id);
-  const planIds = subscriptions.map((s) => s.plan_id).filter((id): id is string => !!id);
+  const planIds = [
+    ...subscriptions.map((s) => s.plan_id),
+    ...subscriptions.map((s) => s.plano_solicitado_id),
+  ].filter((id): id is string => !!id);
 
   const [{ data: perfis }, { data: planos }, { data: logs }] = await Promise.all([
     supabase.from('profiles').select('id, nome').in('id', clientIds),
@@ -49,6 +55,8 @@ export async function listarAlunos(professionalId: string): Promise<AlunoVincula
     nome: perfis?.find((p) => p.id === sub.patient_id)?.nome || 'Aluno',
     status: sub.status,
     planoNome: planos?.find((p) => p.id === sub.plan_id)?.nome ?? null,
+    planoSolicitadoId: sub.plano_solicitado_id,
+    planoSolicitadoNome: planos?.find((p) => p.id === sub.plano_solicitado_id)?.nome ?? null,
     ultimoTreino: ultimoPorCliente.get(sub.patient_id) ?? null,
   }));
 }
@@ -95,6 +103,25 @@ export async function listarMeusProfissionais(clientId: string): Promise<Profiss
   }));
 }
 
+/**
+ * Confirma o plano pedido pelo paciente no onboarding — grava em `plan_id`, o campo que
+ * realmente libera treino/dieta (§12, 04/set). RLS já permite: `subscriptions_write` deixa o
+ * profissional dono (`professional_id = auth.uid()`) escrever na própria assinatura.
+ */
+export async function confirmarPlanoSolicitado(subscriptionId: string, planoId: string): Promise<void> {
+  const { error } = await supabase
+    .from('subscriptions')
+    .update({ plan_id: planoId })
+    .eq('id', subscriptionId);
+  if (error) throw error;
+}
+
+/** Se algum profissional já confirmou um plano pra este paciente — gate de treino/dieta. */
+export async function temPlanoConfirmado(clientId: string): Promise<boolean> {
+  const profissionais = await listarMeusProfissionais(clientId);
+  return profissionais.some((p) => p.planoNome);
+}
+
 export async function listarPlanos(professionalId: string): Promise<PlanoProfissional[]> {
   const { data } = await supabase
     .from('professional_plans')
@@ -120,19 +147,20 @@ export async function alternarPlanoAtivo(planoId: string, ativo: boolean): Promi
 export type ConviteCriado = { id: string; token: string };
 
 /**
- * Cria o convite (nome/e-mail do futuro paciente + plano vendido) e devolve o token — o
- * banco gera o token (`gen_random_uuid()`, ver migração `20260904_convite_token_default`),
- * não o client. RLS confere que `created_by` é o próprio profissional autenticado.
+ * Cria o convite (só nome/e-mail do futuro paciente) e devolve o token — o banco gera o
+ * token (`gen_random_uuid()`, ver migração `20260904_convite_token_default`), não o client.
+ * RLS confere que `created_by` é o próprio profissional autenticado.
  *
- * Sempre nasce de um lead (§12, decisão de 04/set): não existe convite "frio" — nome/e-mail/
- * plano só existem depois da call de sensibilização, e é o `leadId` que o RPC de fechamento
- * usa pra marcar o lead como convertido.
+ * Sempre nasce de um lead (§12, decisão de 04/set): não existe convite "frio" — é o `leadId`
+ * que o RPC de fechamento usa pra marcar o lead como convertido. Plano deixou de ser
+ * escolhido aqui (04/set, segunda correção): o paciente escolhe o plano dentro do app,
+ * autenticado, depois de criar a conta (ver `onboardingService.ts`) — o profissional confirma
+ * depois (`confirmarPlanoSolicitado`).
  */
 export async function criarConvite(params: {
   professionalId: string;
   nome: string;
   email: string;
-  planId: string | null;
   leadId: string;
 }): Promise<ConviteCriado> {
   const { data, error } = await supabase
@@ -141,7 +169,6 @@ export async function criarConvite(params: {
       nome: params.nome,
       email: params.email,
       created_by: params.professionalId,
-      plan_id: params.planId,
       lead_id: params.leadId,
     })
     .select('id, token')
