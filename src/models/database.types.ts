@@ -454,6 +454,69 @@ export type Database = {
           },
         ]
       }
+      professional_verificacoes: {
+        Row: {
+          bio: string | null
+          cpf: string | null
+          created_at: string
+          documento_path: string | null
+          id: string
+          motivo_rejeicao: string | null
+          numero_registro: string
+          professional_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          uf_registro: string
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          cpf?: string | null
+          created_at?: string
+          documento_path?: string | null
+          id?: string
+          motivo_rejeicao?: string | null
+          numero_registro: string
+          professional_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          uf_registro: string
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          cpf?: string | null
+          created_at?: string
+          documento_path?: string | null
+          id?: string
+          motivo_rejeicao?: string | null
+          numero_registro?: string
+          professional_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          uf_registro?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_verificacoes_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: true
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_verificacoes_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professionals: {
         Row: {
           created_at: string
@@ -487,6 +550,7 @@ export type Database = {
           data_nascimento: string | null
           email: string | null
           id: string
+          is_admin: boolean
           nome: string
           peso_kg: number | null
           role: string
@@ -498,6 +562,7 @@ export type Database = {
           data_nascimento?: string | null
           email?: string | null
           id: string
+          is_admin?: boolean
           nome?: string
           peso_kg?: number | null
           role?: string
@@ -509,6 +574,7 @@ export type Database = {
           data_nascimento?: string | null
           email?: string | null
           id?: string
+          is_admin?: boolean
           nome?: string
           peso_kg?: number | null
           role?: string
@@ -701,14 +767,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cadastrar_profissional: {
+        Args: {
+          p_bio?: string
+          p_cpf: string
+          p_documento_path: string
+          p_especialidade: string
+          p_nome: string
+          p_numero_registro: string
+          p_uf_registro: string
+        }
+        Returns: boolean
+      }
       finalizar_cadastro_convite: {
         Args: { p_token: string }
         Returns: boolean
       }
+      is_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_client_of: { Args: { p_professional_id: string }; Returns: boolean }
-      is_professional: { Args: never; Returns: boolean }
+      is_professional: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_professional_of: { Args: { p_patient_id: string }; Returns: boolean }
-      is_trainer: { Args: never; Returns: boolean }
+      is_trainer: { Args: Record<PropertyKey, never>; Returns: boolean }
       obter_convite: {
         Args: { p_token: string }
         Returns: {

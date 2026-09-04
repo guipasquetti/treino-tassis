@@ -7,6 +7,7 @@ import { formatarDataHora } from '@/models/domain';
 import { obterPainelGestao, type PainelGestao, type ResumoAluno } from '@/services/gestaoService';
 import { confirmarPlanoSolicitado } from '@/services/professionalService';
 import { atualizarStatusTeleconsulta, criarTeleconsulta, type TeleconsultaComPaciente } from '@/services/teleconsultaService';
+import { obterMinhaVerificacao, type VerificacaoProfissional } from '@/services/verificacaoService';
 import { useAuthStore } from '@/store/authStore';
 import { Palette, Radius, Spacing } from '@/theme';
 
@@ -42,12 +43,18 @@ export default function PainelScreen() {
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
   const [painel, setPainel] = useState<PainelGestao | null>(null);
+  const [verificacao, setVerificacao] = useState<VerificacaoProfissional | null>(null);
   const [loading, setLoading] = useState(true);
   const [agendando, setAgendando] = useState(false);
 
   const carregar = useCallback(async () => {
     if (!user) return;
-    setPainel(await obterPainelGestao(user.id));
+    const [dadosPainel, dadosVerificacao] = await Promise.all([
+      obterPainelGestao(user.id),
+      obterMinhaVerificacao(user.id),
+    ]);
+    setPainel(dadosPainel);
+    setVerificacao(dadosVerificacao);
     setLoading(false);
   }, [user]);
 
@@ -76,6 +83,20 @@ export default function PainelScreen() {
           </Caption>
         </Pressable>
       }>
+      {verificacao && verificacao.status !== 'aprovado' ? (
+        <Card style={verificacao.status === 'rejeitado' ? styles.avisoRejeitado : styles.avisoPendente}>
+          <SectionTitle>
+            {verificacao.status === 'rejeitado' ? 'Verificação rejeitada' : 'Verificação pendente'}
+          </SectionTitle>
+          <Caption color={Palette.text}>
+            Registro {verificacao.numeroRegistro}/{verificacao.ufRegistro}
+            {verificacao.status === 'rejeitado'
+              ? ` — ${verificacao.motivoRejeicao || 'fala com a gente pra entender o motivo.'}`
+              : ' ainda em análise. Seu Painel já funciona normalmente enquanto isso.'}
+          </Caption>
+        </Card>
+      ) : null}
+
       <Card>
         <View style={styles.stats}>
           <Stat value={String(painel.totalAlunos)} label="Total" />
@@ -352,6 +373,14 @@ function NovaConsultaForm({
 }
 
 const styles = StyleSheet.create({
+  avisoPendente: {
+    borderWidth: 1,
+    borderColor: Palette.blue,
+  },
+  avisoRejeitado: {
+    borderWidth: 1,
+    borderColor: Palette.danger,
+  },
   convidar: {
     backgroundColor: Palette.accent,
     borderRadius: Radius.pill,

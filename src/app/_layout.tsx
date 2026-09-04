@@ -42,10 +42,19 @@ export default function RootLayout() {
     // redirecionado por aqui — a própria tela navega quando termina.
     if (raiz === 'convite') return;
 
+    // Cadastro de profissional (§0, 04/set): mesma lógica — sem sessão até o fim, ou sessão
+    // momentânea criada no meio do próprio fluxo (signUp acontece antes de
+    // cadastrar_profissional rodar).
+    if (raiz === 'cadastro-profissional') return;
+
     if (!session) {
       if (raiz !== 'login') router.replace('/login');
       return;
     }
+
+    // Admin (04/set) é ortogonal a aluno/profissional — o Guilherme, por exemplo, é cliente
+    // do Tassis E admin. Não pode cair na regra de área abaixo.
+    if (raiz === 'admin') return;
 
     // Espera saber o papel antes de escolher a área — senão o aluno pisca na tela do
     // profissional (ou vice-versa) no primeiro render depois do login.

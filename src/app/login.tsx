@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +8,7 @@ import { signIn } from '@/services/authService';
 import { FontSize, Palette, Radius, Spacing } from '@/theme';
 
 export default function LoginScreen() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState<string | null>(null);
@@ -66,6 +68,11 @@ export default function LoginScreen() {
           {erro ? <Caption color={Palette.danger}>{erro}</Caption> : null}
 
           <Button label="Entrar" onPress={entrar} loading={entrando} />
+          <Button
+            label="Sou profissional e quero me cadastrar"
+            variant="ghost"
+            onPress={() => router.push('/cadastro-profissional')}
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

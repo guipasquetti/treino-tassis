@@ -152,7 +152,8 @@ Reels/TikTok.
 | Estado | Zustand (`src/store/authStore.ts`) |
 | UI | Design system próprio (`src/theme`) + `@expo/vector-icons` — **sem lib de componentes** |
 | Persistência local | AsyncStorage + Expo SecureStore |
-| Backend | Supabase (Postgres + Auth + RLS) |
+| Backend | Supabase (Postgres + Auth + RLS + Storage, desde 04/set — bucket privado `documentos-profissionais`) |
+| Upload de arquivo | `expo-document-picker` (desde 04/set — carteirinha de CREF/CRN) |
 | Hospedagem web | EAS Hosting — https://app-treino.expo.app (ver §4) |
 | Build nativo (iOS/Android) | não configurado ainda — sem EAS Build, sem conta Apple |
 
@@ -210,6 +211,7 @@ versionado como referência.
 | `teleconsultas` | agenda de teleconsultas por Google Meet, RLS própria (§8) — 04/set | 0 |
 | `leads` | passo 1 do funil (§12): pré-conta, sem `profiles.id` ainda | 0 |
 | `atendimentos` | registro de cada consulta (pendura em lead ou em cliente já existente) | 0 |
+| `professional_verificacoes` | CPF/CREF-CRN/documento/status de verificação — nunca em `professionals`, que já é lido pelos pacientes (04/set) | 0 |
 
 **RLS reescrita (02/set):** todas as policies que usavam `is_trainer()` (acesso global a
 qualquer trainer) foram trocadas por checks escopados por assinatura ativa:
@@ -255,7 +257,10 @@ src/
     _layout.tsx               Stack raiz: auth, tema dark, correção de área por papel,
                                exceção pra rota pública /convite (não é redirecionada)
     index.tsx                 rota "/": decide login vs /aluno vs /pro (declarativo)
-    login.tsx
+    login.tsx                 tem link pra /cadastro-profissional (04/set)
+    cadastro-profissional.tsx PÚBLICA, top-level — cadastro de profissional com verificação
+                               de CREF/CRN (04/set, ver §8)
+    admin.tsx                 fila de verificação — só pra quem tem profiles.is_admin (04/set)
     convite/[token].tsx       PÚBLICA, sem login — só criação de conta (04/set; anamnese
                                saiu daqui, ver §8/§12)
     aluno/                    área do ALUNO (abas: Treino · Dieta · Perfil)
@@ -285,7 +290,9 @@ src/
   services/                   1 arquivo por domínio
     authService.ts  workoutService.ts  nutritionService.ts  professionalService.ts
     conviteService.ts  teleconsultaService.ts  gestaoService.ts  leadsService.ts
+    solicitacoesService.ts   pedido de acesso pra quem já tem conta (04/set)
     onboardingService.ts      anamnese + plano pós-login (04/set)
+    verificacaoService.ts     cadastro/upload/aprovação de profissional (04/set)
   store/authStore.ts          zustand (sessão, profile, isProfessional)
   lib/supabase.ts             client tipado (com guard de SSR, ver §8)
 ```
@@ -661,6 +668,64 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
     real): nome e especialidade batendo.
     ⚠️ **Corrigido de novo (mesmo dia)**: grafia errada — é "Moraes", não "Morales". Copiei o
     erro de `plans.treinador`, que também estava errado; os dois foram corrigidos juntos.
+- ✅ **Cadastro de profissional com verificação de CREF/CRN** (04/set — "não podemos abrir
+  isso pra qualquer um se cadastrar, até porque isso pode virar mote de venda", decisão do
+  Guilherme). Não existia NENHUM cadastro de profissional antes disso — o único profissional
+  (Tassis) veio de backfill direto no banco (§5). Achado de segurança **antes** de construir
+  (§0): a RLS de `professionals` (`professionals_insert_self`) deixava **qualquer usuário
+  autenticado se auto-inserir como profissional**, sem checagem nenhuma — fechado nesta
+  migração.
+  - **Sem validação automática**: CONFEF (CREF) e CFN (CRN) não têm API pública — só consulta
+    manual no site do conselho. Verificação é humana; o app só facilita (link direto pro site
+    do conselho na tela do admin).
+  - **Sem RBAC formal**: `profiles.is_admin` é uma flag simples, não um papel — hoje só o
+    Guilherme (`gui.pasquetti@gmail.com`) tem `is_admin = true`. Formalizar múltiplos
+    aprovadores agora seria estrutura sem uso.
+  - **CPF e documento nunca em `professionals`**: essa tabela já é lida pelos próprios
+    pacientes do profissional (`is_client_of`), então qualquer dado sensível ali vazaria sem
+    motivo. Tabela nova `professional_verificacoes` — só o próprio profissional e quem é
+    admin conseguem ler (`professional_verificacoes_select`).
+  - **Fluxo**: [`cadastro-profissional.tsx`](src/app/cadastro-profissional.tsx) (rota pública
+    top-level, whitelisted em `_layout.tsx` igual a `/convite`) coleta nome/e-mail/senha/CPF/
+    especialidade/CREF-CRN+UF/carteirinha (`expo-document-picker`, instalado nesta mudança)/
+    bio opcional → `signUp` → upload pro bucket privado `documentos-profissionais` (**primeiro
+    uso de Storage no projeto**) → RPC `cadastrar_profissional` (cria `professionals` +
+    `professional_verificacoes` status `pendente`, tudo num passo). Acesso já libera na hora
+    (decisão do Guilherme: acesso liberado, aviso visível) — banner "Verificação pendente" no
+    Painel ([`pro/index.tsx`](src/app/pro/index.tsx)) até um admin decidir.
+  - **Tela de admin** [`admin.tsx`](src/app/admin.tsx) (rota top-level, também whitelisted —
+    é ortogonal a aluno/profissional, um admin pode ser cliente de outro profissional ao
+    mesmo tempo, caso do próprio Guilherme): lista pendentes, mostra CPF/registro/bio, link
+    pro documento (URL assinada, 1h) e link direto pro site do conselho; Aprovar/Rejeitar
+    (rejeitar pede motivo) grava via `update` direto — RLS (`professional_verificacoes_update_admin`)
+    já garante que só admin escreve.
+  - **Guard central testado de verdade**: profissional tentando setar o próprio status pra
+    `aprovado` é **bloqueado pela RLS** (`professional_verificacoes_update_self` só aceita
+    `with check status = 'pendente'`) — verificado com uma conta de teste tentando se
+    auto-aprovar e recebendo `42501 new row violates row-level security policy`. É o ponto
+    de segurança inteiro desta feature.
+  - **RLS nova pro admin enxergar solicitações de gente sem vínculo nenhum**: `profiles` e
+    `professionals` ganharam policy de SELECT pra `is_admin()` — sem isso o admin não
+    conseguia ler nome/e-mail/especialidade de um candidato com quem ainda não tem relação
+    nenhuma (mesma classe de problema do §12, "paciente vê planos do profissional" antes de
+    ter assinatura). Escopo: só nome/e-mail/especialidade, nunca anamnese/saúde.
+  - **Storage**: bucket privado, path sempre prefixado por `auth.uid()`
+    (`{uid}/carteirinha.ext`). Policies de insert/update/select — **faltou delete** na
+    primeira versão (nem o dono conseguia apagar o próprio documento pra reenviar), corrigido
+    ainda no mesmo teste.
+  - Migração [`20260904_cadastro_profissional_verificado.sql`](supabase/migrations/20260904_cadastro_profissional_verificado.sql).
+    `get_advisors(security)` conferido depois: nenhuma categoria nova (só o padrão já aceito
+    de RPC `security definer` anon-chamável).
+  - **Testado ponta a ponta com dado real** (conta QA descartável): cadastro completo pela UI
+    de verdade — nome/e-mail/senha/CPF/especialidade/CREF+UF/upload de documento real (o
+    seletor de arquivo do Expo funciona em web) — gravou tudo certo no banco; banner
+    "Verificação pendente" apareceu no Painel com Leads/Planos já liberados; aprovação
+    testada via simulação de JWT do Guilherme como admin (RLS aceitou); tentativa de
+    auto-aprovação bloqueada (acima). Conta de teste, documento no storage e tudo mais
+    apagados depois — inclusive precisou da policy de delete que faltava.
+  - ⚠️ **O pedido real do Tassis pro Guilherme** (§ imediatamente anterior, "Solicitação de
+    acesso existente") **segue pendente**, sem eu tocar — a sessão do browser é do Guilherme
+    de verdade e essa decisão (aceitar/recusar) é dele, não minha.
 - Sem pagamento/cobrança automática ainda (schema tem `subscriptions.status`, mas nada
   muda esse status sozinho), sem contrato/LGPD.
 - Toda migração de schema é versionada em `supabase/migrations/` (convenção: `AAAAMMDD_descrição.sql`,
