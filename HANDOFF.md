@@ -650,15 +650,17 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
     próprio Tassis estava **vazio no banco** (dado de produção, provavelmente porque o
     cadastro dele é anterior ao trigger que preenche `nome` a partir do metadata do
     `signUp`). Corrigido com o nome real dele, já existente em `plans.treinador` ("Tassis
-    Morales") — não inventado, só copiado de outro lugar que já guardava o dado certo.
+    Moraes") — não inventado, só copiado de outro lugar que já guardava o dado certo.
     Pedido junto: mostrar a especialidade (Nutri x Treinador). `obter_solicitacoes_pendentes`
     ganhou a coluna `especialidade` ([`20260904_solicitacao_com_especialidade.sql`](supabase/migrations/20260904_solicitacao_com_especialidade.sql));
     `rotuloEspecialidade()` em [`solicitacoesService.ts`](src/services/solicitacoesService.ts)
     traduz o texto livre de `professionals.especialidade` (`personal_trainer` → "Educador
     físico", `nutricionista` → "Nutricionista") — valor desconhecido aparece como veio, não
-    some. Card agora mostra "Tassis Morales... Quer te acompanhar como Educador físico."
+    some. Card agora mostra "Tassis Moraes... Quer te acompanhar como Educador físico."
     Verificado via nova simulação de JWT do Guilherme (mesmo método, sem mexer no pedido
     real): nome e especialidade batendo.
+    ⚠️ **Corrigido de novo (mesmo dia)**: grafia errada — é "Moraes", não "Morales". Copiei o
+    erro de `plans.treinador`, que também estava errado; os dois foram corrigidos juntos.
 - Sem pagamento/cobrança automática ainda (schema tem `subscriptions.status`, mas nada
   muda esse status sozinho), sem contrato/LGPD.
 - Toda migração de schema é versionada em `supabase/migrations/` (convenção: `AAAAMMDD_descrição.sql`,
