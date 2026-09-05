@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { Pill } from '@/components/ui';
-import { Palette, Spacing } from '@/theme';
+import { Palette, RoleColors, Spacing } from '@/theme';
 
 /** Alternador entre as duas frentes de trabalho do profissional sobre um aluno. */
 export function AlunoTabs({ clientId, ativo }: { clientId: string; ativo: 'treino' | 'dieta' }) {
@@ -13,7 +13,7 @@ export function AlunoTabs({ clientId, ativo }: { clientId: string; ativo: 'trein
       <Pill
         label="Treino"
         active={ativo === 'treino'}
-        color={Palette.accent}
+        color={RoleColors.profissional}
         onPress={() => router.replace(`/pro/aluno/${clientId}`)}
       />
       <Pill

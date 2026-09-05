@@ -6,7 +6,6 @@ import {
   Button,
   Caption,
   Card,
-  DragSlider,
   EmptyState,
   Field,
   Loading,
@@ -23,6 +22,7 @@ import {
   type SetLog,
 } from '@/models/domain';
 import {
+  ajustarPeso,
   avaliar,
   concluidoHoje,
   corrigirUltimaSerie,
@@ -30,7 +30,6 @@ import {
   registrarSerie,
   seriesDeHoje,
   sessaoAnterior,
-  snapPeso,
   sugerirSerie,
   type WorkoutData,
 } from '@/services/workoutService';
@@ -232,19 +231,19 @@ function ExercicioCard({
       ) : (
         <View style={styles.registro}>
           {!ex.tempo && (
-            <View style={styles.sliderRow}>
-              <View style={styles.sliderLabel}>
-                <Caption>Carga</Caption>
-                <Body>{sugerida.p}kg</Body>
+            <View style={styles.stepperRow}>
+              <Caption>Carga</Caption>
+              <View style={styles.stepperControls}>
+                <StepperButton
+                  icon="remove"
+                  onPress={() => setPendente({ ...sugerida, p: ajustarPeso(sugerida.p, -1) })}
+                />
+                <Body style={styles.stepperValue}>{sugerida.p}kg</Body>
+                <StepperButton
+                  icon="add"
+                  onPress={() => setPendente({ ...sugerida, p: ajustarPeso(sugerida.p, 1) })}
+                />
               </View>
-              <DragSlider
-                value={sugerida.p}
-                min={0}
-                max={300}
-                color={cor}
-                snap={snapPeso}
-                onChange={(p) => setPendente({ ...sugerida, p })}
-              />
             </View>
           )}
 
@@ -351,14 +350,6 @@ const styles = StyleSheet.create({
   registro: {
     gap: Spacing.md,
     marginTop: Spacing.xs,
-  },
-  sliderRow: {
-    gap: Spacing.xs,
-  },
-  sliderLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
   },
   stepperRow: {
     flexDirection: 'row',

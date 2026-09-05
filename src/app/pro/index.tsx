@@ -9,7 +9,7 @@ import { confirmarPlanoSolicitado } from '@/services/professionalService';
 import { atualizarStatusTeleconsulta, criarTeleconsulta, type TeleconsultaComPaciente } from '@/services/teleconsultaService';
 import { obterMinhaVerificacao, type VerificacaoProfissional } from '@/services/verificacaoService';
 import { useAuthStore } from '@/store/authStore';
-import { Palette, Radius, Spacing } from '@/theme';
+import { Palette, Radius, RoleColors, Spacing } from '@/theme';
 
 type Alerta = { clientId: string; nome: string; texto: string };
 
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
     borderColor: Palette.danger,
   },
   convidar: {
-    backgroundColor: Palette.accent,
+    backgroundColor: RoleColors.profissional,
     borderRadius: Radius.pill,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,

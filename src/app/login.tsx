@@ -1,18 +1,20 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Body, Button, Caption } from '@/components/ui';
+import { Body, Button, Caption, Pill } from '@/components/ui';
 import { signIn } from '@/services/authService';
-import { FontSize, Palette, Radius, Spacing } from '@/theme';
+import { FontSize, Palette, Radius, RoleColors, Spacing, type Role } from '@/theme';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const [modo, setModo] = useState<Role>('aluno');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [entrando, setEntrando] = useState(false);
+  const cor = RoleColors[modo];
 
   async function entrar() {
     setErro(null);
@@ -42,6 +44,16 @@ export default function LoginScreen() {
           <Caption>Seu plano, sua execução, sua evolução.</Caption>
         </View>
 
+        <View style={styles.switchTrack}>
+          <Pill label="Aluno" active={modo === 'aluno'} color={RoleColors.aluno} onPress={() => setModo('aluno')} />
+          <Pill
+            label="Profissional"
+            active={modo === 'profissional'}
+            color={RoleColors.profissional}
+            onPress={() => setModo('profissional')}
+          />
+        </View>
+
         <View style={styles.form}>
           <TextInput
             style={styles.input}
@@ -67,12 +79,11 @@ export default function LoginScreen() {
 
           {erro ? <Caption color={Palette.danger}>{erro}</Caption> : null}
 
-          <Button label="Entrar" onPress={entrar} loading={entrando} />
-          <Button
-            label="Sou profissional e quero me cadastrar"
-            variant="ghost"
-            onPress={() => router.push('/cadastro-profissional')}
-          />
+          <Button label="Entrar" color={cor} onPress={entrar} loading={entrando} />
+
+          <Pressable style={styles.criarConta} onPress={() => router.push('/cadastro-profissional')} hitSlop={8}>
+            <Caption color={cor}>Não tem cadastro? Criar conta</Caption>
+          </Pressable>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -98,6 +109,14 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -1,
   },
+  switchTrack: {
+    flexDirection: 'row',
+    alignSelf: 'center',
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.pill,
+    padding: 4,
+    gap: 4,
+  },
   form: {
     gap: Spacing.md,
   },
@@ -108,5 +127,9 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.lg,
     color: Palette.text,
     fontSize: FontSize.body,
+  },
+  criarConta: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xs,
   },
 });

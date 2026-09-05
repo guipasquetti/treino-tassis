@@ -6,7 +6,7 @@ import { Body, Button, Caption, Card, EmptyState, Field, Screen, SectionTitle } 
 import { criarConvite } from '@/services/professionalService';
 import { vincularConviteAoLead } from '@/services/leadsService';
 import { useAuthStore } from '@/store/authStore';
-import { Palette, Radius, Spacing, FontSize } from '@/theme';
+import { Palette, Radius, RoleColors, Spacing, FontSize } from '@/theme';
 
 /** Base pública do app — mesma origem no browser; fallback pra produção fora da web. */
 function baseUrl(): string {
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.sm,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
-    color: Palette.accent,
+    color: RoleColors.profissional,
     fontSize: FontSize.small,
   },
 });

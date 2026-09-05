@@ -1,8 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import {
   ActivityIndicator,
-  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useRoleColor } from '@/contexts/role-theme';
 import { FontSize, Palette, Radius, Spacing } from '@/theme';
 
 /** Tela com fundo preto, título grande e conteúdo rolável — padrão da referência. */
@@ -123,7 +123,7 @@ export function Stat({ value, label, color = Palette.text }: { value: string; la
 export function Pill({
   label,
   active,
-  color = Palette.accent,
+  color,
   onPress,
 }: {
   label: string;
@@ -131,6 +131,8 @@ export function Pill({
   color?: string;
   onPress?: () => void;
 }) {
+  const roleColor = useRoleColor();
+  color ??= roleColor;
   return (
     <Pressable
       onPress={onPress}
@@ -143,7 +145,7 @@ export function Pill({
 export function Button({
   label,
   onPress,
-  color = Palette.accent,
+  color,
   variant = 'solid',
   disabled,
   loading,
@@ -155,6 +157,8 @@ export function Button({
   disabled?: boolean;
   loading?: boolean;
 }) {
+  const roleColor = useRoleColor();
+  color ??= roleColor;
   const solid = variant === 'solid';
   return (
     <Pressable
@@ -174,68 +178,46 @@ export function Button({
   );
 }
 
-/** Botão redondo de +/- usado no registro de séries. */
+const REPEAT_DELAY_MS = 400;
+const REPEAT_INTERVAL_MS = 120;
+
+/** Botão redondo de +/- usado no registro de séries — segurar repete o incremento. */
 export function StepperButton({ icon, onPress }: { icon: 'add' | 'remove'; onPress: () => void }) {
+  const delayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // `onPress` muda a cada render (fecha sobre o peso/reps atual do chamador). Se o
+  // setInterval chamasse a função capturada no grant, ficaria travado repetindo o MESMO
+  // incremento a partir do valor de quando o dedo pousou — por isso "não subia" depois do
+  // primeiro passo. Uma ref sempre atualizada garante que cada tick chama a versão atual.
+  const onPressRef = useRef(onPress);
+  useEffect(() => {
+    onPressRef.current = onPress;
+  });
+
+  function parar() {
+    if (delayRef.current) clearTimeout(delayRef.current);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    delayRef.current = null;
+    intervalRef.current = null;
+  }
+
+  function segurar() {
+    onPressRef.current();
+    delayRef.current = setTimeout(() => {
+      intervalRef.current = setInterval(() => onPressRef.current(), REPEAT_INTERVAL_MS);
+    }, REPEAT_DELAY_MS);
+  }
+
+  useEffect(() => parar, []);
+
   return (
     <Pressable
-      onPress={onPress}
+      onPressIn={segurar}
+      onPressOut={parar}
       style={({ pressed }) => [styles.stepper, pressed && styles.cardPressed]}>
       <Ionicons name={icon} size={20} color={Palette.text} />
     </Pressable>
-  );
-}
-
-const THUMB = 24;
-
-/** Barra de arrastar para escolher um valor numérico dentro de [min, max]. */
-export function DragSlider({
-  value,
-  min,
-  max,
-  color,
-  onChange,
-  snap,
-}: {
-  value: number;
-  min: number;
-  max: number;
-  color: string;
-  onChange: (v: number) => void;
-  /** Arredonda o valor bruto do arraste pro passo válido. Default: inteiro. */
-  snap?: (v: number) => number;
-}) {
-  const [width, setWidth] = useState(0);
-  const config = useRef({ min, max, onChange, snap, width });
-  config.current = { min, max, onChange, snap, width };
-
-  const responder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderMove: (evt) => {
-        const { min, max, onChange, snap, width } = config.current;
-        if (!width) return;
-        const x = Math.min(width, Math.max(0, evt.nativeEvent.locationX));
-        const raw = min + (x / width) * (max - min);
-        const arredondado = snap ? snap(raw) : Math.round(raw);
-        onChange(Math.min(max, Math.max(min, arredondado)));
-      },
-    }),
-  ).current;
-
-  const pct = max > min ? Math.min(1, Math.max(0, (value - min) / (max - min))) : 0;
-  const fillWidth = width * pct;
-
-  return (
-    <View
-      style={styles.sliderContainer}
-      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
-      {...responder.panHandlers}>
-      <View style={styles.sliderTrack}>
-        <View style={[styles.sliderFill, { width: fillWidth, backgroundColor: color }]} />
-      </View>
-      <View style={[styles.sliderThumb, { left: fillWidth - THUMB / 2, borderColor: color }]} />
-    </View>
   );
 }
 
@@ -440,29 +422,6 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  sliderContainer: {
-    height: 44,
-    justifyContent: 'center',
-  },
-  sliderTrack: {
-    height: 8,
-    borderRadius: Radius.pill,
-    backgroundColor: Palette.surfaceElevated,
-    overflow: 'hidden',
-  },
-  sliderFill: {
-    height: 8,
-    borderRadius: Radius.pill,
-  },
-  sliderThumb: {
-    position: 'absolute',
-    top: (44 - THUMB) / 2,
-    width: THUMB,
-    height: THUMB,
-    borderRadius: THUMB / 2,
-    backgroundColor: Palette.text,
-    borderWidth: 3,
   },
   loading: {
     flex: 1,

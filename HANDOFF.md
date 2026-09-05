@@ -1,7 +1,7 @@
 # App Treino — Handoff
 
 > Documento de contexto para replicar o estado do projeto em outro chat.
-> Última atualização: 04/Setembro/2026.
+> Última atualização: 05/Setembro/2026.
 
 > **Fonte canônica:** este arquivo, na raiz do repositório. Todo agente (Codex ou Claude) deve lê-lo antes de alterar o projeto e atualizá-lo ao concluir mudanças relevantes, decisões, migrações, configuração de infraestrutura ou bloqueios.
 
@@ -734,6 +734,61 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
   bloqueado pelo classificador de auto mode do Claude Code naquela sessão. As seguintes
   (03/set e 04/set) foram aplicadas sem esse bloqueio via `execute_sql` do MCP — não é um
   bloqueio permanente, parece ter sido específico daquela chamada/sessão.
+- ✅ **Campo de observação na série, vídeo do exercício, cor por perfil (05/set).** Três
+  pedidos do Guilherme sobre a tela de treino + login, nesta ordem:
+  - `SetLog` ganhou `obs?: string` ([`domain.ts`](src/models/domain.ts)) — campo opcional
+    abaixo do registro de série em [`aluno/index.tsx`](src/app/aluno/index.tsx), mostrado nos
+    chips de séries já registradas hoje. Não aparece no histórico de sessões passadas (só no
+    dia corrente) — decisão de escopo pra não complicar a linha já compacta do histórico.
+  - `Exercicio` ganhou `video?: string` (URL) — campo "Vídeo (URL)" no editor do profissional
+    ([`pro/aluno/[id]/index.tsx`](src/app/pro/aluno/%5Bid%5D/index.tsx)) e botão "Ver vídeo"
+    (`Linking.openURL`) na tela do aluno quando presente. Sem migração — os dois campos vivem
+    dentro do jsonb (`workout_logs.sets` / `plans.dias[].ex[]`), schema não muda.
+  - ⚠️ **Seletor de carga: três tentativas até a que ficou.** Pedido original era trocar o
+    stepper +/- por "uma barra de arrastar". Tentativa 1: `DragSlider` com `PanResponder`
+    próprio — sensibilidade ruim (`locationX` durante o move é relativo ao elemento embaixo do
+    dedo NAQUELE instante, não ao track; trocado por `dx` acumulado desde o toque) e depois
+    brigava com o `ScrollView` da tela. **Achado importante:** no web (react-native-web) o
+    `ScrollView` é scroll **nativo do navegador**, não passa pelo `PanResponder` — nenhuma
+    negociação de responder no JS o intercepta; só resolve com `touchAction: 'none'` (CSS) no
+    elemento. Tentativa 2: `NumberRoll` (rolo horizontal com `ScrollView` + `snapToInterval`,
+    sem gesto próprio — não brigava mais). **O Guilherme não gostou de nenhuma das duas**,
+    pediu de volta o stepper igual ao de reps, só que com **segurar pra repetir o incremento**.
+    Versão final: `StepperButton` ganhou `onPressIn`/`onPressOut` com `setTimeout` (delay
+    400ms) + `setInterval` (120ms) — achado e corrigido um bug clássico de **closure velha**:
+    o `setInterval` inicial chamava o `onPress` capturado no toque, então travava repetindo o
+    mesmo incremento a partir do peso de quando o dedo pousou. Corrigido com uma ref
+    (`onPressRef`) sempre atualizada via `useEffect`, lida a cada tick em vez do closure velho.
+    `DragSlider`/`NumberRoll`/`snapPeso` foram removidos (mortos) — só sobrou `ajustarPeso`,
+    igual a antes de toda essa exploração.
+  - **Cor por perfil (aluno rosa, profissional azul)**, pedido separado do Guilherme:
+    `RoleColors` ([`theme/index.ts`](src/theme/index.ts)) + `RoleThemeProvider`/`useRoleColor`
+    ([`contexts/role-theme.tsx`](src/contexts/role-theme.tsx), novo). `Button`/`Pill` em
+    [`ui/index.tsx`](src/components/ui/index.tsx) usam a cor do perfil como padrão quando
+    ninguém passa `color=` explícito — não precisou caçar botão por botão. `aluno/_layout.tsx`
+    e `pro/_layout.tsx` envolvem suas telas (+ tab bar ativa) no provider certo. Roxo ficou de
+    fora do esquema de perfil de propósito — já é a cor do módulo Dieta (aba, botão "Salvar
+    dieta"), não mexi nisso. Pontos que tinham rosa fixo dentro do profissional (aba do editor
+    de aluno em [`aluno-tabs.tsx`](src/components/aluno-tabs.tsx), botão "Convidar" do Painel,
+    link do convite, "Editar" em Planos) trocados pra `RoleColors.profissional` também.
+  - **Login redesenhado** ([`login.tsx`](src/app/login.tsx)): botão "Sou profissional e quero
+    me cadastrar" virou um switch de 2 pills ("Aluno" | "Profissional", centralizado, cor muda
+    ao trocar) + link em texto puro "Não tem cadastro? Criar conta" **fixo nas duas abas** (só
+    a cor acompanha o modo) apontando pro `/cadastro-profissional` de sempre — login em si
+    continua o mesmo `signIn()` pros dois perfis, a troca é só visual. Tentativa de efeito de
+    corte diagonal 45° entre os dois lados (via `skewX`) foi feita e **descartada** — o
+    Guilherme não gostou, voltou pro switch de pills simples.
+  - **Nada disso está commitado ainda** — está tudo só no working tree. O que está no
+    `origin/main` e no ar em `app-treino.expo.app` é só até o commit `f50fdbe` (observação de
+    série + vídeo do exercício + primeira versão do `DragSlider`, sem os pontos acima).
+- 📌 **Decisão sobre TestFlight (Guilherme, 05/set):** ele já tem conta Apple Developer paga
+  (não é mais bloqueio de custo), mas decidiu esperar definir **nome/marca** antes de subir —
+  "Definindo nome e marca vamos para o testflight". Até lá segue só no link web de produção.
+  Mesmo com a conta, falta todo o setup técnico: bundle ID, EAS Build, credenciais de
+  assinatura — nada disso existe no projeto ainda (ver §10, item 8). Também sugeri usar
+  `eas deploy` sem `--prod` pra ter uma URL de preview estável e separada da produção pros
+  testadores, sem tocar nos pacientes reais do Tassis — o Guilherme preferiu não fazer isso
+  agora também, mantendo tudo como está até a marca fechar.
 
 ## 9. Escopo funcional v1 (proposto, não implementado)
 
@@ -770,8 +825,11 @@ Tabela abaixo é por par paciente↔profissional (já reflete o modelo N:N do §
    direto (fora de convite) segue não previsto pelo produto — Tassis sempre inicia o vínculo.
 7. Remover a tela de exemplo restante do scaffold (`(app)/explore.tsx`) quando o fluxo
    real substituir.
-8. Configurar EAS quando for hora de buildar pra iOS/Android de verdade (hoje só roda
-   via `expo start --web`/Expo Go).
+8. Configurar EAS Build quando for hora de buildar pra iOS/Android de verdade (hoje só roda
+   via `expo start --web`/Expo Go). Guilherme já tem conta Apple Developer paga (05/set) —
+   não é mais bloqueio de custo — mas decidiu esperar nome/marca (§7) antes de começar; falta
+   todo o setup técnico (bundle ID, build profile, credenciais de assinatura), nada disso
+   existe no projeto ainda.
 9. Cobrar do Tassis os itens do §7 — vários bloqueiam decisões de schema/UX.
 10. Avaliar se `is_trainer()` pode ser removida (não é mais usada em nenhuma RLS, ver §5).
 

@@ -10,7 +10,7 @@ import {
   type PlanoProfissional,
 } from '@/services/professionalService';
 import { useAuthStore } from '@/store/authStore';
-import { FontSize, Palette, Radius, Spacing } from '@/theme';
+import { FontSize, Palette, Radius, RoleColors, Spacing } from '@/theme';
 
 function formatarPreco(centavos: number | null): string {
   if (centavos === null) return 'Sem preço definido';
@@ -133,7 +133,7 @@ function PlanoCard({ plano, onMudou }: { plano: PlanoProfissional; onMudou: () =
       <View style={styles.header}>
         <Caption>{modulos.length ? modulos.join(' + ') : 'Nenhum módulo incluído'}</Caption>
         <Pressable onPress={() => setEditando(true)} hitSlop={8}>
-          <Caption color={Palette.accent}>Editar</Caption>
+          <Caption color={RoleColors.profissional}>Editar</Caption>
         </Pressable>
       </View>
     </Card>

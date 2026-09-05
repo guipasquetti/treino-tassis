@@ -49,6 +49,18 @@ export function trainingColor(tipo: string | null | undefined): string {
   return TrainingColors[tipo as TrainingType] ?? Palette.purple;
 }
 
+/**
+ * Cor por perfil de acesso — aluno em rosa (já era o accent padrão), profissional em azul
+ * (já era a cor dominante do Painel: pedidos/convites pendentes, agenda). Roxo fica de fora
+ * porque já é a cor do módulo de dieta (aba "Dieta", botão "Salvar dieta").
+ */
+export const RoleColors = {
+  aluno: Palette.accent,
+  profissional: Palette.blue,
+} as const;
+
+export type Role = keyof typeof RoleColors;
+
 /** Cor por macronutriente, usada nos totais da dieta. */
 export const MacroColors = {
   kcal: Palette.accent,

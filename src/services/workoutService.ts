@@ -108,10 +108,8 @@ function incrementarPeso(p: number, dir: number): number {
   return Math.max(0, +(p + dir * passo).toFixed(1));
 }
 
-/** Arredonda um peso solto (ex.: vindo da barra de arrastar) pro passo válido mais próximo. */
-export function snapPeso(p: number): number {
-  const passo = passoPeso(p);
-  return Math.max(0, +(Math.round(p / passo) * passo).toFixed(1));
+export function ajustarPeso(p: number, dir: number): number {
+  return incrementarPeso(p, dir);
 }
 
 /** Sugestão de peso/reps pra próxima série, a partir do histórico. */

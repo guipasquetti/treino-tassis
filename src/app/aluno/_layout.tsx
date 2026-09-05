@@ -5,10 +5,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loading } from '@/components/ui';
 import { OnboardingAnamnese } from '@/components/onboarding-anamnese';
 import { SolicitacoesPendentes } from '@/components/solicitacoes-pendentes';
+import { RoleThemeProvider } from '@/contexts/role-theme';
 import { possuiAnamnese } from '@/services/onboardingService';
 import { listarSolicitacoesPendentes, type SolicitacaoProfissional } from '@/services/solicitacoesService';
 import { useAuthStore } from '@/store/authStore';
-import { Palette } from '@/theme';
+import { Palette, RoleColors } from '@/theme';
 
 /**
  * Dois gates antes das abas (§12, 04/set):
@@ -37,43 +38,49 @@ export default function ClientLayout() {
   }, [user, carregarSolicitacoes]);
 
   if (!user || solicitacoes === null || temAnamnese === null) return <Loading />;
-  if (solicitacoes.length) {
-    return <SolicitacoesPendentes solicitacoes={solicitacoes} onMudou={carregarSolicitacoes} />;
-  }
-  if (!temAnamnese) return <OnboardingAnamnese onConcluido={() => setTemAnamnese(true)} />;
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: Palette.accent,
-        tabBarInactiveTintColor: Palette.textTertiary,
-        tabBarStyle: {
-          backgroundColor: Palette.surface,
-          borderTopColor: Palette.border,
-        },
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Treino',
-          tabBarIcon: ({ color, size }) => <Ionicons name="barbell" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="dieta"
-        options={{
-          title: 'Dieta',
-          tabBarIcon: ({ color, size }) => <Ionicons name="restaurant" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="perfil"
-        options={{
-          title: 'Perfil',
-          tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
-        }}
-      />
-    </Tabs>
+    <RoleThemeProvider color={RoleColors.aluno}>
+      {solicitacoes.length ? (
+        <SolicitacoesPendentes solicitacoes={solicitacoes} onMudou={carregarSolicitacoes} />
+      ) : !temAnamnese ? (
+        <OnboardingAnamnese onConcluido={() => setTemAnamnese(true)} />
+      ) : (
+        <Tabs
+          screenOptions={{
+            headerShown: false,
+            tabBarActiveTintColor: RoleColors.aluno,
+            tabBarInactiveTintColor: Palette.textTertiary,
+            tabBarStyle: {
+              backgroundColor: Palette.surface,
+              borderTopColor: Palette.border,
+            },
+          }}>
+          <Tabs.Screen
+            name="index"
+            options={{
+              title: 'Treino',
+              tabBarIcon: ({ color, size }) => <Ionicons name="barbell" size={size} color={color} />,
+            }}
+          />
+          <Tabs.Screen
+            name="dieta"
+            options={{
+              title: 'Dieta',
+              tabBarIcon: ({ color, size }) => (
+                <Ionicons name="restaurant" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="perfil"
+            options={{
+              title: 'Perfil',
+              tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
+            }}
+          />
+        </Tabs>
+      )}
+    </RoleThemeProvider>
   );
 }
