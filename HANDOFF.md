@@ -781,6 +781,40 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
   - **Nada disso está commitado ainda** — está tudo só no working tree. O que está no
     `origin/main` e no ar em `app-treino.expo.app` é só até o commit `f50fdbe` (observação de
     série + vídeo do exercício + primeira versão do `DragSlider`, sem os pontos acima).
+- ✅ **Deploy web publicado (05/set)**: `npx expo export --platform web && eas deploy --prod` rodado
+  pelo Guilherme (o `eas deploy --prod` foi bloqueado pelo classificador de auto mode nesta
+  sessão, mesma classe de bloqueio já vista com `apply_migration` no §8 — não é permanente,
+  específico da chamada). `app-treino.expo.app` agora reflete o commit
+  [`4474093`](https://github.com/guipasquetti/treino-tassis/commit/4474093) (observação/vídeo/
+  peso do commit anterior + cor por perfil/stepper hold-to-repeat/login redesenhado).
+- ⚠️→✅ **Achado de segurança real, corrigido (05/set):** `profiles_update_own` (RLS de
+  `profiles`) não restringia coluna nenhuma — qualquer usuário autenticado podia, via chamada
+  direta à API (fora do app, ex. REST/PostgREST), setar o próprio `is_admin = true` ou trocar
+  `role`, virando admin sozinho e furando toda a fila de verificação de profissional do §8. Achado
+  ao mexer nessa tabela pra construir a edição de perfil abaixo — lente de segurança do §0 aplicada
+  antes de escrever a feature. Corrigido com trigger `before update`
+  (`profiles_protege_colunas_privilegiadas`) que bloqueia mudança de `is_admin`/`role` a menos que
+  quem já é admin esteja fazendo a mudança (`public.is_admin()` checado sobre a linha ainda não
+  alterada). Migração
+  [`20260905_profiles_protege_colunas_privilegiadas.sql`](supabase/migrations/20260905_profiles_protege_colunas_privilegiadas.sql).
+  **Verificado por simulação de JWT com rollback**: usuário comum tentando `update is_admin = true`
+  na própria linha é bloqueado pela exceção do trigger; `update telefone = '...'` no mesmo teste
+  passa normal. A trigger function apareceu no advisor como RPC pública `security definer`
+  chamável por `anon`/`authenticated` (mesma classe do `handle_new_user` do §0) —
+  `REVOKE EXECUTE` aplicado, mesma correção. `get_advisors(security)` conferido depois: nenhuma
+  categoria nova além da já aceita.
+- ✅ **Edição de perfil dentro do app (05/set)**, pedido do Guilherme: "atualizar o perfil do
+  usuário com todos os dados e uma opção de preenchimento/edição". [`perfil-screen.tsx`](src/components/perfil-screen.tsx)
+  (compartilhado pelos dois papéis) ganhou botão "Editar" que troca a visualização por campos
+  (nome, telefone, data de nascimento, peso, altura — todos os campos de `profiles` exceto
+  e-mail/`is_admin`/`role`, que nunca ficam editáveis pelo próprio usuário) com Salvar/Cancelar.
+  `atualizarPerfil()` novo em [`authService.ts`](src/services/authService.ts) — `update` escopado
+  em `id = auth.uid()`, mesma RLS `profiles_update_own` de sempre, agora com o trigger acima
+  cobrindo a lacuna. `authStore` ganhou `setProfile()` pra refletir o salvo na hora, sem precisar
+  de reload. **Verificado**: `npx tsc --noEmit` limpo; app sobe sem erro de console até a tela de
+  login. **Não verificado pela UI logada** — precisaria de sessão real (login ou conta de teste
+  com senha), e a regra da sessão é nunca digitar senha de ninguém em campo nenhum, nem de conta
+  descartável. Vale um teste manual do Guilherme/Tassis quando publicar.
 - 📌 **Decisão sobre TestFlight (Guilherme, 05/set):** ele já tem conta Apple Developer paga
   (não é mais bloqueio de custo), mas decidiu esperar definir **nome/marca** antes de subir —
   "Definindo nome e marca vamos para o testflight". Até lá segue só no link web de produção.

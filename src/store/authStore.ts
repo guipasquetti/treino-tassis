@@ -13,6 +13,7 @@ interface AuthStore {
   /** false enquanto profile/professional do usuário logado ainda não foram buscados. */
   profileLoaded: boolean;
   initialize: () => Promise<void>;
+  setProfile: (profile: Profile) => void;
 }
 
 async function loadProfile(userId: string) {
@@ -61,4 +62,6 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
     set({ isLoading: false, profileLoaded: true });
   },
+
+  setProfile: (profile) => set({ profile }),
 }));

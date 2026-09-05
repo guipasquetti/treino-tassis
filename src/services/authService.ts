@@ -34,3 +34,17 @@ export async function isProfessional(userId: string): Promise<boolean> {
   const { data } = await supabase.from("professionals").select("id").eq("id", userId).maybeSingle();
   return data !== null;
 }
+
+export type DadosPerfil = Pick<Profile, "nome" | "telefone" | "data_nascimento" | "peso_kg" | "altura_cm">;
+
+/** Só campos editáveis pelo próprio usuário — nunca is_admin/role/email (também bloqueados por trigger no banco). */
+export async function atualizarPerfil(userId: string, dados: DadosPerfil): Promise<Profile> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .update(dados)
+    .eq("id", userId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
