@@ -932,12 +932,15 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
   Item livre (sem TACO) cai numa categoria "Itens diversos" à parte, sempre por último.
   **Testado**: `npx tsc --noEmit` limpo (inclusive validando os 15 nomes de ícone), app sobe
   sem erro de console/bundler. Não testado logado com dado real.
-- ⚠️ **Item 3 do mesmo pedido — vincular marcas/marketplaces com patrocínio — não construído,
-  pausado de propósito.** É decisão de modelo de negócio (quem são os patrocinadores, como
-  divulgação paga aparece dentro de recomendação nutricional sem virar publicidade enganosa,
-  como fica a comissão/valor), não só UI — perguntei ao Guilherme antes de desenhar schema
-  pra isso. Ver pergunta em aberto no chat; se aprovado, entra como iniciativa nova, não como
-  parte do roadmap atual.
+- 💡 **Ideia registrada, não construída (06/set): monetizar a lista de compras.** Pedido do
+  Guilherme era vincular marcas/marketplaces patrocinados; decisão dele depois de eu levantar
+  o trade-off: **fica só como ideia por enquanto, sem construir nada** — nem schema, nem link.
+  Recomendação registrada pra quando isso for retomado: link de afiliado genérico (Mercado
+  Livre/Amazon, cadastro único, sem negociar marca nenhuma) é bem mais barato que vender slot
+  de patrocínio por marca (isso é trabalho comercial de verdade — contrato, criativo,
+  cobrança — sem alavancagem nenhuma com a base de usuários atual). Bate com a lógica já
+  fechada no roadmap: ganhar mercado antes de faturar alto. Retomar só quando fizer sentido
+  monetizar de verdade, não antes.
 
 ## 9. Escopo funcional v1 (proposto, não implementado)
 
