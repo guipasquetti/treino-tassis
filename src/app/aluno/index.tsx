@@ -75,11 +75,11 @@ export default function TreinoScreen() {
     );
   }
 
-  const dias = data?.plano?.dias ?? [];
+  const dias = data?.plano?.publicado ? data.plano.dias : [];
   if (!dias.length) {
     return (
       <Screen title="Treino">
-        <EmptyState text="Seu treinador ainda não montou um plano de treino." />
+        <EmptyState text="Seu treinador está montando seu plano — fica pronto em até 2 dias." />
       </Screen>
     );
   }

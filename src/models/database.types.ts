@@ -317,6 +317,7 @@ export type Database = {
           observacoes: string
           periodo: string
           professional_id: string
+          publicado: boolean
           refeicoes: Json
           updated_at: string
         }
@@ -331,6 +332,7 @@ export type Database = {
           observacoes?: string
           periodo?: string
           professional_id: string
+          publicado?: boolean
           refeicoes?: Json
           updated_at?: string
         }
@@ -345,6 +347,7 @@ export type Database = {
           observacoes?: string
           periodo?: string
           professional_id?: string
+          publicado?: boolean
           refeicoes?: Json
           updated_at?: string
         }
@@ -372,6 +375,7 @@ export type Database = {
           id: string
           periodo: string
           professional_id: string
+          publicado: boolean
           treinador: string
           updated_at: string
         }
@@ -381,6 +385,7 @@ export type Database = {
           id?: string
           periodo?: string
           professional_id: string
+          publicado?: boolean
           treinador?: string
           updated_at?: string
         }
@@ -390,6 +395,7 @@ export type Database = {
           id?: string
           periodo?: string
           professional_id?: string
+          publicado?: boolean
           treinador?: string
           updated_at?: string
         }
@@ -783,11 +789,11 @@ export type Database = {
         Args: { p_token: string }
         Returns: boolean
       }
-      is_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
+      is_admin: { Args: never; Returns: boolean }
       is_client_of: { Args: { p_professional_id: string }; Returns: boolean }
-      is_professional: { Args: Record<PropertyKey, never>; Returns: boolean }
+      is_professional: { Args: never; Returns: boolean }
       is_professional_of: { Args: { p_patient_id: string }; Returns: boolean }
-      is_trainer: { Args: Record<PropertyKey, never>; Returns: boolean }
+      is_trainer: { Args: never; Returns: boolean }
       obter_convite: {
         Args: { p_token: string }
         Returns: {
@@ -798,7 +804,7 @@ export type Database = {
         }[]
       }
       obter_solicitacoes_pendentes: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           created_at: string
           especialidade: string

@@ -23,6 +23,7 @@ import {
   novoDia,
   novoExercicio,
   planoParaEdicao,
+  prepararParaSalvar,
   salvarPlano,
   type DiaEditavel,
   type ExercicioEditavel,
@@ -43,6 +44,7 @@ export default function EditorPlanoScreen() {
   const [original, setOriginal] = useState<DiaTreino[]>([]);
   const [plano, setPlano] = useState<PlanoEditavel | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [publicando, setPublicando] = useState(false);
   const [mensagem, setMensagem] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -53,7 +55,12 @@ export default function EditorPlanoScreen() {
     const dias = dados.plano?.dias ?? [];
     setOriginal(dias);
     setPlano(
-      planoParaEdicao(dias, dados.plano?.periodo ?? '', dados.plano?.treinador || profile?.nome || ''),
+      planoParaEdicao(
+        dias,
+        dados.plano?.periodo ?? '',
+        dados.plano?.treinador || profile?.nome || '',
+        dados.plano?.publicado ?? false,
+      ),
     );
   }, [clientId, profile?.nome]);
 
@@ -106,11 +113,55 @@ export default function EditorPlanoScreen() {
     }
   }
 
+  async function alternarPublicacao() {
+    if (!user || !clientId || !plano) return;
+    setErro(null);
+    setMensagem(null);
+    setPublicando(true);
+    try {
+      const novoPlano = { ...plano, publicado: !plano.publicado };
+      await salvarPlano(clientId, user.id, novoPlano);
+      setMensagem(
+        novoPlano.publicado
+          ? 'Plano publicado — o aluno já pode ver.'
+          : 'Plano despublicado — some da tela do aluno até publicar de novo.',
+      );
+      setPlano(novoPlano);
+      setOriginal(prepararParaSalvar(novoPlano));
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não consegui atualizar a publicação.');
+    } finally {
+      setPublicando(false);
+    }
+  }
+
   const removidos = idsRemovidos(original, plano.dias);
 
   return (
     <Screen title={nomeAluno} subtitle="Plano de treino">
       <AlunoTabs clientId={clientId!} ativo="treino" />
+
+      <Card>
+        <View style={styles.statusRow}>
+          <Pill
+            label={plano.publicado ? 'Publicado' : 'Rascunho'}
+            active
+            color={plano.publicado ? Palette.green : Palette.orange}
+          />
+          <Button
+            label={plano.publicado ? 'Despublicar' : 'Publicar'}
+            variant="ghost"
+            color={plano.publicado ? Palette.orange : Palette.green}
+            onPress={alternarPublicacao}
+            loading={publicando}
+          />
+        </View>
+        <Caption>
+          {plano.publicado
+            ? 'Visível pro aluno. Edições ficam visíveis assim que salvas.'
+            : 'Invisível pro aluno até você publicar — ele vê "seu plano está sendo montado".'}
+        </Caption>
+      </Card>
 
       <Card>
         <Field
@@ -285,6 +336,11 @@ export default function EditorPlanoScreen() {
 }
 
 const styles = StyleSheet.create({
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   diaHeader: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -20,6 +20,8 @@ export type PlanoAlimentarEditavel = {
   meta_gordura_g: string;
   observacoes: string;
   refeicoes: Refeicao[];
+  /** Rascunho (false) fica invisível pro aluno até o profissional publicar explicitamente. */
+  publicado: boolean;
 };
 
 export function novoItem(): ItemRefeicao {
@@ -77,10 +79,12 @@ export function planoAlimentarParaEdicao(
     meta_gordura_g: number | null;
     observacoes: string;
     refeicoes: Refeicao[];
+    publicado: boolean;
   } | null,
   nomeProfissional: string,
 ): PlanoAlimentarEditavel {
   if (!plano) {
+    // Plano novo nasce como rascunho — só fica visível pro aluno quando o profissional publicar.
     return {
       periodo: '',
       nutricionista: nomeProfissional,
@@ -90,6 +94,7 @@ export function planoAlimentarParaEdicao(
       meta_gordura_g: '',
       observacoes: '',
       refeicoes: [novaRefeicao()],
+      publicado: false,
     };
   }
   return {
@@ -101,6 +106,7 @@ export function planoAlimentarParaEdicao(
     meta_gordura_g: plano.meta_gordura_g?.toString() ?? '',
     observacoes: plano.observacoes ?? '',
     refeicoes: plano.refeicoes.length ? plano.refeicoes : [novaRefeicao()],
+    publicado: plano.publicado,
   };
 }
 
@@ -128,6 +134,7 @@ export async function salvarPlanoAlimentar(
       meta_gordura_g: numeroOuNulo(plano.meta_gordura_g),
       observacoes: plano.observacoes.trim(),
       refeicoes,
+      publicado: plano.publicado,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'client_id' },

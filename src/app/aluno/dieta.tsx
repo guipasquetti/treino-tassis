@@ -35,10 +35,10 @@ export default function DietaScreen() {
     );
   }
 
-  if (!plano || !plano.refeicoes.length) {
+  if (!plano || !plano.publicado || !plano.refeicoes.length) {
     return (
       <Screen title="Dieta">
-        <EmptyState text="Seu nutricionista ainda não montou um plano alimentar." />
+        <EmptyState text="Seu nutricionista está montando seu plano — fica pronto em até 2 dias." />
       </Screen>
     );
   }

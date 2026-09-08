@@ -10,6 +10,7 @@ import {
   Card,
   Field,
   Loading,
+  Pill,
   RemoveButton,
   Screen,
   SectionTitle,
@@ -42,6 +43,7 @@ export default function EditorDietaScreen() {
   const [nomeAluno, setNomeAluno] = useState('');
   const [plano, setPlano] = useState<PlanoAlimentarEditavel | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [publicando, setPublicando] = useState(false);
   const [mensagem, setMensagem] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -100,11 +102,54 @@ export default function EditorDietaScreen() {
     }
   }
 
+  async function alternarPublicacao() {
+    if (!user || !clientId || !plano) return;
+    setErro(null);
+    setMensagem(null);
+    setPublicando(true);
+    try {
+      const novoPlano = { ...plano, publicado: !plano.publicado };
+      await salvarPlanoAlimentar(clientId, user.id, novoPlano);
+      setMensagem(
+        novoPlano.publicado
+          ? 'Dieta publicada — o aluno já pode ver.'
+          : 'Dieta despublicada — some da tela do aluno até publicar de novo.',
+      );
+      setPlano(novoPlano);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não consegui atualizar a publicação.');
+    } finally {
+      setPublicando(false);
+    }
+  }
+
   const totalDia = somaMacros(plano.refeicoes.flatMap((r) => r.itens));
 
   return (
     <Screen title={nomeAluno} subtitle="Plano alimentar">
       <AlunoTabs clientId={clientId!} ativo="dieta" />
+
+      <Card>
+        <View style={styles.statusRow}>
+          <Pill
+            label={plano.publicado ? 'Publicado' : 'Rascunho'}
+            active
+            color={plano.publicado ? Palette.green : Palette.orange}
+          />
+          <Button
+            label={plano.publicado ? 'Despublicar' : 'Publicar'}
+            variant="ghost"
+            color={plano.publicado ? Palette.orange : Palette.green}
+            onPress={alternarPublicacao}
+            loading={publicando}
+          />
+        </View>
+        <Caption>
+          {plano.publicado
+            ? 'Visível pro aluno. Edições ficam visíveis assim que salvas.'
+            : 'Invisível pro aluno até você publicar — ele vê "seu plano está sendo montado".'}
+        </Caption>
+      </Card>
 
       <Card>
         <View style={styles.totalHeader}>
@@ -364,6 +409,11 @@ function BuscaTaco({ onEscolher }: { onEscolher: (item: ItemRefeicao) => void })
 }
 
 const styles = StyleSheet.create({
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   totalHeader: {
     flexDirection: 'row',
     alignItems: 'center',

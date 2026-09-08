@@ -1,7 +1,7 @@
 # App Treino — Handoff
 
 > Documento de contexto para replicar o estado do projeto em outro chat.
-> Última atualização: 05/Setembro/2026.
+> Última atualização: 06/Setembro/2026.
 
 > **Fonte canônica:** este arquivo, na raiz do repositório. Todo agente (Codex ou Claude) deve lê-lo antes de alterar o projeto e atualizá-lo ao concluir mudanças relevantes, decisões, migrações, configuração de infraestrutura ou bloqueios.
 
@@ -823,6 +823,25 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
   `eas deploy` sem `--prod` pra ter uma URL de preview estável e separada da produção pros
   testadores, sem tocar nos pacientes reais do Tassis — o Guilherme preferiu não fazer isso
   agora também, mantendo tudo como está até a marca fechar.
+- ✅ **F0 do roadmap fechada (06/set): rascunho/publicação de plano + mensagem de espera.**
+  Coluna `publicado boolean not null default true` em `plans` e `planos_alimentares`
+  ([`20260906_plans_rascunho_publicado.sql`](supabase/migrations/20260906_plans_rascunho_publicado.sql)).
+  `default true` preserva os dois planos reais em produção sem backfill (conferido via SQL:
+  os dois já continuam `publicado=true`) — só plano **novo** nasce `publicado=false`
+  (`planoParaEdicao`/`planoAlimentarParaEdicao` em [`planEditor.ts`](src/services/planEditor.ts)/
+  [`dietEditor.ts`](src/services/dietEditor.ts) retornam `publicado: false` quando não existe
+  linha ainda). Editores ([`pro/aluno/[id]/index.tsx`](src/app/pro/aluno/%5Bid%5D/index.tsx),
+  [`pro/aluno/[id]/dieta.tsx`](src/app/pro/aluno/%5Bid%5D/dieta.tsx)) ganharam Pill de status
+  (Rascunho/Publicado) + botão Publicar/Despublicar — "Salvar" sozinho nunca muda o estado de
+  publicação, é sempre um ato explícito separado, como pedia o item do roadmap. Telas do aluno
+  ([`aluno/index.tsx`](src/app/aluno/index.tsx), [`aluno/dieta.tsx`](src/app/aluno/dieta.tsx))
+  só tratam o plano como existente quando `publicado === true`; senão mostram "seu
+  treinador/nutricionista está montando seu plano — fica pronto em até 2 dias" (era "ainda não
+  montou", texto genérico que parecia defeito). Nenhuma RLS nova — é filtro de exibição na
+  aplicação, não controle de acesso; a leitura já cai sob a mesma policy de sempre.
+  `get_advisors(security)` conferido depois da migration: nenhuma categoria nova. **Testado**:
+  `npx tsc --noEmit` limpo, app sobe sem erro de console/bundler até a tela de login (não
+  testado logado — mesma regra de nunca digitar senha, mesmo de conta descartável).
 
 ## 9. Escopo funcional v1 (proposto, não implementado)
 
@@ -957,7 +976,10 @@ calculados.
 
 ## 12. Fluxo de entrada do paciente (desenho fechado com o Guilherme, 02/set)
 
-Roadmap completo publicado como artifact: `https://claude.ai/code/artifact/683aa212-bdbf-4824-924d-52c268739d95`
+Roadmap completo publicado como artifact: `https://claude.ai/code/artifact/c760d7f7-ba23-4fa8-b2b3-28d335e93350`
+(substitui `683aa212-...`, de 04/set — desatualizado, não editável nesta sessão por bloqueio do
+classificador de auto mode; link novo em 06/set incorpora reordenação agressiva pós-benchmark, ver
+[Fitness App Scouting Report](https://claude.ai/code/artifact/4717ee25-7db8-487c-88af-b284840724a1))
 
 O funil real do Tassis (e da maioria dos nutricionistas), na ordem:
 

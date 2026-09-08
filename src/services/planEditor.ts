@@ -26,6 +26,8 @@ export type PlanoEditavel = {
   periodo: string;
   treinador: string;
   dias: DiaEditavel[];
+  /** Rascunho (false) fica invisível pro aluno até o profissional publicar explicitamente. */
+  publicado: boolean;
 };
 
 export function novoExercicio(): ExercicioEditavel {
@@ -112,13 +114,20 @@ export function idsRemovidos(original: DiaTreino[], editado: DiaEditavel[]): str
   return [...antes].filter((id) => !depois.has(id));
 }
 
-export function planoParaEdicao(dias: DiaTreino[], periodo: string, treinador: string): PlanoEditavel {
+export function planoParaEdicao(
+  dias: DiaTreino[],
+  periodo: string,
+  treinador: string,
+  publicado: boolean,
+): PlanoEditavel {
   if (!dias.length) {
-    return { periodo, treinador, dias: [novoDia([])] };
+    // Plano novo nasce como rascunho — só fica visível pro aluno quando o profissional publicar.
+    return { periodo, treinador, dias: [novoDia([])], publicado: false };
   }
   return {
     periodo,
     treinador,
+    publicado,
     dias: dias.map((d) => ({
       ...d,
       desc: d.desc ?? '',
@@ -140,6 +149,7 @@ export async function salvarPlano(
       periodo: plano.periodo.trim(),
       treinador: plano.treinador.trim(),
       dias,
+      publicado: plano.publicado,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'client_id' },
