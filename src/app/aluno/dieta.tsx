@@ -3,7 +3,15 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Body, Caption, Card, EmptyState, Field, Loading, Screen, SectionTitle, Stat } from '@/components/ui';
-import { listaDeCompras, somaMacros, type ItemRefeicao, type Refeicao } from '@/models/domain';
+import {
+  avisoDaRefeicao,
+  itensReais,
+  listaDeCompras,
+  somaMacros,
+  totalConferidoPeloNutricionista,
+  type ItemRefeicao,
+  type Refeicao,
+} from '@/models/domain';
 import {
   buscarCategoriasPorIds,
   getPlanoAlimentar,
@@ -83,7 +91,7 @@ export default function DietaScreen() {
     );
   }
 
-  const totalDia = somaMacros(plano.refeicoes.flatMap((r) => r.itens));
+  const totalDia = somaMacros(plano.refeicoes.flatMap((r) => itensReais(r.itens)));
   const dias = Math.max(1, Number(diasPeriodo) || 30);
   const compras = listaDeCompras(plano.refeicoes, dias, categorias);
 
@@ -198,7 +206,10 @@ function MacroChip({
 }
 
 function RefeicaoCard({ refeicao }: { refeicao: Refeicao }) {
-  const total = somaMacros(refeicao.itens);
+  const itens = itensReais(refeicao.itens);
+  const total = somaMacros(itens);
+  const conferido = totalConferidoPeloNutricionista(refeicao.itens);
+  const aviso = avisoDaRefeicao(refeicao.itens);
 
   return (
     <Card>
@@ -206,9 +217,15 @@ function RefeicaoCard({ refeicao }: { refeicao: Refeicao }) {
         <Body>{refeicao.nome}</Body>
         <Caption color={MacroColors.kcal}>{Math.round(total.kcal)} kcal</Caption>
       </View>
-      {refeicao.itens.map((item, i) => (
+      {itens.map((item, i) => (
         <ItemRow key={i} item={item} />
       ))}
+      {conferido ? (
+        <Caption color={Palette.green}>
+          ✓ Total conferido pelo nutricionista: {Math.round(conferido.kcal)} kcal
+        </Caption>
+      ) : null}
+      {aviso ? <Caption color={Palette.orange}>{aviso}</Caption> : null}
     </Card>
   );
 }

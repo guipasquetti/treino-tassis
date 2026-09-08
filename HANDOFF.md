@@ -941,6 +941,41 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
   cobrança — sem alavancagem nenhuma com a base de usuários atual). Bate com a lógica já
   fechada no roadmap: ganhar mercado antes de faturar alto. Retomar só quando fizer sentido
   monetizar de verdade, não antes.
+- ✅ **Bug real achado e corrigido (06/set): duas linhas de anotação em `planos_alimentares`
+  eram tratadas como alimento em todo lugar — inclusive somando macro em dobro.** O Guilherme
+  reportou ver o aviso `⚠ Sem total calculado pelo nutricionista...` aparecendo como se fosse
+  item de compra. Investigando o dado real de produção, achei que a dieta do Guilherme tem
+  duas convenções que **nunca foram escritas pelo editor do app** — alguém gravou direto via
+  SQL num momento anterior:
+  - `{"nome": "— Total da refeição (calculado pelo nutricionista) —", "ehTotal": true, "macros": {...}}`
+    — o total já conferido à mão pra aquela refeição.
+  - `{"nome": "⚠ Sem total calculado...", "macros": null, "quantidade": ""}` — aviso de texto
+    livre, sem o marcador `ehTotal`.
+
+  Nenhum código do app sabia dessas duas convenções, então as duas eram renderizadas como
+  item de comida normal em toda tela que lê `refeicoes` — e a linha `ehTotal` **somava o
+  próprio kcal em cima da soma dos itens reais**, dobrando o total mostrado. Verificado
+  rodando as funções puras contra o JSON real de produção (`npx tsx`, sem precisar logar):
+  café da manhã mostrava 802,7 kcal antes da correção (211,7 dos itens reais + 591 do
+  marcador de total, somado duas vezes) — 211,7 kcal depois.
+
+  Corrigido na raiz, em [`domain.ts`](src/models/domain.ts): `ItemRefeicao` ganhou o campo
+  `ehTotal?: boolean` (já existia no dado, faltava no tipo), e três funções novas —
+  `ehAnotacao()` (reconhece as duas convenções: `ehTotal` explícito OU `quantidade` vazia,
+  que nenhum alimento real tem), `itensReais()` (filtra antes de somar/comprar) e
+  `totalConferidoPeloNutricionista()`/`avisoDaRefeicao()` (extraem o conteúdo útil das
+  anotações pra mostrar direito, não descartar). Aplicado em
+  [`aluno/dieta.tsx`](src/app/aluno/dieta.tsx) (soma do dia, soma por refeição,
+  `listaDeCompras()` já filtra por construção) e em
+  [`pro/aluno/[id]/dieta.tsx`](src/app/pro/aluno/%5Bid%5D/dieta.tsx) (editor do profissional
+  — mesma soma dobrada acontecia lá; lista de itens editáveis agora pula as anotações mas
+  preserva o índice original nos callbacks `onMudar`/`onRemover`, então salvar não apaga
+  essas duas linhas por engano). As duas anotações agora aparecem como texto — "✓ Total
+  conferido..." em verde, aviso em laranja — nunca mais como item.
+
+  **Testado**: `npx tsc --noEmit` limpo; verificação direta das funções puras contra o JSON
+  real da dieta do Guilherme confirmou soma corrigida, extração certa do total/aviso, e
+  ausência das duas linhas na lista de compras. App sobe sem erro de console/bundler.
 
 ## 9. Escopo funcional v1 (proposto, não implementado)
 

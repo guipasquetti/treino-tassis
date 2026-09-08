@@ -15,7 +15,15 @@ import {
   Screen,
   SectionTitle,
 } from '@/components/ui';
-import { somaMacros, type ItemRefeicao, type Refeicao } from '@/models/domain';
+import {
+  avisoDaRefeicao,
+  ehAnotacao,
+  itensReais,
+  somaMacros,
+  totalConferidoPeloNutricionista,
+  type ItemRefeicao,
+  type Refeicao,
+} from '@/models/domain';
 import { getProfile } from '@/services/authService';
 import {
   itemDeTaco,
@@ -123,7 +131,7 @@ export default function EditorDietaScreen() {
     }
   }
 
-  const totalDia = somaMacros(plano.refeicoes.flatMap((r) => r.itens));
+  const totalDia = somaMacros(plano.refeicoes.flatMap((r) => itensReais(r.itens)));
 
   return (
     <Screen title={nomeAluno} subtitle="Plano alimentar">
@@ -257,7 +265,12 @@ function RefeicaoCard({
   onMudarItem: (indice: number, item: ItemRefeicao) => void;
   onRemover: () => void;
 }) {
-  const total = somaMacros(refeicao.itens);
+  const itensReaisComIndice = refeicao.itens
+    .map((item, indice) => ({ item, indice }))
+    .filter(({ item }) => !ehAnotacao(item));
+  const total = somaMacros(itensReais(refeicao.itens));
+  const conferido = totalConferidoPeloNutricionista(refeicao.itens);
+  const aviso = avisoDaRefeicao(refeicao.itens);
 
   return (
     <Card>
@@ -270,7 +283,15 @@ function RefeicaoCard({
         <Caption color={MacroColors.kcal}>{Math.round(total.kcal)} kcal</Caption>
       </View>
 
-      {refeicao.itens.map((item, ii) => (
+      {conferido || aviso ? (
+        <Caption color={conferido ? Palette.green : Palette.orange}>
+          {conferido
+            ? `✓ Total conferido (registrado direto no banco): ${Math.round(conferido.kcal)} kcal`
+            : aviso}
+        </Caption>
+      ) : null}
+
+      {itensReaisComIndice.map(({ item, indice: ii }) => (
         <ItemEditor
           key={ii}
           item={item}

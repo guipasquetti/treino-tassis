@@ -78,7 +78,39 @@ export type ItemRefeicao = {
    */
   taco_id?: number;
   quantidade_g?: number;
+  /**
+   * Linha de anotação, não alimento — guarda o total já conferido à mão pelo nutricionista
+   * pra essa refeição (achado em dado real de produção em 06/set, nunca escrita pelo editor
+   * do app: alguém gravou direto via SQL). Nunca soma macro de novo, nunca vira item de
+   * lista de compras, nunca aparece como comida na tela.
+   */
+  ehTotal?: boolean;
 };
+
+/**
+ * `true` pra linha de anotação (o total conferido à mão, ou o aviso de "sem total
+ * calculado") — nunca alimento de verdade. Reconhecida por `ehTotal` explícito OU por não
+ * ter quantidade nenhuma: todo alimento real tem alguma quantidade, mesmo vaga como
+ * "à vontade" — só uma anotação tem `quantidade` vazia.
+ */
+export function ehAnotacao(item: ItemRefeicao): boolean {
+  return item.ehTotal === true || !item.quantidade.trim();
+}
+
+/** Só os alimentos de verdade — filtra as linhas de anotação antes de somar macro ou comprar. */
+export function itensReais(itens: ItemRefeicao[]): ItemRefeicao[] {
+  return itens.filter((item) => !ehAnotacao(item));
+}
+
+/** Total que o nutricionista já conferiu à mão pra essa refeição, quando existe essa linha. */
+export function totalConferidoPeloNutricionista(itens: ItemRefeicao[]): Macros | null {
+  return itens.find((item) => item.ehTotal)?.macros ?? null;
+}
+
+/** Aviso de texto livre do nutricionista sobre essa refeição (ex.: "sem total calculado"). */
+export function avisoDaRefeicao(itens: ItemRefeicao[]): string | null {
+  return itens.find((item) => !item.ehTotal && ehAnotacao(item))?.nome ?? null;
+}
 
 /** Escala os macros da TACO (que são por 100g) para a quantidade em gramas. */
 export function macrosPorGramas(
@@ -131,7 +163,7 @@ export function listaDeCompras(
   const livres = new Map<string, number>();
 
   for (const refeicao of refeicoes) {
-    for (const item of refeicao.itens) {
+    for (const item of itensReais(refeicao.itens)) {
       if (item.taco_id != null && item.quantidade_g != null) {
         gramasPorTaco.set(item.taco_id, (gramasPorTaco.get(item.taco_id) ?? 0) + item.quantidade_g);
         nomePorTaco.set(item.taco_id, item.nome);
