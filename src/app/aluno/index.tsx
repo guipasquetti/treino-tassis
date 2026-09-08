@@ -1,377 +1,350 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 
+import { Body, Button, Caption, Card, EmptyState, Loading, Screen, SectionTitle, Stat } from '@/components/ui';
+import { formatarData, formatarDataHora, itensReais, listaDeCompras, somaMacros } from '@/models/domain';
 import {
-  Body,
-  Button,
-  Caption,
-  Card,
-  EmptyState,
-  Field,
-  Loading,
-  Pill,
-  Screen,
-  SectionTitle,
-  StepperButton,
-} from '@/components/ui';
-import {
-  formatarData,
-  formatarSet,
-  type DiaTreino,
-  type Exercicio,
-  type SetLog,
-} from '@/models/domain';
-import {
-  ajustarPeso,
-  avaliar,
-  concluidoHoje,
-  corrigirUltimaSerie,
-  getWorkoutData,
-  registrarSerie,
-  seriesDeHoje,
-  sessaoAnterior,
-  sugerirSerie,
-  type WorkoutData,
-} from '@/services/workoutService';
+  checkinPendente,
+  historicoPeso,
+  listarMeusCheckins,
+  type CheckIn,
+} from '@/services/checkinService';
+import { buscarCategoriasPorIds, getPlanoAlimentar, type PlanoAlimentar } from '@/services/nutritionService';
 import { temPlanoConfirmado } from '@/services/professionalService';
+import { proximaTeleconsulta, type Teleconsulta } from '@/services/teleconsultaService';
+import { concluidoHoje, getWorkoutData, streakTreino, type WorkoutData } from '@/services/workoutService';
 import { useAuthStore } from '@/store/authStore';
-import { Palette, Radius, Spacing, trainingColor } from '@/theme';
+import { MacroColors, Palette, Radius, Spacing, trainingColor } from '@/theme';
 
-export default function TreinoScreen() {
+/** Chave igual à usada em `aluno/dieta.tsx` — mesmo checklist, lido aqui só pro resumo. */
+function chaveMarcados(userId: string): string {
+  return `lista-compras-marcados:${userId}`;
+}
+
+const DIAS_PROJECAO_PADRAO = 30;
+
+type EstadoInicio = {
+  workout: WorkoutData | null;
+  liberado: boolean;
+  plano: PlanoAlimentar | null;
+  categorias: Record<number, string>;
+  checkins: CheckIn[];
+  checkinDisponivel: boolean;
+  consulta: Teleconsulta | null;
+  comprasMarcadas: number;
+};
+
+/**
+ * Tela inicial do aluno (§ redesenho do perfil, 08/set): agrega o que já existe espalhado em
+ * Treino/Dieta/Check-in/Perfil num resumo só, pra abrir o app e ver o essencial sem trocar de
+ * aba. Não lê nada novo do banco além do que essas telas já leem — só reorganiza.
+ */
+export default function InicioScreen() {
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const [data, setData] = useState<WorkoutData | null>(null);
-  const [liberado, setLiberado] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [diaAtivo, setDiaAtivo] = useState<string | null>(null);
+  const profile = useAuthStore((s) => s.profile);
+  const [estado, setEstado] = useState<EstadoInicio | null>(null);
 
   const carregar = useCallback(async () => {
     if (!user) return;
-    const [resultado, confirmado] = await Promise.all([
+    const [workout, liberado, plano, checkins, checkinDisponivel, consulta] = await Promise.all([
       getWorkoutData(user.id),
       temPlanoConfirmado(user.id),
+      getPlanoAlimentar(user.id),
+      listarMeusCheckins(user.id),
+      checkinPendente(user.id),
+      proximaTeleconsulta(user.id),
     ]);
-    setData(resultado);
-    setLiberado(confirmado);
-    setDiaAtivo((atual) => atual ?? resultado.plano?.dias[0]?.id ?? null);
-    setLoading(false);
-  }, [user]);
+
+    let categorias: Record<number, string> = {};
+    let comprasMarcadas = 0;
+    if (plano?.publicado && plano.refeicoes.length) {
+      const idsTaco = [
+        ...new Set(
+          plano.refeicoes.flatMap((r) => r.itens.map((i) => i.taco_id)).filter((id): id is number => id != null),
+        ),
+      ];
+      categorias = await buscarCategoriasPorIds(idsTaco);
+      const salvo = await AsyncStorage.getItem(chaveMarcados(user.id));
+      if (salvo) {
+        try {
+          comprasMarcadas = (JSON.parse(salvo) as string[]).length;
+        } catch {
+          comprasMarcadas = 0;
+        }
+      }
+    }
+
+    setEstado({ workout, liberado, plano, categorias, checkins, checkinDisponivel, consulta, comprasMarcadas });
+  }, [user?.id]);
 
   useEffect(() => {
-    if (!user) {
-      setData(null);
-      setLoading(true);
-      return;
-    }
     carregar();
-  }, [user, carregar]);
+  }, [carregar]);
 
-  if (loading || !user) return <Loading />;
+  if (!user || !estado) return <Loading />;
 
-  if (!liberado) {
+  const primeiroNome = profile?.nome?.trim().split(' ')[0] || 'Olá';
+
+  if (!estado.liberado) {
     return (
-      <Screen title="Treino">
-        <EmptyState text="Aguardando seu profissional confirmar o plano contratado pra liberar o treino." />
+      <Screen title={primeiroNome}>
+        <EmptyState text="Aguardando seu profissional confirmar o plano contratado." />
       </Screen>
     );
   }
 
-  const dias = data?.plano?.publicado ? data.plano.dias : [];
-  if (!dias.length) {
-    return (
-      <Screen title="Treino">
-        <EmptyState text="Seu treinador está montando seu plano — fica pronto em até 2 dias." />
-      </Screen>
-    );
-  }
+  const dias = estado.workout?.plano?.publicado ? estado.workout.plano.dias : [];
+  const diaHoje = dias[0] ?? null;
+  const exerciciosHoje = diaHoje?.ex ?? [];
+  const concluidosHoje = exerciciosHoje.filter((ex) =>
+    concluidoHoje(estado.workout!.historico[ex.id]),
+  ).length;
+  const streak = estado.workout ? streakTreino(estado.workout.historico) : 0;
 
-  const dia = dias.find((d) => d.id === diaAtivo) ?? dias[0];
-  const cor = trainingColor(dia.tipo);
+  const refeicoesReais = estado.plano?.publicado ? estado.plano.refeicoes : [];
+  const totalDia = somaMacros(refeicoesReais.flatMap((r) => itensReais(r.itens)));
+  const metaKcal = estado.plano?.meta_kcal ? Math.round(Number(estado.plano.meta_kcal)) : null;
+
+  const compras = refeicoesReais.length
+    ? listaDeCompras(refeicoesReais, DIAS_PROJECAO_PADRAO, estado.categorias)
+    : [];
+  const totalItensCompra = compras.reduce((n, g) => n + g.itens.length, 0);
+
+  const pesos = historicoPeso(estado.checkins);
+  const ultimoCheckin = estado.checkins[0] ?? null;
+  const penultimoCheckin = estado.checkins[1] ?? null;
 
   return (
-    <Screen title="Treino" subtitle={data?.plano?.periodo || undefined}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.dayTabs}>
-        {dias.map((d) => (
-          <Pill
-            key={d.id}
-            label={`${d.id} · ${d.nome}`}
-            active={d.id === dia.id}
-            color={trainingColor(d.tipo)}
-            onPress={() => setDiaAtivo(d.id)}
+    <Screen title={`Olá, ${primeiroNome}`} subtitle="Resumo de hoje">
+      <Card>
+        <View style={styles.statsRow}>
+          <Stat value={String(streak)} label={streak === 1 ? 'dia seguido' : 'dias seguidos'} color={Palette.orange} />
+          <Stat
+            value={exerciciosHoje.length ? `${concluidosHoje}/${exerciciosHoje.length}` : '—'}
+            label="treino hoje"
+            color={trainingColor(diaHoje?.tipo)}
           />
-        ))}
-      </ScrollView>
+          <Stat
+            value={ultimoCheckin?.pontuacao_geral != null ? `${Math.round(ultimoCheckin.pontuacao_geral)}%` : '—'}
+            label="check-in"
+            color={Palette.purple}
+          />
+        </View>
+      </Card>
 
-      <View style={[styles.dayHeader, { borderLeftColor: cor }]}>
-        <Body>{dia.nome}</Body>
-        <Caption>{dia.desc}</Caption>
-      </View>
+      <SectionTitle>Treino de hoje</SectionTitle>
+      {diaHoje ? (
+        <Card onPress={() => router.push('/aluno/treino')}>
+          <View style={[styles.diaHeader, { borderLeftColor: trainingColor(diaHoje.tipo) }]}>
+            <Body>{diaHoje.nome}</Body>
+            <Caption>{diaHoje.desc}</Caption>
+          </View>
+          {exerciciosHoje.map((ex) => {
+            const feito = concluidoHoje(estado.workout!.historico[ex.id]);
+            return (
+              <View key={ex.id} style={styles.exLinha}>
+                <Caption color={feito ? Palette.green : Palette.textSecondary}>{feito ? '✓' : '○'}</Caption>
+                <Caption color={feito ? Palette.textTertiary : Palette.text} style={styles.exNome}>
+                  {ex.nome}
+                </Caption>
+              </View>
+            );
+          })}
+          <Button label="Ir treinar" variant="ghost" color={trainingColor(diaHoje.tipo)} onPress={() => router.push('/aluno/treino')} />
+        </Card>
+      ) : (
+        <EmptyState text="Seu treinador está montando seu plano — fica pronto em até 2 dias." />
+      )}
 
-      {dia.ex.map((ex) => (
-        <ExercicioCard
-          key={ex.id}
-          ex={ex}
-          cor={cor}
-          data={data!}
-          onMudou={carregar}
-          clientId={user!.id}
-        />
-      ))}
+      <SectionTitle>Dieta de hoje</SectionTitle>
+      {refeicoesReais.length ? (
+        <Card onPress={() => router.push('/aluno/dieta')}>
+          <View style={styles.statsRow}>
+            <Stat
+              value={String(Math.round(totalDia.kcal))}
+              label={metaKcal ? `de ${metaKcal} kcal` : 'kcal hoje'}
+              color={MacroColors.kcal}
+            />
+            <Stat value={`${Math.round(totalDia.proteina_g)}g`} label="proteína" color={MacroColors.proteina} />
+            <Stat value={`${Math.round(totalDia.carboidrato_g)}g`} label="carbo" color={MacroColors.carboidrato} />
+          </View>
+          <Button label="Ver dieta completa" variant="ghost" color={Palette.purple} onPress={() => router.push('/aluno/dieta')} />
+        </Card>
+      ) : (
+        <EmptyState text="Seu nutricionista está montando seu plano — fica pronto em até 2 dias." />
+      )}
+
+      {totalItensCompra > 0 ? (
+        <Card onPress={() => router.push('/aluno/dieta')}>
+          <View style={styles.linhaEntreTexto}>
+            <SectionTitle>Lista de compras</SectionTitle>
+            <Caption color={Palette.text}>
+              {Math.min(estado.comprasMarcadas, totalItensCompra)}/{totalItensCompra} comprados
+            </Caption>
+          </View>
+          <BarraProgresso valor={estado.comprasMarcadas} total={totalItensCompra} cor={Palette.purple} />
+        </Card>
+      ) : null}
+
+      <SectionTitle>Peso</SectionTitle>
+      {pesos.length >= 2 ? (
+        <Card>
+          <View style={styles.linhaEntreTexto}>
+            <Stat value={`${formatarNumero(pesos[pesos.length - 1].peso)}kg`} label="mais recente" color={Palette.blue} />
+            <VariacaoPeso pesos={pesos} />
+          </View>
+          <Sparkline valores={pesos.map((p) => p.peso)} cor={Palette.blue} />
+        </Card>
+      ) : (
+        <EmptyState text="Registre seu peso no check-in pra ver a evolução aqui." />
+      )}
+
+      <SectionTitle>Check-in</SectionTitle>
+      <Card onPress={() => router.push('/aluno/checkin')}>
+        {estado.checkinDisponivel ? (
+          <>
+            <Caption>Novo check-in disponível — leva poucos minutos.</Caption>
+            <Button label="Fazer check-in" color={Palette.purple} onPress={() => router.push('/aluno/checkin')} />
+          </>
+        ) : ultimoCheckin ? (
+          <>
+            <View style={styles.linhaEntreTexto}>
+              <Body>{ultimoCheckin.pontuacao_geral != null ? `${Math.round(ultimoCheckin.pontuacao_geral)}%` : '—'}</Body>
+              <TendenciaCheckin atual={ultimoCheckin} anterior={penultimoCheckin} />
+            </View>
+            <Caption color={Palette.textTertiary}>
+              Último em {formatarDataHora(ultimoCheckin.created_at)} · próximo em breve
+            </Caption>
+          </>
+        ) : (
+          <Caption>Nenhum check-in enviado ainda.</Caption>
+        )}
+      </Card>
+
+      {estado.consulta ? (
+        <>
+          <SectionTitle>Próxima teleconsulta</SectionTitle>
+          <Card>
+            <Body>{formatarDataHora(estado.consulta.data_hora)}</Body>
+            <Button
+              label="Entrar na chamada"
+              color={Palette.blue}
+              onPress={() => Linking.openURL(estado.consulta!.link_meet)}
+            />
+          </Card>
+        </>
+      ) : null}
     </Screen>
   );
 }
 
-function ExercicioCard({
-  ex,
-  cor,
-  data,
-  clientId,
-  onMudou,
-}: {
-  ex: Exercicio;
-  cor: string;
-  data: WorkoutData;
-  clientId: string;
-  onMudou: () => Promise<void>;
-}) {
-  const historico = data.historico[ex.id];
-  const rascunho = data.rascunhos[ex.id];
-  const logadas = seriesDeHoje(historico, rascunho);
-  const anterior = sessaoAnterior(historico);
-  const concluido = concluidoHoje(historico);
-  const avaliacao = avaliar(ex, anterior);
+function formatarNumero(v: number): string {
+  return (Math.round(v * 10) / 10).toString().replace('.', ',');
+}
 
-  const [pendente, setPendente] = useState<SetLog | null>(null);
-  const [salvando, setSalvando] = useState(false);
-
-  const sugerida = pendente ?? sugerirSerie(ex, logadas, anterior);
-
-  async function registrar() {
-    setSalvando(true);
-    try {
-      await registrarSerie(clientId, ex, logadas, sugerida);
-      setPendente(null);
-      await onMudou();
-    } finally {
-      setSalvando(false);
-    }
-  }
-
-  async function corrigir() {
-    setSalvando(true);
-    try {
-      const removida = await corrigirUltimaSerie(clientId, ex, historico, rascunho);
-      setPendente(removida);
-      await onMudou();
-    } finally {
-      setSalvando(false);
-    }
-  }
-
-  const restantes = ex.sets - logadas.length;
-
+function VariacaoPeso({ pesos }: { pesos: { data: string; peso: number }[] }) {
+  const delta = pesos[pesos.length - 1].peso - pesos[0].peso;
+  const cor = delta === 0 ? Palette.textSecondary : delta > 0 ? Palette.orange : Palette.green;
+  const sinal = delta > 0 ? '+' : '';
   return (
-    <Card>
-      <View style={styles.exHeader}>
-        <Body style={styles.exName}>{ex.nome}</Body>
-        <View style={[styles.badge, { backgroundColor: concluido ? Palette.green : cor }]}>
-          <Caption color={Palette.background} style={styles.badgeText}>
-            {logadas.length}/{ex.sets}
-          </Caption>
-        </View>
-      </View>
+    <Caption color={cor}>
+      {sinal}
+      {formatarNumero(delta)}kg desde {formatarData(pesos[0].data.slice(0, 10))}
+    </Caption>
+  );
+}
 
-      <Caption>
-        Warm {ex.warm} · Feeder {ex.feeder} ·{' '}
-        <Caption color={cor}>
-          Working {ex.min}-{ex.max}
-          {ex.tempo ? 's' : ''} ({ex.sets}x)
-        </Caption>
-      </Caption>
+function TendenciaCheckin({ atual, anterior }: { atual: CheckIn; anterior: CheckIn | null }) {
+  if (!anterior || atual.pontuacao_geral == null || anterior.pontuacao_geral == null) return null;
+  const delta = atual.pontuacao_geral - anterior.pontuacao_geral;
+  if (Math.abs(delta) < 3) return <Caption color={Palette.textSecondary}>estável</Caption>;
+  const subiu = delta > 0;
+  return (
+    <Caption color={subiu ? Palette.green : Palette.orange}>
+      {subiu ? '↑' : '↓'} {Math.round(Math.abs(delta))}pts
+    </Caption>
+  );
+}
 
-      {ex.nota ? <Caption color={Palette.orange}>{ex.nota}</Caption> : null}
+/** Barra de progresso simples — sem lib nova, só `View` com largura proporcional. */
+function BarraProgresso({ valor, total, cor }: { valor: number; total: number; cor: string }) {
+  const pct = total > 0 ? Math.min(1, valor / total) * 100 : 0;
+  return (
+    <View style={styles.progressoTrilha}>
+      <View style={[styles.progressoPreenchido, { width: `${pct}%`, backgroundColor: cor }]} />
+    </View>
+  );
+}
 
-      {ex.video ? (
-        <Button
-          label="Ver vídeo"
-          variant="ghost"
-          color={cor}
-          onPress={() => Linking.openURL(ex.video!)}
-        />
-      ) : null}
-
-      {anterior ? (
-        <Caption>
-          Última ({formatarData(anterior.data)}):{' '}
-          <Caption color={Palette.text}>
-            {anterior.sets.map((s) => formatarSet(ex, s)).join(' · ')}
-          </Caption>
-        </Caption>
-      ) : null}
-
-      <Caption color={avaliacao.tipo === 'up' ? Palette.green : Palette.textSecondary}>
-        {avaliacao.texto}
-      </Caption>
-
-      {logadas.length > 0 ? (
-        <View style={styles.logadas}>
-          {logadas.map((s, i) => (
-            <View key={i} style={styles.logadaChip}>
-              <Caption color={Palette.text}>{formatarSet(ex, s)}</Caption>
-              {s.obs ? <Caption color={Palette.textSecondary}>{s.obs}</Caption> : null}
-            </View>
-          ))}
-        </View>
-      ) : null}
-
-      {concluido ? (
-        <Caption color={Palette.green}>✓ Treino de hoje registrado</Caption>
-      ) : (
-        <View style={styles.registro}>
-          {!ex.tempo && (
-            <View style={styles.stepperRow}>
-              <Caption>Carga</Caption>
-              <View style={styles.stepperControls}>
-                <StepperButton
-                  icon="remove"
-                  onPress={() => setPendente({ ...sugerida, p: ajustarPeso(sugerida.p, -1) })}
-                />
-                <Body style={styles.stepperValue}>{sugerida.p}kg</Body>
-                <StepperButton
-                  icon="add"
-                  onPress={() => setPendente({ ...sugerida, p: ajustarPeso(sugerida.p, 1) })}
-                />
-              </View>
-            </View>
-          )}
-
-          <View style={styles.stepperRow}>
-            <Caption>{ex.tempo ? 'Tempo' : 'Reps'}</Caption>
-            <View style={styles.stepperControls}>
-              <StepperButton
-                icon="remove"
-                onPress={() =>
-                  setPendente({ ...sugerida, r: Math.max(0, sugerida.r - (ex.tempo ? 5 : 1)) })
-                }
-              />
-              <Body style={styles.stepperValue}>
-                {sugerida.r}
-                {ex.tempo ? 's' : ''}
-              </Body>
-              <StepperButton
-                icon="add"
-                onPress={() => setPendente({ ...sugerida, r: sugerida.r + (ex.tempo ? 5 : 1) })}
-              />
-            </View>
-          </View>
-
-          <Field
-            label="Observação (opcional)"
-            value={sugerida.obs ?? ''}
-            onChangeText={(obs) => setPendente({ ...sugerida, obs: obs || undefined })}
-            placeholder="Ex.: senti dor no ombro"
+/** Mini-gráfico de barras — sem lib de chart, só `View`s escaladas pelo min/max da série. */
+function Sparkline({ valores, cor }: { valores: number[]; cor: string }) {
+  const min = Math.min(...valores);
+  const max = Math.max(...valores);
+  const amplitude = max - min || 1;
+  const ultimos = valores.slice(-12);
+  return (
+    <View style={styles.sparkline}>
+      {ultimos.map((v, i) => {
+        const altura = 8 + ((v - min) / amplitude) * 40;
+        const ultimo = i === ultimos.length - 1;
+        return (
+          <View
+            key={i}
+            style={[styles.sparklineBarra, { height: altura, backgroundColor: ultimo ? cor : Palette.surfaceElevated }]}
           />
-
-          <Button
-            label={`Registrar ${logadas.length + 1}ª série${restantes === 1 ? ' (última)' : ''}`}
-            color={cor}
-            onPress={registrar}
-            loading={salvando}
-          />
-        </View>
-      )}
-
-      {logadas.length > 0 && (
-        <Button label="Corrigir última série" variant="ghost" color={Palette.orange} onPress={corrigir} />
-      )}
-
-      {historico && historico.length > 0 && (
-        <View style={styles.historico}>
-          <SectionTitle>Histórico</SectionTitle>
-          {historico
-            .slice()
-            .reverse()
-            .slice(0, 5)
-            .map((s, i) => (
-              <View key={i} style={styles.histRow}>
-                <Caption>{formatarData(s.data)}</Caption>
-                <Caption color={Palette.text}>
-                  {s.sets.map((x) => formatarSet(ex, x)).join('  ·  ')}
-                </Caption>
-              </View>
-            ))}
-        </View>
-      )}
-    </Card>
+        );
+      })}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  dayTabs: {
-    gap: Spacing.sm,
-    paddingVertical: Spacing.xs,
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  dayHeader: {
+  diaHeader: {
     borderLeftWidth: 3,
     paddingLeft: Spacing.md,
     gap: 2,
+    marginBottom: Spacing.xs,
   },
-  exHeader: {
+  exLinha: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: Spacing.sm,
   },
-  exName: {
+  exNome: {
     flex: 1,
   },
-  badge: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
+  linhaEntreTexto: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  progressoTrilha: {
+    height: 8,
+    borderRadius: Radius.pill,
+    backgroundColor: Palette.surfaceElevated,
+    overflow: 'hidden',
+  },
+  progressoPreenchido: {
+    height: '100%',
     borderRadius: Radius.pill,
   },
-  badgeText: {
-    fontWeight: '800',
-  },
-  logadas: {
+  sparkline: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
+    alignItems: 'flex-end',
+    gap: 4,
+    height: 48,
+    marginTop: Spacing.sm,
   },
-  logadaChip: {
-    backgroundColor: Palette.surfaceElevated,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
+  sparklineBarra: {
+    flex: 1,
     borderRadius: Radius.sm,
-    gap: 2,
-  },
-  registro: {
-    gap: Spacing.md,
-    marginTop: Spacing.xs,
-  },
-  stepperRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  stepperControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  stepperValue: {
-    minWidth: 72,
-    textAlign: 'center',
-    fontVariant: ['tabular-nums'],
-  },
-  historico: {
-    gap: Spacing.xs,
-  },
-  histRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: Spacing.md,
+    minHeight: 8,
   },
 });

@@ -59,6 +59,13 @@ export default function ClientLayout() {
           <Tabs.Screen
             name="index"
             options={{
+              title: 'Início',
+              tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
+            }}
+          />
+          <Tabs.Screen
+            name="treino"
+            options={{
               title: 'Treino',
               tabBarIcon: ({ color, size }) => <Ionicons name="barbell" size={size} color={color} />,
             }}

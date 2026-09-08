@@ -53,6 +53,38 @@ export function concluidoHoje(historico: Sessao[] | undefined): boolean {
   return !!historico?.length && historico[historico.length - 1].data === hojeISO();
 }
 
+/** Um dia antes de `iso` (YYYY-MM-DD), em aritmética de calendário (UTC), não fuso local. */
+function diaAnteriorISO(iso: string): string {
+  const [ano, mes, dia] = iso.split('-').map(Number);
+  const d = new Date(Date.UTC(ano, mes - 1, dia));
+  d.setUTCDate(d.getUTCDate() - 1);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Dias seguidos com pelo menos um exercício registrado (`workout_logs`, qualquer exercício),
+ * contando pra trás a partir de hoje. Se ainda não treinou hoje, o streak "de ontem" continua
+ * valendo (não zera só por ainda não ter aberto o app hoje) — mesma lógica de streak de hábito
+ * já usada em apps de fitness.
+ */
+export function streakTreino(historico: Record<string, Sessao[]>): number {
+  const dias = new Set<string>();
+  for (const sessoes of Object.values(historico)) {
+    for (const s of sessoes) dias.add(s.data);
+  }
+  if (!dias.size) return 0;
+
+  let cursor = dias.has(hojeISO()) ? hojeISO() : diaAnteriorISO(hojeISO());
+  if (!dias.has(cursor)) return 0;
+
+  let streak = 0;
+  while (dias.has(cursor)) {
+    streak++;
+    cursor = diaAnteriorISO(cursor);
+  }
+  return streak;
+}
+
 /** Séries já registradas hoje — do log (se concluído) ou do rascunho. */
 export function seriesDeHoje(
   historico: Sessao[] | undefined,

@@ -117,6 +117,24 @@ export async function obterComparacaoFotos(clientId: string): Promise<Comparacao
   return resultado;
 }
 
+export type RegistroPeso = { data: string; peso: number };
+
+/**
+ * Histórico de peso corporal extraído da pergunta `peso_corporal` do check-in (respondida
+ * como texto livre, ver `RespostasCheckin`), em ordem cronológica crescente. Ignora check-ins
+ * sem essa resposta ou com valor não numérico — não inventa peso pra quem não respondeu.
+ */
+export function historicoPeso(checkins: CheckIn[]): RegistroPeso[] {
+  return checkins
+    .map((c) => {
+      const bruto = (c.respostas as Record<string, string> | null)?.peso_corporal;
+      const peso = bruto ? Number(bruto.replace(',', '.')) : NaN;
+      return Number.isFinite(peso) ? { data: c.created_at, peso } : null;
+    })
+    .filter((r): r is RegistroPeso => r !== null)
+    .reverse();
+}
+
 /** Se o paciente já pode enviar um novo check-in (nunca enviou, ou já passou a periodicidade). */
 export async function checkinPendente(clientId: string): Promise<boolean> {
   const { data } = await supabase

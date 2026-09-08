@@ -1060,6 +1060,45 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
     visualmente na rota de depuração temporária, mesmo processo do item acima.
   - `npx tsc --noEmit` limpo, app sobe sem erro de console/bundler.
 
+- ✅ **Tela "Início" — dashboard agregado do aluno (08/set).** Pedido do Guilherme: perfil
+  "com cara de dashboard premium", inspirado no que faz falta nos concorrentes. Pesquisa
+  prévia (Reclame Aqui/App Store de WebDiet, MFIT, Dietbox, Trainerize + comparativo Vibe
+  Fit) mostrou padrão de reclamação em instabilidade, suporte que ignora o paciente e
+  troca de profissional quebrando dado — nenhuma mudança de arquitetura veio disso (já
+  cobertas pelas decisões existentes de §0/append-only), só confirmou o rumo. Vibe Fit é o
+  concorrente mais completo (Body Scan IA, streak/badge de hábito, chat, 5 bases
+  nutricionais) — fora de escopo por custo de IA/infra nova, ver lista de pendências do
+  Tassis abaixo.
+  - **v1 implementada sem migration nenhuma** — só agrega dado que Treino/Dieta/Check-in
+    já liam cada um por si: streak de treino, progresso do dia (exercícios feitos/total),
+    score do check-in mais recente + tendência vs. anterior, kcal/macro do dia vs. meta,
+    progresso da lista de compras, evolução de peso (extraído da resposta `peso_corporal`
+    do check-in — não existe coluna própria) e próxima teleconsulta.
+  - **`aluno/index.tsx` virou a tela Início**; o Treino (era `index.tsx`) virou
+    `aluno/treino.tsx` — rota nova `/aluno/treino`. `_layout.tsx` ganhou a aba "Início"
+    (ícone `home`) como primeira aba; `/aluno` (destino de todo `router.replace` pós-login)
+    agora abre o dashboard, não mais direto no treino do dia.
+  - **Duas funções puras novas**: `streakTreino()` em
+    [`workoutService.ts`](src/services/workoutService.ts) (dias consecutivos com pelo
+    menos um `workout_log`, contando pra trás a partir de hoje — streak de ontem continua
+    valendo se ainda não treinou hoje) e `historicoPeso()` em
+    [`checkinService.ts`](src/services/checkinService.ts) (extrai `peso_corporal` de cada
+    check-in, ordena cronológico, ignora resposta não numérica). Verificadas com
+    `npx tsx` contra casos sintéticos (streak com gap, sem treino hoje, vazio; peso com
+    entrada não numérica no meio) — todos bateram o esperado.
+  - **Sparkline de peso e barra de progresso da lista de compras são `View`s puras** (sem
+    lib de gráfico nova) — escala linear pelo min/max da série.
+  - **Verificado visualmente sem login**: rota de depuração temporária (`_debug-inicio.tsx`,
+    whitelisted por uma linha em `_layout.tsx`, mesmo padrão já usado em 06/set pra lista de
+    compras) renderizando a tela com dado mockado — conferido no navegador que o layout não
+    quebra, e por `getBoundingClientRect()` que as barras do sparkline escalam na ordem
+    certa (peso caindo → barra mais recente mais curta, destacada em azul). Removida a rota
+    e a linha do layout depois — `git status` limpo. `npx tsc --noEmit` limpo. **Não
+    testado logado** — mesma regra de nunca digitar senha de conta nenhuma.
+  - **Simplificação aceita**: "concluídos hoje" e o card de treino sempre mostram o
+    primeiro dia do plano (`dias[0]`), igual ao comportamento padrão da aba Treino — não
+    lembra qual dia o aluno tocou por último.
+
 ## 9. Escopo funcional v1 (proposto, não implementado)
 
 Tabela abaixo é por par paciente↔profissional (já reflete o modelo N:N do §1/§5).
