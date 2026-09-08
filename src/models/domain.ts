@@ -101,15 +101,31 @@ export type Refeicao = {
 };
 
 export type ItemListaCompras = { nome: string; quantidade: string };
+export type CategoriaListaCompras = { categoria: string; itens: ItemListaCompras[] };
+
+/** Categoria de fallback pra item sem correspondência na TACO (texto livre, digitado à mão). */
+export const CATEGORIA_ITENS_LIVRES = 'Itens diversos';
 
 /**
  * Lista de compras derivada da dieta — não é salva em lugar nenhum, é sempre recalculada a
  * partir das refeições atuais (FA do roadmap, item 06: "recalcula quando a dieta muda").
- * Itens da TACO com a mesma origem (`taco_id`) somam a gramagem entre refeições diferentes;
- * itens livres (texto digitado, sem `quantidade_g`) não dá pra somar — só agrupa duplicatas
- * exatas e marca a contagem.
+ * Itens da TACO com a mesma origem (`taco_id`) somam a gramagem entre refeições diferentes
+ * (ex.: arroz no almoço e no jantar viram uma linha só); itens livres (texto digitado, sem
+ * `quantidade_g`) não dá pra somar — só agrupa duplicata exata e marca a contagem.
+ *
+ * `dias` projeta o consumo diário pro período todo (pedido do Guilherme, 06/set: "prever o
+ * que o cliente vai gastar nos 30 dias") — a dieta é sempre um dia-modelo repetido, então o
+ * total do período é literalmente o total do dia × número de dias.
+ *
+ * Agrupado por `categoria` (a mesma classificação oficial da TACO, já vem no banco — não
+ * inventada) pra render por seção com ícone; `categoriaPorTacoId` é passado pelo chamador
+ * porque a categoria mora em `alimentos_taco`, fora do jsonb da dieta.
  */
-export function listaDeCompras(refeicoes: Refeicao[]): ItemListaCompras[] {
+export function listaDeCompras(
+  refeicoes: Refeicao[],
+  dias: number,
+  categoriaPorTacoId: Record<number, string>,
+): CategoriaListaCompras[] {
   const gramasPorTaco = new Map<number, number>();
   const nomePorTaco = new Map<number, string>();
   const livres = new Map<string, number>();
@@ -126,17 +142,39 @@ export function listaDeCompras(refeicoes: Refeicao[]): ItemListaCompras[] {
     }
   }
 
-  const daTaco: ItemListaCompras[] = [...gramasPorTaco.entries()].map(([tacoId, gramas]) => ({
-    nome: nomePorTaco.get(tacoId) ?? 'Item',
-    quantidade: gramas >= 1000 ? `${(gramas / 1000).toFixed(gramas % 1000 === 0 ? 0 : 1)}kg` : `${Math.round(gramas)}g`,
-  }));
+  const porCategoria = new Map<string, ItemListaCompras[]>();
+  function adicionar(categoria: string, item: ItemListaCompras) {
+    const lista = porCategoria.get(categoria);
+    if (lista) lista.push(item);
+    else porCategoria.set(categoria, [item]);
+  }
 
-  const daLivre: ItemListaCompras[] = [...livres.entries()].map(([chave, contagem]) => {
+  for (const [tacoId, gramasPorDia] of gramasPorTaco.entries()) {
+    const total = gramasPorDia * dias;
+    const quantidade =
+      total >= 1000 ? `${(total / 1000).toFixed(total % 1000 === 0 ? 0 : 1)}kg` : `${Math.round(total)}g`;
+    adicionar(categoriaPorTacoId[tacoId] ?? CATEGORIA_ITENS_LIVRES, {
+      nome: nomePorTaco.get(tacoId) ?? 'Item',
+      quantidade,
+    });
+  }
+
+  for (const [chave, vezesPorDia] of livres.entries()) {
     const [nome, quantidade] = chave.split('__');
-    return { nome, quantidade: contagem > 1 ? `${quantidade} (×${contagem})` : quantidade };
-  });
+    const total = vezesPorDia * dias;
+    adicionar(CATEGORIA_ITENS_LIVRES, { nome, quantidade: `${quantidade} × ${total}` });
+  }
 
-  return [...daTaco, ...daLivre].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  return [...porCategoria.entries()]
+    .map(([categoria, itens]) => ({
+      categoria,
+      itens: itens.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+    }))
+    .sort((a, b) => {
+      if (a.categoria === CATEGORIA_ITENS_LIVRES) return 1;
+      if (b.categoria === CATEGORIA_ITENS_LIVRES) return -1;
+      return a.categoria.localeCompare(b.categoria, 'pt-BR');
+    });
 }
 
 export function somaMacros(itens: { macros: Macros | null }[]): Macros {

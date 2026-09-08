@@ -1,25 +1,65 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Body, Caption, Card, EmptyState, Loading, Screen, SectionTitle, Stat } from '@/components/ui';
+import { Body, Caption, Card, EmptyState, Field, Loading, Screen, SectionTitle, Stat } from '@/components/ui';
 import { listaDeCompras, somaMacros, type ItemRefeicao, type Refeicao } from '@/models/domain';
-import { getPlanoAlimentar, type PlanoAlimentar } from '@/services/nutritionService';
+import {
+  buscarCategoriasPorIds,
+  getPlanoAlimentar,
+  type PlanoAlimentar,
+} from '@/services/nutritionService';
 import { temPlanoConfirmado } from '@/services/professionalService';
 import { useAuthStore } from '@/store/authStore';
 import { MacroColors, Palette, Radius, Spacing } from '@/theme';
 
+/**
+ * Ícone por categoria oficial da TACO — aproximação, o Ionicons não tem ícone dedicado pra
+ * "cereais" ou "leguminosas". Prioriza cada categoria ficar visualmente distinta na lista,
+ * não precisão literal. Um set de ícones customizado é trabalho de design separado, não
+ * feito aqui.
+ */
+const ICONE_CATEGORIA: Record<string, keyof typeof Ionicons.glyphMap> = {
+  'Alimentos preparados': 'restaurant-outline',
+  'Bebidas (alcoólicas e não alcoólicas)': 'wine-outline',
+  'Carnes e derivados': 'flame-outline',
+  'Cereais e derivados': 'basket-outline',
+  'Frutas e derivados': 'nutrition-outline',
+  'Gorduras e óleos': 'water-outline',
+  'Leguminosas e derivados': 'ellipse-outline',
+  'Leite e derivados': 'cafe-outline',
+  Miscelâneas: 'apps-outline',
+  'Nozes e sementes': 'flower-outline',
+  'Outros alimentos industrializados': 'cube-outline',
+  'Ovos e derivados': 'egg-outline',
+  'Pescados e frutos do mar': 'fish-outline',
+  'Produtos açucarados': 'ice-cream-outline',
+  'Verduras, hortaliças e derivados': 'leaf-outline',
+};
+const ICONE_PADRAO: keyof typeof Ionicons.glyphMap = 'pencil-outline';
+
 export default function DietaScreen() {
   const user = useAuthStore((s) => s.user);
   const [plano, setPlano] = useState<PlanoAlimentar | null>(null);
+  const [categorias, setCategorias] = useState<Record<number, string>>({});
+  const [diasPeriodo, setDiasPeriodo] = useState('30');
   const [liberado, setLiberado] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
     Promise.all([getPlanoAlimentar(user.id), temPlanoConfirmado(user.id)]).then(
-      ([resultado, confirmado]) => {
+      async ([resultado, confirmado]) => {
         setPlano(resultado);
         setLiberado(confirmado);
+        if (resultado) {
+          const idsTaco = [
+            ...new Set(
+              resultado.refeicoes.flatMap((r) => r.itens.map((i) => i.taco_id)).filter((id): id is number => id != null),
+            ),
+          ];
+          setCategorias(await buscarCategoriasPorIds(idsTaco));
+        }
         setLoading(false);
       }
     );
@@ -44,7 +84,8 @@ export default function DietaScreen() {
   }
 
   const totalDia = somaMacros(plano.refeicoes.flatMap((r) => r.itens));
-  const compras = listaDeCompras(plano.refeicoes);
+  const dias = Math.max(1, Number(diasPeriodo) || 30);
+  const compras = listaDeCompras(plano.refeicoes, dias, categorias);
 
   return (
     <Screen title="Dieta" subtitle={plano.nutricionista || undefined}>
@@ -92,12 +133,40 @@ export default function DietaScreen() {
 
       {compras.length > 0 ? (
         <Card>
-          <SectionTitle>Lista de compras</SectionTitle>
-          <Caption>Recalculada a partir da dieta atual — muda sozinha se ela mudar.</Caption>
-          {compras.map((item, i) => (
-            <View key={i} style={styles.compraLinha}>
-              <Caption color={Palette.text}>{item.nome}</Caption>
-              <Caption>{item.quantidade}</Caption>
+          <View style={styles.comprasHeader}>
+            <SectionTitle>Lista de compras</SectionTitle>
+            <View style={styles.diasCampo}>
+              <Field
+                value={diasPeriodo}
+                onChangeText={setDiasPeriodo}
+                keyboardType="number-pad"
+                placeholder="30"
+              />
+              <Caption>dias</Caption>
+            </View>
+          </View>
+          <Caption>
+            Projeção pra {dias} dia{dias === 1 ? '' : 's'} — recalcula sozinha se a dieta mudar.
+          </Caption>
+
+          {compras.map((grupo) => (
+            <View key={grupo.categoria} style={styles.categoriaBloco}>
+              <View style={styles.categoriaHeader}>
+                <Ionicons
+                  name={ICONE_CATEGORIA[grupo.categoria] ?? ICONE_PADRAO}
+                  size={16}
+                  color={Palette.purple}
+                />
+                <Caption color={Palette.purple} style={styles.categoriaTexto}>
+                  {grupo.categoria.toUpperCase()}
+                </Caption>
+              </View>
+              {grupo.itens.map((item, i) => (
+                <View key={i} style={styles.compraLinha}>
+                  <Caption color={Palette.text}>{item.nome}</Caption>
+                  <Caption>{item.quantidade}</Caption>
+                </View>
+              ))}
             </View>
           ))}
         </Card>
@@ -215,5 +284,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: Spacing.md,
+    paddingLeft: Spacing.lg,
+  },
+  comprasHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.md,
+  },
+  diasCampo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    width: 90,
+  },
+  categoriaBloco: {
+    gap: Spacing.xs,
+    marginTop: Spacing.xs,
+  },
+  categoriaHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  categoriaTexto: {
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });

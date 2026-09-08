@@ -35,3 +35,10 @@ export async function buscarAlimentos(termo: string, limite = 20): Promise<Alime
     .limit(limite);
   return data ?? [];
 }
+
+/** Categoria oficial da TACO por id — usado pra agrupar a lista de compras por seção. */
+export async function buscarCategoriasPorIds(ids: number[]): Promise<Record<number, string>> {
+  if (!ids.length) return {};
+  const { data } = await supabase.from('alimentos_taco').select('id, categoria').in('id', ids);
+  return Object.fromEntries((data ?? []).map((a) => [a.id, a.categoria]));
+}

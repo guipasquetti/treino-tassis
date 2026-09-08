@@ -918,6 +918,26 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
     primeiro teste de verdade só acontece quando alguém logado tiver esse histórico.
   - Sem RLS nova em nenhum dos dois — lista de compras é cálculo client-side sobre dado já
     lido; fotos reusam a policy `fotos_checkin_select` do check-in (§ acima).
+- ✅ **Lista de compras: projeção de período + categorias + ícones (06/set)**, pedido do
+  Guilherme em cima do item 06 já entregue. `listaDeCompras()` em
+  [`domain.ts`](src/models/domain.ts) ganhou um parâmetro `dias` (campo editável na tela,
+  padrão 30) — a dieta é sempre um dia-modelo repetido, então o total do período é
+  literalmente o total do dia × número de dias, sem inventar heurística nova. Agrupamento
+  usa a **categoria oficial da TACO** (já existe em `alimentos_taco.categoria`, 15 valores
+  reais — não inventei taxonomia própria), buscada por `buscarCategoriasPorIds()` novo em
+  [`nutritionService.ts`](src/services/nutritionService.ts). Ícone por categoria em
+  [`aluno/dieta.tsx`](src/app/aluno/dieta.tsx) via `@expo/vector-icons` — mapeamento é
+  aproximado (Ionicons não tem ícone dedicado pra "cereais" ou "leguminosas"), tipado contra
+  `keyof typeof Ionicons.glyphMap` então o próprio `tsc` barra nome de ícone inexistente.
+  Item livre (sem TACO) cai numa categoria "Itens diversos" à parte, sempre por último.
+  **Testado**: `npx tsc --noEmit` limpo (inclusive validando os 15 nomes de ícone), app sobe
+  sem erro de console/bundler. Não testado logado com dado real.
+- ⚠️ **Item 3 do mesmo pedido — vincular marcas/marketplaces com patrocínio — não construído,
+  pausado de propósito.** É decisão de modelo de negócio (quem são os patrocinadores, como
+  divulgação paga aparece dentro de recomendação nutricional sem virar publicidade enganosa,
+  como fica a comissão/valor), não só UI — perguntei ao Guilherme antes de desenhar schema
+  pra isso. Ver pergunta em aberto no chat; se aprovado, entra como iniciativa nova, não como
+  parte do roadmap atual.
 
 ## 9. Escopo funcional v1 (proposto, não implementado)
 
