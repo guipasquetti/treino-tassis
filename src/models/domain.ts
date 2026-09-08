@@ -139,6 +139,12 @@ export type ItemListaCompras = {
   mediaPorPorcao?: string;
   /** Nomes das substituições vistas pra esse item — informativo, nunca somado à quantidade. */
   substitutos?: string[];
+  /**
+   * Quando o item tem fator de cocção aplicado, `quantidade` já é a estimativa CRUA (o que
+   * comprar) e este campo guarda o peso como está na dieta (cozido/pronto), pra não esconder
+   * o número original. Ausente quando não há conversão (item não é cru×cozido, ou não é peso).
+   */
+  quantidadePronta?: string;
 };
 export type CategoriaListaCompras = { categoria: string; itens: ItemListaCompras[] };
 
@@ -170,6 +176,38 @@ const PALAVRAS_CATEGORIA: [RegExp, string][] = [
 function categoriaPorNome(nome: string): string | null {
   for (const [padrao, categoria] of PALAVRAS_CATEGORIA) {
     if (padrao.test(nome)) return categoria;
+  }
+  return null;
+}
+
+/**
+ * Fator de cocção — quanto o peso muda do alimento cru pro pronto. Achado real (06/set): as
+ * gramagens da dieta batem exatamente com as entradas "cozido" da própria TACO (ex.: arroz
+ * branco na dieta = 128,25 kcal/100g = "Arroz, tipo 1, cozido" da TACO, 128,258 — o "cru" é
+ * 357,8, nada a ver), ou o nome já diz ("...cozida/grelhada/assada"). Ou seja: **toda
+ * gramagem da dieta é peso pronto, não peso de compra**. Cereal/leguminosa/massa ganham
+ * peso ao cozinhar (absorvem água); carne perde (perde suco/gordura). `fator` é
+ * peso_pronto ÷ peso_cru — pra achar quanto comprar cru, é só inverter: peso_cru =
+ * peso_pronto ÷ fator.
+ *
+ * Valores da tabela de rendimento de cocção padrão da dietética brasileira (Ornellas/Philippi
+ * — referência acadêmica comum, não medição própria). É aproximação: rendimento real varia
+ * por variedade do alimento, corte e método exato de preparo. Marcado como estimativa na
+ * tela — não substitui orientação do nutricionista.
+ */
+const FATORES_COCCAO: [RegExp, number][] = [
+  [/arroz/i, 2.5],
+  [/macarrão|macarrao|\bmassa\b/i, 2.2],
+  [/feijão|feijao|lentilha|grão.de.bico|grao.de.bico/i, 2.2],
+  [/frango|peito de frango|coxa|sobrecoxa/i, 0.75],
+  [/tilápia|tilapia|peixe|salmão|salmao|atum|sardinha|camarão|camarao/i, 0.8],
+  [/carne|alcatra|contrafil[ée]|coxão|lagarto|patinho|filé.?mignon/i, 0.7],
+];
+
+/** Só converte quando o nome bate com algo cru×cozido conhecido — o resto fica como está. */
+function fatorCoccaoPorNome(nome: string): number | null {
+  for (const [padrao, fator] of FATORES_COCCAO) {
+    if (padrao.test(nome)) return fator;
   }
   return null;
 }
@@ -304,8 +342,17 @@ export function listaDeCompras(
 
     let quantidade: string;
     let mediaPorPorcao: string | undefined;
+    let quantidadePronta: string | undefined;
     if (grupo.totalPorDia !== null && grupo.unidade) {
-      quantidade = formatarQuantidade(grupo.totalPorDia * dias, grupo.unidade);
+      const totalPronto = grupo.totalPorDia * dias;
+      // Fator só faz sentido em peso (g/kg) — contagem (unidade/fatia) e volume (ml) ficam como estão.
+      const fator = grupo.unidade === 'g' ? fatorCoccaoPorNome(grupo.nome) : null;
+      if (fator) {
+        quantidade = formatarQuantidade(totalPronto / fator, grupo.unidade);
+        quantidadePronta = formatarQuantidade(totalPronto, grupo.unidade);
+      } else {
+        quantidade = formatarQuantidade(totalPronto, grupo.unidade);
+      }
       if (grupo.ocorrenciasPorDia > 1) {
         mediaPorPorcao = `~${formatarQuantidade(grupo.totalPorDia / grupo.ocorrenciasPorDia, grupo.unidade)} por porção`;
       }
@@ -317,6 +364,7 @@ export function listaDeCompras(
       nome: grupo.nome,
       quantidade,
       mediaPorPorcao,
+      quantidadePronta,
       substitutos: grupo.substitutos.size ? [...grupo.substitutos] : undefined,
     });
   }

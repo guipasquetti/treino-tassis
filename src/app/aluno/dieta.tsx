@@ -201,6 +201,10 @@ export default function DietaScreen() {
                 <Caption>dias</Caption>
               </View>
             </View>
+            <Caption color={Palette.textTertiary}>
+              Arroz, feijão, massa e carne já convertidos de peso pronto pra peso cru de
+              compra — estimativa por tabela padrão, confirme com seu nutricionista.
+            </Caption>
           </Card>
 
           {compras.map((grupo) => {
@@ -313,12 +317,16 @@ function ItemCompraRow({
           {item.nome}
         </Caption>
         {item.mediaPorPorcao ? <Caption color={Palette.textTertiary}>{item.mediaPorPorcao}</Caption> : null}
+        {item.quantidadePronta ? (
+          <Caption color={Palette.textTertiary}>{item.quantidadePronta} já pronto/cozido</Caption>
+        ) : null}
         {item.substitutos ? (
           <Caption color={Palette.textTertiary}>Ou: {item.substitutos.join(', ')}</Caption>
         ) : null}
       </View>
       <Caption color={cor} style={styles.compraQuantidade}>
         {item.quantidade}
+        {item.quantidadePronta ? ' cru' : ''}
       </Caption>
     </Pressable>
   );

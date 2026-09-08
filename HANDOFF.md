@@ -1032,6 +1032,33 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
     o glyph `~` certo. Removida a rota e a linha do layout antes de commitar — `git status`
     confirmou `_layout.tsx` sem diff nenhum depois. Primeira vez neste projeto que uma
     mudança de UI foi verificada visualmente de ponta a ponta sem depender de login real.
+- ✅ **Achado real (06/set): as quantidades da dieta são peso PRONTO/cozido, não peso de
+  compra — lista de compras agora converte.** O Guilherme perguntou "essas quantidades são
+  cru ou cozido?" — respondi com base em fato, não achismo: cruzei os macros gravados na
+  dieta contra a própria TACO. "Arroz branco" na dieta = 128,25 kcal/100g, bate exato com
+  **"Arroz, tipo 1, cozido"** da TACO (128,258) — o cru da TACO é 357,8, nada a ver. Mesma
+  coisa pro feijão. A carne já diz no próprio nome ("...cozida/grelhada/assada"). Ou seja,
+  **toda gramagem da dieta é o que vai no prato**, não o que se compra na feira — arroz e
+  feijão ganham peso ao cozinhar (absorvem água), carne perde (perde suco/gordura). Isso já
+  era o gap conhecido "fator de cocção" do §7, nunca implementado.
+  - **Fator de cocção aplicado** em [`domain.ts`](src/models/domain.ts)
+    (`fatorCoccaoPorNome`): arroz ÷2,5, macarrão/massa ÷2,2, feijão/lentilha/grão-de-bico
+    ÷2,2 (ganham peso cozinhando — por isso dividir o peso pronto pelo fator dá o cru,
+    menor), frango ÷0,75, peixe ÷0,8, carne bovina ÷0,7 (perdem peso — dividir por um fator
+    menor que 1 dá um valor MAIOR, o cru precisa ser mais que o pronto). Valores da tabela
+    de rendimento de cocção padrão da dietética brasileira (Ornellas/Philippi) — referência
+    acadêmica, não medição própria; documentado como aproximação, com aviso na tela
+    ("estimativa por tabela padrão, confirme com seu nutricionista"). Só aplica em peso
+    (g/kg) — contagem (unidades/fatias) e volume (ml) ficam como estão, não fazem sentido
+    cru×cozido do mesmo jeito.
+  - **Os dois números aparecem**: `quantidade` agora É o valor cru pra comprar (com sufixo
+    "cru" visível), `quantidadePronta` mostra o peso como está na dieta, pra nada ficar
+    escondido.
+  - **Verificado com dado real** (`npx tsx` de novo): arroz 6,6kg pronto → 2,6kg cru pra
+    comprar; feijão 4,8kg pronto → 2,2kg cru; carne 8,1kg pronto → **11,6kg** cru (sobe,
+    porque encolhe cozinhando — direção oposta confirmada certa). Reconferido também
+    visualmente na rota de depuração temporária, mesmo processo do item acima.
+  - `npx tsc --noEmit` limpo, app sobe sem erro de console/bundler.
 
 ## 9. Escopo funcional v1 (proposto, não implementado)
 
