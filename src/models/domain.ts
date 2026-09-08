@@ -100,6 +100,45 @@ export type Refeicao = {
   itens: ItemRefeicao[];
 };
 
+export type ItemListaCompras = { nome: string; quantidade: string };
+
+/**
+ * Lista de compras derivada da dieta — não é salva em lugar nenhum, é sempre recalculada a
+ * partir das refeições atuais (FA do roadmap, item 06: "recalcula quando a dieta muda").
+ * Itens da TACO com a mesma origem (`taco_id`) somam a gramagem entre refeições diferentes;
+ * itens livres (texto digitado, sem `quantidade_g`) não dá pra somar — só agrupa duplicatas
+ * exatas e marca a contagem.
+ */
+export function listaDeCompras(refeicoes: Refeicao[]): ItemListaCompras[] {
+  const gramasPorTaco = new Map<number, number>();
+  const nomePorTaco = new Map<number, string>();
+  const livres = new Map<string, number>();
+
+  for (const refeicao of refeicoes) {
+    for (const item of refeicao.itens) {
+      if (item.taco_id != null && item.quantidade_g != null) {
+        gramasPorTaco.set(item.taco_id, (gramasPorTaco.get(item.taco_id) ?? 0) + item.quantidade_g);
+        nomePorTaco.set(item.taco_id, item.nome);
+      } else {
+        const chave = `${item.nome}__${item.quantidade}`;
+        livres.set(chave, (livres.get(chave) ?? 0) + 1);
+      }
+    }
+  }
+
+  const daTaco: ItemListaCompras[] = [...gramasPorTaco.entries()].map(([tacoId, gramas]) => ({
+    nome: nomePorTaco.get(tacoId) ?? 'Item',
+    quantidade: gramas >= 1000 ? `${(gramas / 1000).toFixed(gramas % 1000 === 0 ? 0 : 1)}kg` : `${Math.round(gramas)}g`,
+  }));
+
+  const daLivre: ItemListaCompras[] = [...livres.entries()].map(([chave, contagem]) => {
+    const [nome, quantidade] = chave.split('__');
+    return { nome, quantidade: contagem > 1 ? `${quantidade} (×${contagem})` : quantidade };
+  });
+
+  return [...daTaco, ...daLivre].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
 export function somaMacros(itens: { macros: Macros | null }[]): Macros {
   return itens.reduce<Macros>(
     (acc, item) => ({

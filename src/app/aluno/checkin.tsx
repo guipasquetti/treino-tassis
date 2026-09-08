@@ -1,14 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 
 import { CheckinFlow, CheckinResumo } from '@/components/checkin-flow';
 import { Button, Caption, Card, EmptyState, Loading, Screen, SectionTitle } from '@/components/ui';
 import { formatarDataHora } from '@/models/domain';
 import type { ResumoCheckin } from '@/models/checkin';
-import { checkinPendente, listarMeusCheckins, type CheckIn } from '@/services/checkinService';
+import {
+  checkinPendente,
+  listarMeusCheckins,
+  obterComparacaoFotos,
+  type CheckIn,
+  type ComparacaoAngulo,
+} from '@/services/checkinService';
 import { listarMeusProfissionais } from '@/services/professionalService';
 import { useAuthStore } from '@/store/authStore';
-import { Palette, Spacing } from '@/theme';
+import { Palette, Radius, Spacing } from '@/theme';
 
 /**
  * Check-in do aluno (FA do roadmap, 06/set): série recorrente respondida pelo paciente,
@@ -21,19 +27,22 @@ export default function CheckinScreen() {
   const [professionalId, setProfessionalId] = useState<string | null>(null);
   const [pendente, setPendente] = useState<boolean | null>(null);
   const [historico, setHistorico] = useState<CheckIn[]>([]);
+  const [comparacao, setComparacao] = useState<ComparacaoAngulo[]>([]);
   const [emAndamento, setEmAndamento] = useState(false);
   const [resumo, setResumo] = useState<ResumoCheckin | null>(null);
 
   const carregar = useCallback(async () => {
     if (!user) return;
-    const [profissionais, pend, hist] = await Promise.all([
+    const [profissionais, pend, hist, fotos] = await Promise.all([
       listarMeusProfissionais(user.id),
       checkinPendente(user.id),
       listarMeusCheckins(user.id),
+      obterComparacaoFotos(user.id),
     ]);
     setProfessionalId(profissionais[0]?.professionalId ?? null);
     setPendente(pend);
     setHistorico(hist);
+    setComparacao(fotos);
   }, [user?.id]);
 
   useEffect(() => {
@@ -79,6 +88,39 @@ export default function CheckinScreen() {
         </Card>
       )}
 
+      {comparacao.length > 0 ? (
+        <>
+          <SectionTitle>Progresso visual</SectionTitle>
+          {comparacao.map((c) => (
+            <Card key={c.angulo}>
+              <Caption>{c.label}</Caption>
+              <View style={styles.fotos}>
+                <View style={styles.fotoBloco}>
+                  <Caption color={Palette.textTertiary}>
+                    Antes · {c.primeira ? formatarDataHora(c.primeira.data) : '—'}
+                  </Caption>
+                  {c.primeira ? (
+                    <Image source={{ uri: c.primeira.url }} style={styles.foto} resizeMode="cover" />
+                  ) : (
+                    <View style={styles.fotoVazia} />
+                  )}
+                </View>
+                <View style={styles.fotoBloco}>
+                  <Caption color={Palette.textTertiary}>
+                    Agora · {c.ultima ? formatarDataHora(c.ultima.data) : '—'}
+                  </Caption>
+                  {c.ultima ? (
+                    <Image source={{ uri: c.ultima.url }} style={styles.foto} resizeMode="cover" />
+                  ) : (
+                    <View style={styles.fotoVazia} />
+                  )}
+                </View>
+              </View>
+            </Card>
+          ))}
+        </>
+      ) : null}
+
       {historico.length > 0 ? (
         <>
           <SectionTitle>Histórico</SectionTitle>
@@ -103,5 +145,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: Spacing.md,
+  },
+  fotos: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  fotoBloco: {
+    flex: 1,
+    gap: Spacing.xs,
+  },
+  foto: {
+    width: '100%',
+    aspectRatio: 3 / 4,
+    borderRadius: Radius.md,
+    backgroundColor: Palette.surfaceElevated,
+  },
+  fotoVazia: {
+    width: '100%',
+    aspectRatio: 3 / 4,
+    borderRadius: Radius.md,
+    backgroundColor: Palette.surfaceElevated,
   },
 });

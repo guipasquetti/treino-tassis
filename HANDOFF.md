@@ -894,6 +894,30 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
     limpo, app sobe sem erro de console/bundler até a tela de login. **Não testado logado** —
     mesma regra de nunca digitar senha, nem de conta descartável; vale um teste manual real
     quando o Tassis (ou o Guilherme) puder logar.
+- ✅ **Fase de Ataque, itens 04 e 06 (06/set): progresso visual e lista de compras.** Item 05
+  ("pontuação de adesão devolvida ao paciente") já saiu de graça junto com o check-in — o
+  `CheckinResumo` já mostra isso na hora, não precisou de trabalho novo.
+  - **Progresso visual** — `obterComparacaoFotos()` novo em
+    [`checkinService.ts`](src/services/checkinService.ts): pega o check-in mais antigo e o
+    mais recente que tenham QUALQUER foto (nem todo check-in manda, é opcional), por ângulo
+    (esquerdo/direito/costas), com URL assinada de 1h cada. Só devolve algo com **2 check-ins
+    distintos com foto** — 1 só não é comparação. Sem análise automática de postura/simetria
+    (é IA, fica de fora — não confundir com o que o Vibe Fit faz no benchmark). Renderizado em
+    [`aluno/checkin.tsx`](src/app/aluno/checkin.tsx), seção "Progresso visual" — primeira vez
+    que o app usa `<Image>` do React Native pra alguma coisa.
+  - **Lista de compras** — `listaDeCompras()` novo em
+    [`domain.ts`](src/models/domain.ts:104): função pura, **sem tabela nova** — soma
+    `quantidade_g` de itens com o mesmo `taco_id` entre refeições diferentes (ex.: arroz no
+    almoço e no jantar viram uma linha só), itens "livres" (sem TACO, texto digitado) só
+    agrupam duplicata exata com contagem. "Recalcula quando a dieta muda" é literal: não
+    salva nada, roda de novo a cada render a partir de `plano.refeicoes` atual. Card novo no
+    fim de [`aluno/dieta.tsx`](src/app/aluno/dieta.tsx).
+  - **Testado**: `npx tsc --noEmit` limpo, app sobe sem erro de console/bundler até a tela de
+    login. **Não testado logado** — mesma regra de sempre; a lista de compras e a comparação
+    de fotos só aparecem com dado real (dieta com TACO / 2+ check-ins com foto), então o
+    primeiro teste de verdade só acontece quando alguém logado tiver esse histórico.
+  - Sem RLS nova em nenhum dos dois — lista de compras é cálculo client-side sobre dado já
+    lido; fotos reusam a policy `fotos_checkin_select` do check-in (§ acima).
 
 ## 9. Escopo funcional v1 (proposto, não implementado)
 

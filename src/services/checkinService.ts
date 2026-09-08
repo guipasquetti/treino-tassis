@@ -68,6 +68,55 @@ export async function listarCheckinsDoAluno(clientId: string): Promise<CheckIn[]
   return listarMeusCheckins(clientId);
 }
 
+const ANGULOS = [
+  { chave: 'foto_perfil_esquerdo_path', angulo: 'esquerdo', label: 'Perfil esquerdo' },
+  { chave: 'foto_perfil_direito_path', angulo: 'direito', label: 'Perfil direito' },
+  { chave: 'foto_costas_path', angulo: 'costas', label: 'Costas' },
+] as const;
+
+export type FotoComparacao = { url: string; data: string };
+export type ComparacaoAngulo = {
+  angulo: 'esquerdo' | 'direito' | 'costas';
+  label: string;
+  primeira: FotoComparacao | null;
+  ultima: FotoComparacao | null;
+};
+
+/**
+ * Progresso visual (FA do roadmap, item 04): primeira x mais recente foto de cada ângulo,
+ * entre os check-ins que de fato enviaram foto (nem todo check-in manda — é opcional).
+ * Só devolve algo quando há pelo menos 2 check-ins distintos com foto — 1 só não é
+ * "comparação". Sem análise automática (postura/simetria) — isso é IA, fora de escopo aqui.
+ */
+export async function obterComparacaoFotos(clientId: string): Promise<ComparacaoAngulo[]> {
+  const checkins = await listarMeusCheckins(clientId); // mais recente primeiro
+  const comFoto = checkins.filter(
+    (c) => c.foto_perfil_esquerdo_path || c.foto_perfil_direito_path || c.foto_costas_path,
+  );
+  if (comFoto.length < 2) return [];
+
+  const ultimo = comFoto[0];
+  const primeiro = comFoto[comFoto.length - 1];
+
+  const resultado: ComparacaoAngulo[] = [];
+  for (const a of ANGULOS) {
+    const pathPrimeira = primeiro[a.chave];
+    const pathUltima = ultimo[a.chave];
+    if (!pathPrimeira && !pathUltima) continue;
+    const [urlPrimeira, urlUltima] = await Promise.all([
+      pathPrimeira ? obterUrlFotoCheckin(pathPrimeira) : Promise.resolve(null),
+      pathUltima ? obterUrlFotoCheckin(pathUltima) : Promise.resolve(null),
+    ]);
+    resultado.push({
+      angulo: a.angulo,
+      label: a.label,
+      primeira: pathPrimeira && urlPrimeira ? { url: urlPrimeira, data: primeiro.created_at } : null,
+      ultima: pathUltima && urlUltima ? { url: urlUltima, data: ultimo.created_at } : null,
+    });
+  }
+  return resultado;
+}
+
 /** Se o paciente já pode enviar um novo check-in (nunca enviou, ou já passou a periodicidade). */
 export async function checkinPendente(clientId: string): Promise<boolean> {
   const { data } = await supabase

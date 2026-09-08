@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Body, Caption, Card, EmptyState, Loading, Screen, SectionTitle, Stat } from '@/components/ui';
-import { somaMacros, type ItemRefeicao, type Refeicao } from '@/models/domain';
+import { listaDeCompras, somaMacros, type ItemRefeicao, type Refeicao } from '@/models/domain';
 import { getPlanoAlimentar, type PlanoAlimentar } from '@/services/nutritionService';
 import { temPlanoConfirmado } from '@/services/professionalService';
 import { useAuthStore } from '@/store/authStore';
@@ -44,6 +44,7 @@ export default function DietaScreen() {
   }
 
   const totalDia = somaMacros(plano.refeicoes.flatMap((r) => r.itens));
+  const compras = listaDeCompras(plano.refeicoes);
 
   return (
     <Screen title="Dieta" subtitle={plano.nutricionista || undefined}>
@@ -86,6 +87,19 @@ export default function DietaScreen() {
         <Card>
           <SectionTitle>Observações</SectionTitle>
           <Caption>{plano.observacoes}</Caption>
+        </Card>
+      ) : null}
+
+      {compras.length > 0 ? (
+        <Card>
+          <SectionTitle>Lista de compras</SectionTitle>
+          <Caption>Recalculada a partir da dieta atual — muda sozinha se ela mudar.</Caption>
+          {compras.map((item, i) => (
+            <View key={i} style={styles.compraLinha}>
+              <Caption color={Palette.text}>{item.nome}</Caption>
+              <Caption>{item.quantidade}</Caption>
+            </View>
+          ))}
         </Card>
       ) : null}
     </Screen>
@@ -196,5 +210,10 @@ const styles = StyleSheet.create({
   subs: {
     paddingLeft: Spacing.md,
     gap: 2,
+  },
+  compraLinha: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: Spacing.md,
   },
 });
