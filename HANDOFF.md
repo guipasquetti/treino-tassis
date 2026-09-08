@@ -976,6 +976,40 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
   **Testado**: `npx tsc --noEmit` limpo; verificação direta das funções puras contra o JSON
   real da dieta do Guilherme confirmou soma corrigida, extração certa do total/aviso, e
   ausência das duas linhas na lista de compras. App sobe sem erro de console/bundler.
+- ✅ **Lista de compras reescrita do zero (06/set)** — o Guilherme achou a primeira versão
+  "muito amadora": não agrupava direito, multiplicava texto por número de dias sem sentido
+  ("180g × 30"), e visual era só uma tabela. Achado raiz ao investigar: **a dieta real do
+  Tassis não usa NENHUM item vindo da busca TACO** — tudo foi digitado à mão com macro
+  calculado fora — então o agrupamento por `taco_id` da versão anterior nunca disparava de
+  verdade; "Arroz branco" no almoço (120g) e no jantar (100g) apareciam como duas linhas
+  quebradas em vez de uma.
+  - **Agrupamento por nome normalizado** (não mais por `taco_id`) — junta a mesma comida
+    entre refeições diferentes venha ela da TACO ou digitada à mão.
+  - **Parser de quantidade** novo em [`domain.ts`](src/models/domain.ts)
+    (`parsearQuantidade`): prioriza CONTAGEM ("2 unidades", "2 fatias") sobre peso — ovo e
+    pão de forma viram "60 unidades"/"60 fatias" no mês, não "6kg", que é mais real pra
+    comprar. Sem contagem, usa o peso/volume entre parênteses (o valor que o próprio
+    nutricionista já calculou) ou solto no texto. Quando nada casa ("à vontade", "a gosto"),
+    a linha some da conta e mostra o texto original — nunca inventa número.
+  - **Categoria por palavra-chave** (`categoriaPorNome`) como fallback pra quando não tem
+    `taco_id` — cobre os alimentos comuns de dieta brasileira contra as 15 categorias
+    oficiais da TACO (mesma taxonomia já usada, não inventei categoria nova).
+  - **Substituições aparecem como nota** ("Ou: Arroz integral, Batata inglesa..."), nunca
+    somadas — são alternativa dentro da refeição, não item extra a comprar (pedido
+    explícito do Guilherme, "considerar substitutos").
+  - **Média por porção** quando o item aparece em mais de uma refeição do dia (ex.: "≈110g
+    por porção" no arroz que soma almoço+jantar) — resposta ao "vale mostrar valor médio?"
+    dele: sim, mas só quando ajuda a explicar a soma, não em todo item.
+  - **Visual**: checklist de verdade — cada item tem checkbox (risca o nome ao marcar,
+    estado só local, não persiste — decisão de escopo, não construí tabela nova pra isso),
+    categorias com ícone + contagem de itens, cabeçalho com resumo (X itens · Y categorias).
+  - **Verificado com o JSON real de produção** (`npx tsx`, sem precisar logar): "Arroz
+    branco" virou uma linha só de 6,6kg com "Ou: Arroz integral, Batata inglesa"; "Ovo
+    inteiro" virou "60 unidades"; "Laranja" virou "30 unidades"; "Café com leite" virou
+    "6L"; "Salada" (à vontade) ficou como texto, não multiplicado. `npx tsc --noEmit`
+    limpo, app sobe sem erro de console/bundler. Não testado visualmente logado (mesma
+    regra de nunca digitar senha) — o layout novo (checkbox, cores, espaçamento) segue
+    padrões já usados em outras telas do app, mas vale um olhar real do Guilherme/Tassis.
 
 ## 9. Escopo funcional v1 (proposto, não implementado)
 

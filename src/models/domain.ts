@@ -132,45 +132,160 @@ export type Refeicao = {
   itens: ItemRefeicao[];
 };
 
-export type ItemListaCompras = { nome: string; quantidade: string };
+export type ItemListaCompras = {
+  nome: string;
+  quantidade: string;
+  /** "≈120g por porção" — só quando o item aparece em mais de uma refeição do dia. */
+  mediaPorPorcao?: string;
+  /** Nomes das substituições vistas pra esse item — informativo, nunca somado à quantidade. */
+  substitutos?: string[];
+};
 export type CategoriaListaCompras = { categoria: string; itens: ItemListaCompras[] };
 
-/** Categoria de fallback pra item sem correspondência na TACO (texto livre, digitado à mão). */
+/** Categoria de fallback pra item sem correspondência na TACO nem nas palavras-chave. */
 export const CATEGORIA_ITENS_LIVRES = 'Itens diversos';
+
+/**
+ * Fallback de categoria por palavra-chave no nome — a dieta real do Tassis não usa nenhum
+ * item vindo da busca TACO (tudo foi digitado com macro calculado à mão), então a categoria
+ * por `taco_id` nunca dispara sozinha. Cobre os alimentos mais comuns de dieta brasileira;
+ * primeiro padrão que bater vence. Não é a classificação oficial da TACO — é aproximação.
+ */
+const PALAVRAS_CATEGORIA: [RegExp, string][] = [
+  [/caf[ée]|ch[áa]|suco|refrigerante|[áa]gua\b|vinho|cerveja|bebida/i, 'Bebidas (alcoólicas e não alcoólicas)'],
+  [/frango|peito de frango|coxa|sobrecoxa|carne|alcatra|contrafil[ée]|coxão|lagarto|patinho|filé.?mignon|bacon|linguiça|linguica|presunto/i, 'Carnes e derivados'],
+  [/tilápia|tilapia|peixe|salmão|salmao|atum|sardinha|camarão|camarao|frutos do mar/i, 'Pescados e frutos do mar'],
+  [/\bovo/i, 'Ovos e derivados'],
+  [/queijo|leite|iogurte|requeijão|requeijao|ricota|manteiga|cream cheese/i, 'Leite e derivados'],
+  [/arroz|macarrão|macarrao|aveia|pão|pao\b|batata|mandioca|tapioca|farinha|granola|cuscuz/i, 'Cereais e derivados'],
+  [/feijão|feijao|lentilha|grão.de.bico|grao.de.bico|ervilha|\bsoja\b/i, 'Leguminosas e derivados'],
+  [/laranja|banana|maçã|maca\b|mamão|mamao|abacaxi|manga|uva|morango|mexerica|tangerina|melancia|melão|melao|\bfruta/i, 'Frutas e derivados'],
+  [/alface|tomate|cenoura|brócolis|brocolis|couve|espinafre|abobrinha|pepino|legum|verdura|salada/i, 'Verduras, hortaliças e derivados'],
+  [/azeite|óleo|oleo|margarina/i, 'Gorduras e óleos'],
+  [/castanha|amêndoa|amendoa|amendoim|\bnoz\b|nozes|semente|chia|linhaça|linhaca/i, 'Nozes e sementes'],
+  [/açúcar|acucar|\bdoce\b|\bmel\b|chocolate|geleia/i, 'Produtos açucarados'],
+  [/whey|suplemento|proteína isolada|proteina isolada/i, 'Miscelâneas'],
+];
+
+function categoriaPorNome(nome: string): string | null {
+  for (const [padrao, categoria] of PALAVRAS_CATEGORIA) {
+    if (padrao.test(nome)) return categoria;
+  }
+  return null;
+}
+
+const REGEX_CONTAGEM = /^\s*([\d.,]+)\s*(unidades?|fatias?)\b/i;
+const REGEX_PESO_PARENTESES = /\(([\d.,]+)\s*(kg|g|l|ml)\)/i;
+const REGEX_PESO_SOLTO = /([\d.,]+)\s*(kg|g|l|ml)\b/i;
+
+type QuantidadeParseada = { valor: number; unidade: string };
+
+/**
+ * Extrai um número comprável do texto livre do item. Prioriza CONTAGEM ("2 unidades", "2
+ * fatias") sobre peso — ovo e pão de forma são mais reais na feira como "60 unidades"/"60
+ * fatias" do que como grama total. Sem contagem, usa o peso/volume entre parênteses (o valor
+ * mais confiável, é o que o nutricionista calculou) ou solto no texto. "à vontade"/"a gosto"
+ * não casam com nada — devolve `null`, e a linha vira texto original, nunca multiplicado.
+ */
+function parsearQuantidade(texto: string): QuantidadeParseada | null {
+  const contagem = texto.match(REGEX_CONTAGEM);
+  if (contagem) {
+    const numero = Number(contagem[1].replace(',', '.'));
+    if (!Number.isNaN(numero)) {
+      return { valor: numero, unidade: contagem[2].toLowerCase().startsWith('fatia') ? 'fatia' : 'unidade' };
+    }
+  }
+  const peso = texto.match(REGEX_PESO_PARENTESES) ?? texto.match(REGEX_PESO_SOLTO);
+  if (peso) {
+    const numero = Number(peso[1].replace(',', '.'));
+    if (!Number.isNaN(numero)) {
+      const unidadeBruta = peso[2].toLowerCase();
+      if (unidadeBruta === 'kg') return { valor: numero * 1000, unidade: 'g' };
+      if (unidadeBruta === 'l') return { valor: numero * 1000, unidade: 'ml' };
+      return { valor: numero, unidade: unidadeBruta };
+    }
+  }
+  return null;
+}
+
+function formatarNumero(v: number): string {
+  return (Math.round(v * 10) / 10).toString().replace('.', ',');
+}
+
+function formatarQuantidade(valor: number, unidade: string): string {
+  if (unidade === 'unidade' || unidade === 'fatia') {
+    const n = Math.round(valor);
+    return `${n} ${unidade}${n === 1 ? '' : 's'}`;
+  }
+  if (unidade === 'g') return valor >= 1000 ? `${formatarNumero(valor / 1000)}kg` : `${Math.round(valor)}g`;
+  if (unidade === 'ml') return valor >= 1000 ? `${formatarNumero(valor / 1000)}L` : `${Math.round(valor)}ml`;
+  return `${formatarNumero(valor)} ${unidade}`;
+}
+
+type GrupoCompra = {
+  nome: string;
+  tacoId?: number;
+  /** `null` assim que QUALQUER ocorrência não é parseável, ou entra em unidade incompatível — desiste de somar. */
+  totalPorDia: number | null;
+  unidade: string | null;
+  ocorrenciasPorDia: number;
+  substitutos: Set<string>;
+  quantidadeOriginal: string;
+};
 
 /**
  * Lista de compras derivada da dieta — não é salva em lugar nenhum, é sempre recalculada a
  * partir das refeições atuais (FA do roadmap, item 06: "recalcula quando a dieta muda").
- * Itens da TACO com a mesma origem (`taco_id`) somam a gramagem entre refeições diferentes
- * (ex.: arroz no almoço e no jantar viram uma linha só); itens livres (texto digitado, sem
- * `quantidade_g`) não dá pra somar — só agrupa duplicata exata e marca a contagem.
+ * Agrupa por NOME normalizado (não por `taco_id`) — arroz no almoço e no jantar, mesmo com
+ * gramagens diferentes, viram uma linha só, venha o item da TACO ou digitado à mão. Guardado
+ * é sempre o valor de CADA ocorrência (nunca inferido) — se qualquer uma não for parseável
+ * ("à vontade"), a linha inteira volta a mostrar o texto original em vez de um número
+ * inventado. Substituições (`item.substituicoes`) nunca entram na soma — são alternativa,
+ * não item extra a comprar — só aparecem como nota.
  *
  * `dias` projeta o consumo diário pro período todo (pedido do Guilherme, 06/set: "prever o
  * que o cliente vai gastar nos 30 dias") — a dieta é sempre um dia-modelo repetido, então o
- * total do período é literalmente o total do dia × número de dias.
- *
- * Agrupado por `categoria` (a mesma classificação oficial da TACO, já vem no banco — não
- * inventada) pra render por seção com ícone; `categoriaPorTacoId` é passado pelo chamador
- * porque a categoria mora em `alimentos_taco`, fora do jsonb da dieta.
+ * total do período é o total do dia × número de dias.
  */
 export function listaDeCompras(
   refeicoes: Refeicao[],
   dias: number,
   categoriaPorTacoId: Record<number, string>,
 ): CategoriaListaCompras[] {
-  const gramasPorTaco = new Map<number, number>();
-  const nomePorTaco = new Map<number, string>();
-  const livres = new Map<string, number>();
+  const grupos = new Map<string, GrupoCompra>();
 
   for (const refeicao of refeicoes) {
     for (const item of itensReais(refeicao.itens)) {
-      if (item.taco_id != null && item.quantidade_g != null) {
-        gramasPorTaco.set(item.taco_id, (gramasPorTaco.get(item.taco_id) ?? 0) + item.quantidade_g);
-        nomePorTaco.set(item.taco_id, item.nome);
-      } else {
-        const chave = `${item.nome}__${item.quantidade}`;
-        livres.set(chave, (livres.get(chave) ?? 0) + 1);
+      const chave = item.nome.trim().toLowerCase();
+      let grupo = grupos.get(chave);
+      if (!grupo) {
+        grupo = {
+          nome: item.nome.trim(),
+          tacoId: item.taco_id,
+          totalPorDia: 0,
+          unidade: null,
+          ocorrenciasPorDia: 0,
+          substitutos: new Set(),
+          quantidadeOriginal: item.quantidade,
+        };
+        grupos.set(chave, grupo);
       }
+      if (grupo.tacoId == null && item.taco_id != null) grupo.tacoId = item.taco_id;
+
+      const parsed: QuantidadeParseada | null =
+        item.quantidade_g != null ? { valor: item.quantidade_g, unidade: 'g' } : parsearQuantidade(item.quantidade);
+
+      if (grupo.totalPorDia !== null) {
+        if (!parsed || (grupo.unidade !== null && grupo.unidade !== parsed.unidade)) {
+          grupo.totalPorDia = null;
+        } else {
+          grupo.unidade = parsed.unidade;
+          grupo.totalPorDia += parsed.valor;
+        }
+      }
+
+      grupo.ocorrenciasPorDia += 1;
+      for (const sub of item.substituicoes) grupo.substitutos.add(sub.nome);
     }
   }
 
@@ -181,20 +296,29 @@ export function listaDeCompras(
     else porCategoria.set(categoria, [item]);
   }
 
-  for (const [tacoId, gramasPorDia] of gramasPorTaco.entries()) {
-    const total = gramasPorDia * dias;
-    const quantidade =
-      total >= 1000 ? `${(total / 1000).toFixed(total % 1000 === 0 ? 0 : 1)}kg` : `${Math.round(total)}g`;
-    adicionar(categoriaPorTacoId[tacoId] ?? CATEGORIA_ITENS_LIVRES, {
-      nome: nomePorTaco.get(tacoId) ?? 'Item',
-      quantidade,
-    });
-  }
+  for (const grupo of grupos.values()) {
+    const categoria =
+      (grupo.tacoId != null ? categoriaPorTacoId[grupo.tacoId] : undefined) ??
+      categoriaPorNome(grupo.nome) ??
+      CATEGORIA_ITENS_LIVRES;
 
-  for (const [chave, vezesPorDia] of livres.entries()) {
-    const [nome, quantidade] = chave.split('__');
-    const total = vezesPorDia * dias;
-    adicionar(CATEGORIA_ITENS_LIVRES, { nome, quantidade: `${quantidade} × ${total}` });
+    let quantidade: string;
+    let mediaPorPorcao: string | undefined;
+    if (grupo.totalPorDia !== null && grupo.unidade) {
+      quantidade = formatarQuantidade(grupo.totalPorDia * dias, grupo.unidade);
+      if (grupo.ocorrenciasPorDia > 1) {
+        mediaPorPorcao = `≈ ${formatarQuantidade(grupo.totalPorDia / grupo.ocorrenciasPorDia, grupo.unidade)} por porção`;
+      }
+    } else {
+      quantidade = grupo.quantidadeOriginal.trim() || 'a gosto';
+    }
+
+    adicionar(categoria, {
+      nome: grupo.nome,
+      quantidade,
+      mediaPorPorcao,
+      substitutos: grupo.substitutos.size ? [...grupo.substitutos] : undefined,
+    });
   }
 
   return [...porCategoria.entries()]

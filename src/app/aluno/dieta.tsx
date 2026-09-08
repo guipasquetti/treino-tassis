@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Body, Caption, Card, EmptyState, Field, Loading, Screen, SectionTitle, Stat } from '@/components/ui';
 import {
@@ -9,6 +9,7 @@ import {
   listaDeCompras,
   somaMacros,
   totalConferidoPeloNutricionista,
+  type ItemListaCompras,
   type ItemRefeicao,
   type Refeicao,
 } from '@/models/domain';
@@ -51,8 +52,18 @@ export default function DietaScreen() {
   const [plano, setPlano] = useState<PlanoAlimentar | null>(null);
   const [categorias, setCategorias] = useState<Record<number, string>>({});
   const [diasPeriodo, setDiasPeriodo] = useState('30');
+  const [marcados, setMarcados] = useState<Set<string>>(new Set());
   const [liberado, setLiberado] = useState(true);
   const [loading, setLoading] = useState(true);
+
+  function alternarMarcado(chave: string) {
+    setMarcados((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(chave)) novo.delete(chave);
+      else novo.add(chave);
+      return novo;
+    });
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -140,9 +151,15 @@ export default function DietaScreen() {
       ) : null}
 
       {compras.length > 0 ? (
-        <Card>
+        <Card style={styles.comprasCard}>
           <View style={styles.comprasHeader}>
-            <SectionTitle>Lista de compras</SectionTitle>
+            <View style={styles.comprasTitulo}>
+              <SectionTitle>Lista de compras</SectionTitle>
+              <Caption>
+                {compras.reduce((n, g) => n + g.itens.length, 0)} itens · {compras.length} categorias · projeção {dias}{' '}
+                dia{dias === 1 ? '' : 's'}
+              </Caption>
+            </View>
             <View style={styles.diasCampo}>
               <Field
                 value={diasPeriodo}
@@ -153,28 +170,30 @@ export default function DietaScreen() {
               <Caption>dias</Caption>
             </View>
           </View>
-          <Caption>
-            Projeção pra {dias} dia{dias === 1 ? '' : 's'} — recalcula sozinha se a dieta mudar.
-          </Caption>
 
           {compras.map((grupo) => (
             <View key={grupo.categoria} style={styles.categoriaBloco}>
               <View style={styles.categoriaHeader}>
-                <Ionicons
-                  name={ICONE_CATEGORIA[grupo.categoria] ?? ICONE_PADRAO}
-                  size={16}
-                  color={Palette.purple}
-                />
-                <Caption color={Palette.purple} style={styles.categoriaTexto}>
-                  {grupo.categoria.toUpperCase()}
-                </Caption>
-              </View>
-              {grupo.itens.map((item, i) => (
-                <View key={i} style={styles.compraLinha}>
-                  <Caption color={Palette.text}>{item.nome}</Caption>
-                  <Caption>{item.quantidade}</Caption>
+                <View style={styles.categoriaIconeWrap}>
+                  <Ionicons name={ICONE_CATEGORIA[grupo.categoria] ?? ICONE_PADRAO} size={15} color={Palette.purple} />
                 </View>
-              ))}
+                <Caption color={Palette.text} style={styles.categoriaTexto}>
+                  {grupo.categoria}
+                </Caption>
+                <Caption color={Palette.textTertiary}>{grupo.itens.length}</Caption>
+              </View>
+
+              {grupo.itens.map((item) => {
+                const chave = `${grupo.categoria}::${item.nome}`;
+                return (
+                  <ItemCompraRow
+                    key={chave}
+                    item={item}
+                    marcado={marcados.has(chave)}
+                    onToggle={() => alternarMarcado(chave)}
+                  />
+                );
+              })}
             </View>
           ))}
         </Card>
@@ -227,6 +246,41 @@ function RefeicaoCard({ refeicao }: { refeicao: Refeicao }) {
       ) : null}
       {aviso ? <Caption color={Palette.orange}>{aviso}</Caption> : null}
     </Card>
+  );
+}
+
+function ItemCompraRow({
+  item,
+  marcado,
+  onToggle,
+}: {
+  item: ItemListaCompras;
+  marcado: boolean;
+  onToggle: () => void;
+}) {
+  const cor = marcado ? Palette.textTertiary : Palette.text;
+  return (
+    <Pressable
+      onPress={onToggle}
+      style={({ pressed }) => [styles.compraLinha, pressed && styles.compraLinhaPressionada]}>
+      <Ionicons
+        name={marcado ? 'checkmark-circle' : 'ellipse-outline'}
+        size={22}
+        color={marcado ? Palette.green : Palette.textTertiary}
+      />
+      <View style={styles.compraTextos}>
+        <Caption color={cor} style={marcado ? styles.riscado : undefined}>
+          {item.nome}
+        </Caption>
+        {item.mediaPorPorcao ? <Caption color={Palette.textTertiary}>{item.mediaPorPorcao}</Caption> : null}
+        {item.substitutos ? (
+          <Caption color={Palette.textTertiary}>Ou: {item.substitutos.join(', ')}</Caption>
+        ) : null}
+      </View>
+      <Caption color={cor} style={styles.compraQuantidade}>
+        {item.quantidade}
+      </Caption>
+    </Pressable>
   );
 }
 
@@ -297,17 +351,18 @@ const styles = StyleSheet.create({
     paddingLeft: Spacing.md,
     gap: 2,
   },
-  compraLinha: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: Spacing.md,
-    paddingLeft: Spacing.lg,
+  comprasCard: {
+    gap: Spacing.lg,
   },
   comprasHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: Spacing.md,
+  },
+  comprasTitulo: {
+    flex: 1,
+    gap: 2,
   },
   diasCampo: {
     flexDirection: 'row',
@@ -316,16 +371,47 @@ const styles = StyleSheet.create({
     width: 90,
   },
   categoriaBloco: {
-    gap: Spacing.xs,
-    marginTop: Spacing.xs,
+    gap: 2,
   },
   categoriaHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
+    gap: Spacing.sm,
+    paddingBottom: Spacing.xs,
+    marginBottom: Spacing.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.border,
+  },
+  categoriaIconeWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: Radius.pill,
+    backgroundColor: Palette.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   categoriaTexto: {
+    flex: 1,
     fontWeight: '700',
-    letterSpacing: 0.5,
+  },
+  compraLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.sm,
+  },
+  compraLinhaPressionada: {
+    opacity: 0.6,
+  },
+  compraTextos: {
+    flex: 1,
+    gap: 1,
+  },
+  compraQuantidade: {
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  riscado: {
+    textDecorationLine: 'line-through',
   },
 });
