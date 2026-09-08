@@ -35,6 +35,19 @@ function montarAlertas(alunos: ResumoAluno[]): Alerta[] {
     if (aluno.flagSaude) {
       alertas.push({ clientId: aluno.clientId, nome: aluno.nome, texto: `Saúde: ${aluno.flagSaude}` });
     }
+    if (aluno.temPlanoTreino || aluno.temPlanoDieta) {
+      const diasCheckin = diasDesde(aluno.ultimoCheckin);
+      if (diasCheckin === null || diasCheckin > 14) {
+        alertas.push({
+          clientId: aluno.clientId,
+          nome: aluno.nome,
+          texto:
+            diasCheckin === null
+              ? 'Nunca respondeu check-in'
+              : `Check-in atrasado há ${diasCheckin} dias`,
+        });
+      }
+    }
   }
   return alertas;
 }
@@ -107,6 +120,9 @@ export default function PainelScreen() {
           <Stat value={String(painel.semTreino7d)} label="Sem treino 7d+" color={Palette.orange} />
           <Stat value={String(painel.leadsPendentes)} label="Convites pendentes" color={Palette.blue} />
           <Stat value={String(painel.solicitacoesPendentes)} label="Pedidos de plano" color={Palette.blue} />
+        </View>
+        <View style={styles.stats}>
+          <Stat value={String(painel.checkinsAtrasados)} label="Check-in atrasado" color={Palette.orange} />
         </View>
       </Card>
 

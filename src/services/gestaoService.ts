@@ -6,6 +6,8 @@ export type ResumoAluno = AlunoVinculado & {
   temPlanoTreino: boolean;
   temPlanoDieta: boolean;
   flagSaude: string | null;
+  /** Data do check-in mais recente respondido por esse aluno, ou null se nunca respondeu. */
+  ultimoCheckin: string | null;
 };
 
 export type PainelGestao = {
@@ -16,6 +18,8 @@ export type PainelGestao = {
   leadsPendentes: number;
   /** Pediu um plano no onboarding (§12) mas o profissional ainda não confirmou. */
   solicitacoesPendentes: number;
+  /** Nunca respondeu check-in, ou já passou 14 dias do último. */
+  checkinsAtrasados: number;
   /** Agenda completa (todos os status), ordenada por data — a tela decide o que mostrar. */
   agenda: TeleconsultaComPaciente[];
   alunos: ResumoAluno[];
@@ -37,7 +41,7 @@ export async function obterPainelGestao(professionalId: string): Promise<PainelG
   const alunos = await listarAlunos(professionalId);
   const clientIds = alunos.map((a) => a.clientId);
 
-  const [{ data: comTreino }, { data: comDieta }, { data: anamneses }, { data: convites }, agenda] =
+  const [{ data: comTreino }, { data: comDieta }, { data: anamneses }, { data: convites }, { data: checkins }, agenda] =
     await Promise.all([
       supabase.from('plans').select('client_id').eq('professional_id', professionalId),
       supabase.from('planos_alimentares').select('client_id').eq('professional_id', professionalId),
@@ -52,12 +56,23 @@ export async function obterPainelGestao(professionalId: string): Promise<PainelG
         .select('id')
         .eq('created_by', professionalId)
         .eq('status', 'pendente'),
+      supabase
+        .from('check_ins')
+        .select('client_id, created_at')
+        .eq('professional_id', professionalId)
+        .order('created_at', { ascending: false }),
       listarAgenda(professionalId),
     ]);
 
   const treinoSet = new Set((comTreino ?? []).map((p) => p.client_id));
   const dietaSet = new Set((comDieta ?? []).map((p) => p.client_id));
   const anamnesePorCliente = new Map((anamneses ?? []).map((a) => [a.client_id, a]));
+
+  // Ordenado desc — a primeira ocorrência de cada client_id já é o check-in mais recente.
+  const ultimoCheckinPorCliente = new Map<string, string>();
+  for (const c of checkins ?? []) {
+    if (!ultimoCheckinPorCliente.has(c.client_id)) ultimoCheckinPorCliente.set(c.client_id, c.created_at);
+  }
 
   const resumos: ResumoAluno[] = alunos.map((aluno) => {
     const anamnese = anamnesePorCliente.get(aluno.clientId);
@@ -69,6 +84,7 @@ export async function obterPainelGestao(professionalId: string): Promise<PainelG
       temPlanoTreino: treinoSet.has(aluno.clientId),
       temPlanoDieta: dietaSet.has(aluno.clientId),
       flagSaude: sinaisSaude || null,
+      ultimoCheckin: ultimoCheckinPorCliente.get(aluno.clientId) ?? null,
     };
   });
 
@@ -82,6 +98,10 @@ export async function obterPainelGestao(professionalId: string): Promise<PainelG
     }).length,
     leadsPendentes: convites?.length ?? 0,
     solicitacoesPendentes: resumos.filter((a) => !a.planoNome && a.planoSolicitadoId).length,
+    checkinsAtrasados: resumos.filter((a) => {
+      const dias = diasDesde(a.ultimoCheckin);
+      return dias === null || dias > 14;
+    }).length,
     agenda,
     alunos: resumos,
   };

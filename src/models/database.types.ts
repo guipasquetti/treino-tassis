@@ -164,6 +164,60 @@ export type Database = {
           },
         ]
       }
+      check_ins: {
+        Row: {
+          client_id: string
+          created_at: string
+          foto_costas_path: string | null
+          foto_perfil_direito_path: string | null
+          foto_perfil_esquerdo_path: string | null
+          id: string
+          pontuacao_categorias: Json
+          pontuacao_geral: number | null
+          professional_id: string
+          respostas: Json
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          foto_costas_path?: string | null
+          foto_perfil_direito_path?: string | null
+          foto_perfil_esquerdo_path?: string | null
+          id?: string
+          pontuacao_categorias?: Json
+          pontuacao_geral?: number | null
+          professional_id: string
+          respostas?: Json
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          foto_costas_path?: string | null
+          foto_perfil_direito_path?: string | null
+          foto_perfil_esquerdo_path?: string | null
+          id?: string
+          pontuacao_categorias?: Json
+          pontuacao_geral?: number | null
+          professional_id?: string
+          respostas?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "check_ins_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "check_ins_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       convites: {
         Row: {
           client_id: string | null

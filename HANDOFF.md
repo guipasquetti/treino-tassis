@@ -212,6 +212,7 @@ versionado como referência.
 | `leads` | passo 1 do funil (§12): pré-conta, sem `profiles.id` ainda | 0 |
 | `atendimentos` | registro de cada consulta (pendura em lead ou em cliente já existente) | 0 |
 | `professional_verificacoes` | CPF/CREF-CRN/documento/status de verificação — nunca em `professionals`, que já é lido pelos pacientes (04/set) | 0 |
+| `check_ins` | check-in recorrente do paciente — série temporal, nunca sobrescrita (06/set) | 0 |
 
 **RLS reescrita (02/set):** todas as policies que usavam `is_trainer()` (acesso global a
 qualquer trainer) foram trocadas por checks escopados por assinatura ativa:
@@ -842,6 +843,57 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
   `get_advisors(security)` conferido depois da migration: nenhuma categoria nova. **Testado**:
   `npx tsc --noEmit` limpo, app sobe sem erro de console/bundler até a tela de login (não
   testado logado — mesma regra de nunca digitar senha, mesmo de conta descartável).
+- ✅ **Fase de Ataque iniciada (06/set): check-in recorrente automatizado.** Primeiro item da
+  Fase de Ataque do roadmap (a maior lacuna do benchmark de 05/set — 3-4 de 4 concorrentes já
+  automatizam isso). Tabela nova `check_ins` (série temporal, nunca sobrescrita — cada envio é
+  uma linha, mesma regra do §14) + bucket privado `fotos-checkin`
+  ([`20260906_checkins.sql`](supabase/migrations/20260906_checkins.sql)).
+  - ⚠️ **Rascunho de conteúdo, não texto literal do Live Clean.** [`checkin.ts`](src/models/checkin.ts)
+    tem as 22/23 perguntas mapeadas em 03/set (§13), mas só a ESTRUTURA (tipo/escala/categoria)
+    veio de fato dos prints — a redação de pergunta e opção é meu melhor esforço a partir dessa
+    estrutura, não transcrição verbatim (só existe em screenshot). Precisa de revisão do Tassis
+    antes de virar produção de verdade, mesmo tratamento já dado à anamnese de treino (§10).
+    Pergunta 19 segue de fora (nunca foi capturada).
+  - **Regra de pontuação preservada do §13**: cada opção carrega a própria `pontuacao` (0-100),
+    nunca inferida pela posição na lista (vegetais/frutas listam a melhor opção primeiro, sono
+    lista a pior primeiro). Pergunta `categorica` (níveis de fome, com a opção-sinal-de-alerta
+    "não sinto fome e tenho dificuldade pra comer") fica **fora** da pontuação de propósito —
+    tratá-la como ordinal viraria ruído no gráfico, exatamente o erro que o §13 avisava pra não
+    cometer.
+  - **Revelação condicional em dois níveis**: `opcoes[].pedeDetalhe` (dentro da mesma pergunta —
+    aderência e desconforto abdominal revelam campo de texto) e `dependeDe` (entre perguntas —
+    "quantidade de álcool" some se "dias de álcool" for 0), mesma mecânica que o §13 pedia pra
+    pergunta 17 (melhoria em cima do Live Clean original, que não tinha essa condicional).
+  - **Fluxo do paciente** ([`checkin-flow.tsx`](src/components/checkin-flow.tsx),
+    [`aluno/checkin.tsx`](src/app/aluno/checkin.tsx), 4ª aba nova) — uma pergunta por cartão,
+    contador de progresso, avança recalculando a lista de perguntas VISÍVEIS a partir da
+    resposta que acabou de ser dada (não do índice antigo), porque responder uma pergunta pode
+    esconder a próxima no mesmo passo. "Pular pergunta" com confirmação inline (§13 pedia
+    diálogo de confirmação — implementado como card, não `Alert.alert`, que não tem precedente
+    nesse projeto). Ao enviar, mostra a pontuação na hora (`CheckinResumo`) — "devolutiva
+    imediata" do §13, o que o handoff já apontava como o maior ganho de retenção do formato.
+  - **Fotos** (perfil esq./dir./costas) — reaproveita `expo-document-picker` filtrado por
+    `image/*` (mesmo padrão da carteirinha de CREF/CRN, §8), não instalei `expo-image-picker`
+    pra não abrir uma frente nova de permissão de câmera sem necessidade agora. Caminho sempre
+    `{client_id}/...`, bucket nunca público.
+  - **Painel do profissional**: `gestaoService.ts` ganhou `ultimoCheckin` por aluno e stat
+    "Check-in atrasado" (14+ dias sem responder, ou nunca respondeu) — mesma lógica de "sem
+    treino 7d+" já existente. Alerta só dispara pra quem já tem plano montado, pra não competir
+    com o alerta mais relevante de "sem plano ainda" em aluno recém-chegado.
+  - **Explicitamente fora desta entrega** (itens 05 e parte do 04 da Fase de Ataque no
+    roadmap): gráfico de tendência/histórico visual pro profissional (hoje só lista
+    data+pontuação, sem curva) e comparação automática das fotos — são pedaços grandes de UI
+    que merecem passe próprio, não emendados aqui. Também sem lembrete por WhatsApp (decisão do
+    Guilherme, 06/set: provedor ainda não escolhido) — "periodicidade" hoje é só um `>14 dias`
+    calculado no cliente, sem notificação nenhuma além do que já aparece dentro do app.
+  - **RLS verificada por simulação de JWT com rollback**: paciente insere só o próprio
+    (`client_id = auth.uid()`), tentativa de inserir em nome de outro paciente bloqueada;
+    profissional vinculado lê (1 linha), usuário sem vínculo não vê nada (0 linhas). Sem
+    update/delete na tabela — como `workout_logs`, histórico nunca é reescrito. `get_advisors(security)`
+    conferido depois da migration: nenhuma categoria nova. **Testado**: `npx tsc --noEmit`
+    limpo, app sobe sem erro de console/bundler até a tela de login. **Não testado logado** —
+    mesma regra de nunca digitar senha, nem de conta descartável; vale um teste manual real
+    quando o Tassis (ou o Guilherme) puder logar.
 
 ## 9. Escopo funcional v1 (proposto, não implementado)
 
