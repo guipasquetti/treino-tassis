@@ -135,7 +135,7 @@ export type Refeicao = {
 export type ItemListaCompras = {
   nome: string;
   quantidade: string;
-  /** "≈120g por porção" — só quando o item aparece em mais de uma refeição do dia. */
+  /** "~120g por porção" — só quando o item aparece em mais de uma refeição do dia. */
   mediaPorPorcao?: string;
   /** Nomes das substituições vistas pra esse item — informativo, nunca somado à quantidade. */
   substitutos?: string[];
@@ -307,7 +307,7 @@ export function listaDeCompras(
     if (grupo.totalPorDia !== null && grupo.unidade) {
       quantidade = formatarQuantidade(grupo.totalPorDia * dias, grupo.unidade);
       if (grupo.ocorrenciasPorDia > 1) {
-        mediaPorPorcao = `≈ ${formatarQuantidade(grupo.totalPorDia / grupo.ocorrenciasPorDia, grupo.unidade)} por porção`;
+        mediaPorPorcao = `~${formatarQuantidade(grupo.totalPorDia / grupo.ocorrenciasPorDia, grupo.unidade)} por porção`;
       }
     } else {
       quantidade = grupo.quantidadeOriginal.trim() || 'a gosto';

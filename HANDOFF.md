@@ -1010,6 +1010,28 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
     limpo, app sobe sem erro de console/bundler. Não testado visualmente logado (mesma
     regra de nunca digitar senha) — o layout novo (checkbox, cores, espaçamento) segue
     padrões já usados em outras telas do app, mas vale um olhar real do Guilherme/Tassis.
+- ✅ **Lista de compras: cards por categoria + checklist que persiste (06/set, mesmo dia).**
+  Pedido do Guilherme em cima da reescrita acima: "cards de compras" (não uma seção dentro
+  de um card só) e checkbox que **efetivamente marca quando comprado** — a versão anterior
+  tinha checkbox, mas o estado só vivia em `useState`, sumia ao recarregar a tela.
+  - Cada categoria virou um `<Card>` próprio, com progresso por categoria (`2/2`, ícone e
+    contagem viram verde e o card esmaece quando completa) e um card de resumo no topo
+    (`X/Y comprados · Z categorias · projeção N dias`).
+  - **Persistência via `AsyncStorage`** (já usado no projeto, `src/lib/supabase.ts`), chave
+    `lista-compras-marcados:{userId}` — decisão deliberada de guardar **no aparelho, não no
+    banco**: não é dado que o profissional precisa ver, não justificava tabela nova + RLS
+    nova pra isso. Consequência aceita: não sincroniza entre dispositivos (se o paciente
+    trocar de celular, o checklist não vai junto) — se isso incomodar, migrar pra tabela
+    Supabase é mudança pequena, mas não construída sem pedido.
+  - **Achado pequeno corrigido no processo**: `≈` (usado no "≈120g por porção") renderizava
+    como `=` na fonte do app — trocado por `~`, ASCII, sem risco de fonte.
+  - **Verificado de verdade, visualmente, sem login**: criei uma rota de depuração temporária
+    (`_debug-lista.tsx`, whitelisted por uma linha temporária em `_layout.tsx`) renderizando
+    o layout real com o JSON de produção, cliquei nos checkboxes de verdade no navegador —
+    confirmei categoria completa esmaecendo, contagem/ícone virando verde, item riscado, e
+    o glyph `~` certo. Removida a rota e a linha do layout antes de commitar — `git status`
+    confirmou `_layout.tsx` sem diff nenhum depois. Primeira vez neste projeto que uma
+    mudança de UI foi verificada visualmente de ponta a ponta sem depender de login real.
 
 ## 9. Escopo funcional v1 (proposto, não implementado)
 

@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -47,6 +48,11 @@ const ICONE_CATEGORIA: Record<string, keyof typeof Ionicons.glyphMap> = {
 };
 const ICONE_PADRAO: keyof typeof Ionicons.glyphMap = 'pencil-outline';
 
+/** Chave de armazenamento local — checklist é por aparelho, não sincroniza entre dispositivos. */
+function chaveMarcados(userId: string): string {
+  return `lista-compras-marcados:${userId}`;
+}
+
 export default function DietaScreen() {
   const user = useAuthStore((s) => s.user);
   const [plano, setPlano] = useState<PlanoAlimentar | null>(null);
@@ -57,13 +63,32 @@ export default function DietaScreen() {
   const [loading, setLoading] = useState(true);
 
   function alternarMarcado(chave: string) {
+    if (!user) return;
     setMarcados((atual) => {
       const novo = new Set(atual);
       if (novo.has(chave)) novo.delete(chave);
       else novo.add(chave);
+      AsyncStorage.setItem(chaveMarcados(user.id), JSON.stringify([...novo])).catch(() => {});
       return novo;
     });
   }
+
+  // Checklist "efetivamente marcado" precisa sobreviver a reload — guardado no aparelho, não
+  // no banco (não é dado que o profissional precisa ver, não justifica tabela nova + RLS).
+  useEffect(() => {
+    if (!user) {
+      setMarcados(new Set());
+      return;
+    }
+    AsyncStorage.getItem(chaveMarcados(user.id)).then((salvo) => {
+      if (!salvo) return;
+      try {
+        setMarcados(new Set(JSON.parse(salvo)));
+      } catch {
+        // storage corrompido ou de versão antiga — ignora, começa do zero
+      }
+    });
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) return;
@@ -105,6 +130,11 @@ export default function DietaScreen() {
   const totalDia = somaMacros(plano.refeicoes.flatMap((r) => itensReais(r.itens)));
   const dias = Math.max(1, Number(diasPeriodo) || 30);
   const compras = listaDeCompras(plano.refeicoes, dias, categorias);
+  const totalItensCompra = compras.reduce((n, g) => n + g.itens.length, 0);
+  const totalMarcado = compras.reduce(
+    (n, g) => n + g.itens.filter((item) => marcados.has(`${g.categoria}::${item.nome}`)).length,
+    0,
+  );
 
   return (
     <Screen title="Dieta" subtitle={plano.nutricionista || undefined}>
@@ -151,52 +181,62 @@ export default function DietaScreen() {
       ) : null}
 
       {compras.length > 0 ? (
-        <Card style={styles.comprasCard}>
-          <View style={styles.comprasHeader}>
-            <View style={styles.comprasTitulo}>
-              <SectionTitle>Lista de compras</SectionTitle>
-              <Caption>
-                {compras.reduce((n, g) => n + g.itens.length, 0)} itens · {compras.length} categorias · projeção {dias}{' '}
-                dia{dias === 1 ? '' : 's'}
-              </Caption>
-            </View>
-            <View style={styles.diasCampo}>
-              <Field
-                value={diasPeriodo}
-                onChangeText={setDiasPeriodo}
-                keyboardType="number-pad"
-                placeholder="30"
-              />
-              <Caption>dias</Caption>
-            </View>
-          </View>
-
-          {compras.map((grupo) => (
-            <View key={grupo.categoria} style={styles.categoriaBloco}>
-              <View style={styles.categoriaHeader}>
-                <View style={styles.categoriaIconeWrap}>
-                  <Ionicons name={ICONE_CATEGORIA[grupo.categoria] ?? ICONE_PADRAO} size={15} color={Palette.purple} />
-                </View>
-                <Caption color={Palette.text} style={styles.categoriaTexto}>
-                  {grupo.categoria}
+        <>
+          <Card>
+            <View style={styles.comprasHeader}>
+              <View style={styles.comprasTitulo}>
+                <SectionTitle>Lista de compras</SectionTitle>
+                <Caption>
+                  {totalMarcado}/{totalItensCompra} comprados · {compras.length} categorias · projeção {dias} dia
+                  {dias === 1 ? '' : 's'}
                 </Caption>
-                <Caption color={Palette.textTertiary}>{grupo.itens.length}</Caption>
               </View>
-
-              {grupo.itens.map((item) => {
-                const chave = `${grupo.categoria}::${item.nome}`;
-                return (
-                  <ItemCompraRow
-                    key={chave}
-                    item={item}
-                    marcado={marcados.has(chave)}
-                    onToggle={() => alternarMarcado(chave)}
-                  />
-                );
-              })}
+              <View style={styles.diasCampo}>
+                <Field
+                  value={diasPeriodo}
+                  onChangeText={setDiasPeriodo}
+                  keyboardType="number-pad"
+                  placeholder="30"
+                />
+                <Caption>dias</Caption>
+              </View>
             </View>
-          ))}
-        </Card>
+          </Card>
+
+          {compras.map((grupo) => {
+            const chaves = grupo.itens.map((item) => `${grupo.categoria}::${item.nome}`);
+            const marcadosNaCategoria = chaves.filter((c) => marcados.has(c)).length;
+            const completa = marcadosNaCategoria === chaves.length;
+            return (
+              <Card key={grupo.categoria} style={completa ? styles.categoriaCompleta : undefined}>
+                <View style={styles.categoriaHeader}>
+                  <View style={styles.categoriaIconeWrap}>
+                    <Ionicons
+                      name={ICONE_CATEGORIA[grupo.categoria] ?? ICONE_PADRAO}
+                      size={16}
+                      color={completa ? Palette.green : Palette.purple}
+                    />
+                  </View>
+                  <Caption color={Palette.text} style={styles.categoriaTexto}>
+                    {grupo.categoria}
+                  </Caption>
+                  <Caption color={completa ? Palette.green : Palette.textTertiary}>
+                    {marcadosNaCategoria}/{chaves.length}
+                  </Caption>
+                </View>
+
+                {grupo.itens.map((item, i) => (
+                  <ItemCompraRow
+                    key={chaves[i]}
+                    item={item}
+                    marcado={marcados.has(chaves[i])}
+                    onToggle={() => alternarMarcado(chaves[i])}
+                  />
+                ))}
+              </Card>
+            );
+          })}
+        </>
       ) : null}
     </Screen>
   );
@@ -351,9 +391,6 @@ const styles = StyleSheet.create({
     paddingLeft: Spacing.md,
     gap: 2,
   },
-  comprasCard: {
-    gap: Spacing.lg,
-  },
   comprasHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -370,14 +407,14 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
     width: 90,
   },
-  categoriaBloco: {
-    gap: 2,
+  categoriaCompleta: {
+    opacity: 0.6,
   },
   categoriaHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    paddingBottom: Spacing.xs,
+    paddingBottom: Spacing.sm,
     marginBottom: Spacing.xs,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Palette.border,
