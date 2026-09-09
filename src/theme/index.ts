@@ -24,8 +24,11 @@ export const Palette = {
   textSecondary: '#98989F',
   textTertiary: '#636366',
 
-  /** Anel de movimento da referência — usado como ação primária/destaque. */
-  accent: '#FF375F',
+  /** Accent principal da marca Vytra (paleta "Sinal Vital", aprovada 08/set) — antes rosa
+   * `#FF375F` da referência Apple Fitness, trocado no rebrand de 09/set. */
+  accent: '#2ED9A3',
+  /** Alerta da paleta Sinal Vital — reservado pra estado de atenção, não é o accent. */
+  vitalAlert: '#FFB020',
   /** Verde-limão dos ícones de exercício da referência. */
   lime: '#BFFF3C',
   blue: '#0A84FF',
@@ -38,7 +41,9 @@ export const Palette = {
 
 /** Cor por tipo de dia de treino. Mesma semântica do protótipo. */
 export const TrainingColors = {
-  push: Palette.accent,
+  // `push` era Palette.accent (rosa) — fixado em laranja no rebrand de 09/set porque o
+  // accent virou verde-menta, perto demais do verde já usado por `leg`.
+  push: Palette.orange,
   pull: Palette.blue,
   leg: Palette.green,
 } as const;

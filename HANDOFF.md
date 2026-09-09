@@ -1,7 +1,7 @@
 # App Treino — Handoff
 
 > Documento de contexto para replicar o estado do projeto em outro chat.
-> Última atualização: 06/Setembro/2026.
+> Última atualização: 09/Setembro/2026.
 
 > **Fonte canônica:** este arquivo, na raiz do repositório. Todo agente (Codex ou Claude) deve lê-lo antes de alterar o projeto e atualizá-lo ao concluir mudanças relevantes, decisões, migrações, configuração de infraestrutura ou bloqueios.
 
@@ -92,7 +92,9 @@ arredondados) — screenshots em [`docs/design-inspiration/`](docs/design-inspir
 ✅ Já aplicada em [`src/theme/index.ts`](src/theme/index.ts). Escopo explícito do
 Guilherme: **só a identidade visual**, não as funcionalidades do Apple Fitness —
 HealthKit/Apple Watch ficam de fora, no máximo como captura de dado pro módulo de
-exercício mais pra frente. Marca própria (nome/cores do Tassis) segue pendente no §7.
+exercício mais pra frente. **Nome da marca: "Vytra" (fechado 09/set, decisão do Guilherme
+— substituiu "Pulso 360" de 08/set)** — ver §7. Cor/identidade visual (paleta "Sinal Vital")
+já aprovada, mas o wordmark ainda precisa ser re-renderizado com o nome novo.
 
 ## 2. Modelo de negócio e visão de produto (reunião com Tassis, 31/ago)
 
@@ -313,11 +315,68 @@ mordeu duas vezes (`convite.tsx`, extinto `agenda.tsx`), ver §8.
   Tassis vai contatar `tbca.contato@usp.br` pra pedir acesso aos dados pra uso comercial.
 - Escopo detalhado + dados necessários do paciente pra estruturar o banco
 - Termo de consentimento/contrato (LGPD + uso de imagem)
-- Prints do fluxo "Bússola" do Elite Pro (referência de UX)
-- Pesquisa de mercado de concorrentes (preços/features)
-- Identidade visual (nome da marca + cores) — hoje o projeto só existe como "App Treino"/
-  slug `app-treino`, sem marca definida
+- Pesquisa de mercado de concorrentes (preços/features) — parcialmente coberta pela
+  pesquisa própria de 08/set (Reclame Aqui/App Store de WebDiet/MFIT/Dietbox/Trainerize +
+  benchmark Vibe Fit, ver §8)
 - Vídeos curtos de exercícios (15s)
+- ~~Prints do fluxo "Bússola" do Elite Pro~~ — **removido do escopo (08/set)**: decisão do
+  Tassis (questionário de marca) foi não copiar/igualar essa feature, e sim virar conteúdo
+  de tutorial ("aula de como o profissional pode se organizar"). Não é mais pendência.
+- ~~Identidade visual: nome~~ — **"Pulso 360" (08/set) abandonado (09/set)**, decisão do
+  Guilherme, não do Tassis: "360" já é sufixo saturado nesse nicho brasileiro (Treino360,
+  360fit, Personal 360 já existem) e "Pulso" colide com apps de saúde ativos + "Pulso 360"
+  já é agência de marketing ativa em São Paulo desde 2006. **Nome fechado agora: "Vytra"**
+  — sobreviveu a uma ronda de ~20 candidatos testados em 09/set (lista completa e critério
+  de decisão em `project_business_scope.md`, memória). Critério usado: sem concorrente
+  brasileiro direto de personal/nutri, sem contradizer voz de marca já fechada.
+  ✅ **Checado no INPI de verdade (09/set, base oficial `busca.inpi.gov.br`, não Google)**:
+  busca exata zerou pra "VYTRA", "VYTRIA" e "VYTTRA" — nenhuma marca registrada com essas
+  grafias. Busca radical (fonética) por "VYTRA" trouxe 7 processos, nenhum idêntico — o mais
+  próximo é "VYTRANZO" (Intarcia Therapeutics, farmacêutica, classes NCL 5/10, medicamento/
+  dispositivo médico, não é app). A "Vytra Diagnósticos" (empresa de diagnóstico laboratorial
+  achada via Google, ver conversa) **não aparece no INPI** — indício de que é nome de
+  empresa/CNPJ, não marca registrada, o que reduz o risco jurídico real dela. Aviso oficial
+  do próprio INPI: "nenhum resultado" não garante registrabilidade — exame de verdade só no
+  pedido formal.
+  ⚠️ **Achado à parte, risco não-jurídico**: existe um app internacional ativo chamado
+  "Vytra" (Wesley de Gee, foco em treino/tracking — "train smarter, track progress, unlock
+  your potential"), com conta Instagram ativa em `@vytra.app` (bio quase idêntica: "Train
+  smarter. Lift stronger. Plans • Tracking • Real progress", cobrança $9,99/mês). Mesmo
+  nicho, nome idêntico, sem concorrência real no Brasil e sem registro de marca aqui — não
+  bloqueia juridicamente, mas é risco de confusão de busca/rede social a considerar.
+  **Handle definido**: `@vytra.oficial` — confirmado disponível pelo próprio Guilherme
+  (09/set). Rebranding em si (nome no app/EAS project/domínio) ainda não feito, só a decisão
+  do nome e do handle de rede social.
+- ~~Cor/identidade visual + voz da marca~~ — **resolvido (08/set)**: Guilherme revisou 3
+  direções de paleta (artifact `pulso-360-brand`, montado a partir do questionário de marca
+  do Tassis) e aprovou a direção **"Sinal Vital"** — paleta de monitor/sinal vital (base
+  quase preta `#0A0C0D`, sinal verde-menta `#2ED9A3`, alerta âmbar `#FFB020`, texto
+  `#ECEFEE`), wordmark em mono, tracking aberto. Risco aceito: pode ler mais "clínica" que
+  "treino" — aceito porque o educador físico também se vende pelo rigor técnico. **Troca o
+  accent principal do app** (hoje `Palette.accent`/`RoleColors.aluno` = rosa `#FF375F`) —
+  rebrand no código ainda não aplicado, só a direção está fechada. Voz da marca também
+  fechada: adjetivos É técnica/presente/direta, NUNCA genérica/sedutora/fria; frase de
+  diferenciação "encaixar a dieta e o treino na rotina do paciente — não o contrário"
+  (palavras do próprio Tassis, não inventada).
+- ✅ **Brandbook consolidado (09/set)** — artifact `vytra-brandbook`, junta tudo: essência,
+  origem do nome (Vy- ecoa "vitória"/"vital", "-tra" ecoa "extra"/"ultra" — não é palavra de
+  dicionário, é construção fonética, por isso sobreviveu à ronda de colisão), as duas
+  personas (paciente 24–40 anos/já tentou dieta antes; profissional comprador/52 pacientes
+  hoje), paleta Sinal Vital com wordmark já certo ("VYTRA", não mais "Pulso 360"),
+  tipografia (Big Shoulders Display + IBM Plex Sans/Mono), e **regras de escrita da marca**
+  fixadas ao vivo com o Guilherme corrigindo linha por linha: nunca travessão, nunca o
+  padrão "não é X, é Y", nunca ponto de exclamação, nunca prometer prazo. Inclui os dois
+  discursos de marca completos (ver abaixo). Detalhe completo da ronda de naming (~20
+  candidatos testados e por que cada um caiu) em memória (`project_business_scope.md`).
+- ✅ **Discursos de marca (09/set)** — dois textos de posicionamento, escritos e revisados em
+  várias rodadas com o Guilherme (cortando clichê de IA a cada volta: travessão, "não é X é
+  Y", exemplo mundano demais). Ideia central: "o plano se adapta a você, não o contrário" —
+  reformula o fracasso de tentativas anteriores como falha do método, não do paciente, e usa
+  isso como prova de critério técnico, não promessa vazia. Versão pro paciente fecha com "um
+  plano realmente seu" (linha do próprio Guilherme); versão pro profissional fecha com "o
+  critério que você já tem, sem o trabalho que te consumia". Nenhuma cita concorrente por
+  nome — descreve só a função ("ferramenta pra gestão", "outra pra prescrever dieta") pra
+  não virar propaganda comparativa. Texto completo no brandbook acima.
 
 ⚠️ **E-mail: a causa raiz não é rate limit** (investigado em 03/set, corrige o diagnóstico
 anterior). A [documentação do Supabase](https://supabase.com/docs/guides/auth/auth-smtp)
@@ -1098,6 +1157,19 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
   - **Simplificação aceita**: "concluídos hoje" e o card de treino sempre mostram o
     primeiro dia do plano (`dias[0]`), igual ao comportamento padrão da aba Treino — não
     lembra qual dia o aluno tocou por último.
+- ✅ **Emojis removidos do check-in + rótulos de "qualidade do sono" corrigidos (09/set)**,
+  pedido do Guilherme depois de ver a tela real: emoji não deve ficar atrelado à marca (a
+  não ser que exista um dia uma base de ícones própria da identidade visual). `OpcaoCheckin.emoji`
+  removido do tipo em [`checkin.ts`](src/models/checkin.ts), das 3 listas que tinham (`ESCALA_DISPOSICAO`,
+  desempenho de exercícios, e a duplicata que "qualidade do sono" herdava) e da renderização
+  em [`checkin-flow.tsx`](src/components/checkin-flow.tsx) (`label={opcao.label}`, sem concatenar emoji).
+  **Achado no processo**: a pergunta "qualidade do sono" reaproveitava `ESCALA_DISPOSICAO`
+  (rótulos de disposição — "Muito indisposto(a)"/"Muito disposto(a)") por cópia direta,
+  errado pra pergunta de sono. Nova lista dedicada `ESCALA_QUALIDADE_SONO` com rótulos
+  específicos ("Muito ruim — não descansei nada" → "Muito boa — acordei descansado(a) todos
+  os dias"), mesma escala de pontuação 0/25/50/75/100. `npx tsc --noEmit` limpo, `grep -rn
+  emoji src` sem sobra, bundler sobe sem erro de console. Não testado logado (mesma regra
+  de nunca digitar senha).
 
 ## 9. Escopo funcional v1 (proposto, não implementado)
 

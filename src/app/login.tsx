@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -40,8 +41,11 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.container}>
         <View style={styles.brand}>
-          <Body style={styles.titulo}>Treino</Body>
-          <Caption>Seu plano, sua execução, sua evolução.</Caption>
+          <View style={styles.wordmark}>
+            <Ionicons name="pulse" size={26} color={Palette.accent} />
+            <Body style={styles.titulo}>VYTRA</Body>
+          </View>
+          <Caption>Um plano realmente seu.</Caption>
         </View>
 
         <View style={styles.switchTrack}>
@@ -104,10 +108,15 @@ const styles = StyleSheet.create({
   brand: {
     gap: Spacing.xs,
   },
+  wordmark: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
   titulo: {
     fontSize: FontSize.display,
     fontWeight: '800',
-    letterSpacing: -1,
+    letterSpacing: 2,
   },
   switchTrack: {
     flexDirection: 'row',
