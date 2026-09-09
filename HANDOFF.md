@@ -2128,3 +2128,52 @@ Não foi criada nova tabela nem liberada nova informação clínica. Publicado e
 **Estado do repositório:** essas mudanças continuam sem commit nesta sessão. Há também alterações
 preexistentes de check-in em `src/components/checkin-flow.tsx` e `src/models/checkin.ts`; não as
 reverter ou separar sem revisar a intenção registrada na seção de check-ins.
+
+## 25. Três bugs do aluno corrigidos (09/set, sessão seguinte)
+
+Reportados pelo Guilherme testando o app de verdade: lista de compras "fica perdida" dentro da
+Dieta, treino registrado hoje não aparecia atualizado, e "Ir treinar" não abria o dia certo.
+
+- ✅ **Lista de compras virou rota própria.** Era só uma seção no fim de `aluno/dieta.tsx` —
+  pra chegar nela tinha que rolar refeições + observações inteiras. Extraída pra
+  [`src/components/lista-compras.tsx`](src/components/lista-compras.tsx)
+  (`ListaComprasSection`, mesma lógica de checklist/AsyncStorage/projeção de dias de antes,
+  sem mudança de comportamento) e montada numa rota nova,
+  [`aluno/lista-compras.tsx`](src/app/aluno/lista-compras.tsx) — "fantasma" no
+  `<Tabs>` do `aluno/_layout.tsx` (`href: null`, mesmo padrão já usado em `pro/` pros
+  editores). O card "Lista de compras" do Início e o card "Dieta" continuam distintos: Dieta
+  ainda abre `/aluno/dieta` (macros + refeições), lista de compras agora abre só a lista.
+  `aluno/dieta.tsx` consome o mesmo componente extraído no fim da tela, então o
+  comportamento de quem ainda rola até lá continua igual.
+  ⚠️ **Achado no meio da extração:** o novo JSX usava `user!.id` direto (mesma classe de bug
+  do §8/04-set, sessão trocando com a tela montada) — corrigido acrescentando `!user` no
+  guard de loading da tela, igual ao padrão já usado em `aluno/index.tsx`/`pro/planos.tsx`.
+- ✅ **Início (dashboard) não atualizava depois de treinar.** Causa raiz: a tela só buscava
+  dado uma vez, no primeiro mount (`useEffect` com `carregar` como dependência) — como as
+  abas do `<Tabs>` do expo-router não desmontam ao trocar de aba, voltar do Treino pro Início
+  mostrava o streak/contagem de exercícios de antes de treinar. Trocado por
+  `useFocusEffect` (`expo-router` re-exporta de `@react-navigation/native`) em
+  [`aluno/index.tsx`](src/app/aluno/index.tsx) — recarrega toda vez que a aba ganha foco, não
+  só na primeira vez. Primeiro uso desse padrão no projeto; se a mesma cara de bug aparecer
+  em Dieta/Treino depois, é o mesmo remédio.
+- ✅ **"Ir treinar" abria a aba Treino, não o dia de hoje.** Como o app não tem conceito de
+  "dia da semana" pro treino (é o aluno quem escolhe A/B/C, ver §11), o Início sempre trata
+  `dias[0]` como "hoje" — mas a aba Treino guardava o último dia escolhido manualmente
+  (`diaAtivo`) e não resetava ao voltar pra ela, porque também não desmonta. Card e botão
+  "Ir treinar" em `aluno/index.tsx` agora navegam com
+  `router.push({ pathname: '/aluno/treino', params: { dia: diaHoje.id } })`; `treino.tsx` lê
+  `dia` via `useLocalSearchParams` e sobrescreve `diaAtivo` quando o parâmetro chega —
+  clicar direto na aba Treino (sem vir do Início) continua respeitando o que o aluno tinha
+  escolhido por último.
+- **Verificado sem login** (mesma regra de nunca digitar senha, mesmo descartável): rota de
+  depuração temporária (`_debug-lista-compras.tsx`, whitelisted por uma linha em
+  `_layout.tsx`, mesmo padrão já usado em 06/set e 08/set) renderizando `ListaComprasSection`
+  com dado mockado — checklist marca/desmarca, categoria fica verde ao completar, e o estado
+  sobrevive a reload (AsyncStorage funcionando igual a antes da extração). Removida a rota e
+  a linha do layout depois — `git status` confirmou `_layout.tsx` sem diff. `npx tsc --noEmit`
+  limpo; app sobe sem erro de console/bundler até a tela de login.
+  **Não testado logado**: o `useFocusEffect` do Início e o `?dia=` do "Ir treinar" dependem de
+  navegação real entre abas com sessão de verdade — comportamento correto por leitura de
+  código e por serem APIs padrão do projeto (mesmo padrão de `useLocalSearchParams` já usado
+  em `pro/aluno/[id].tsx`), mas vale um teste manual do Guilherme/Tassis treinando de
+  verdade.

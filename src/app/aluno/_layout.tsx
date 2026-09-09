@@ -97,6 +97,7 @@ export default function ClientLayout() {
               tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
             }}
           />
+          <Tabs.Screen name="lista-compras" options={{ href: null }} />
         </Tabs>
       )}
     </RoleThemeProvider>

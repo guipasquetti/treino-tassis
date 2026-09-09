@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 
 import { Body, Button, Caption, Card, EmptyState, Loading, Screen, SectionTitle, Stat } from '@/components/ui';
@@ -81,9 +81,14 @@ export default function InicioScreen() {
     setEstado({ workout, liberado, plano, categorias, checkins, checkinDisponivel: pendencias.some(Boolean), consulta, comprasMarcadas });
   }, [user?.id]);
 
-  useEffect(() => {
-    carregar();
-  }, [carregar]);
+  // `useFocusEffect`, não `useEffect`: a aba fica montada ao trocar de aba (padrão do
+  // `<Tabs>` do expo-router), então um `useEffect` só rodaria uma vez e o treino/dieta
+  // registrados em outra aba nunca apareceriam aqui sem reload manual da página.
+  useFocusEffect(
+    useCallback(() => {
+      carregar();
+    }, [carregar]),
+  );
 
   if (!user || !estado) return <Loading />;
 
@@ -118,6 +123,16 @@ export default function InicioScreen() {
   const ultimoCheckin = estado.checkins[0] ?? null;
   const penultimoCheckin = estado.checkins[1] ?? null;
 
+  /**
+   * Vai direto pro dia de treino de hoje (`diaHoje`), não só pra aba Treino — sem isso, se o
+   * aluno tivesse trocado de dia (A/B/C) numa visita anterior à aba, o estado ficava sticky
+   * (a aba não desmonta ao trocar de aba) e "Ir treinar" abria o dia errado.
+   */
+  function irTreinar() {
+    if (!diaHoje) return;
+    router.push({ pathname: '/aluno/treino', params: { dia: diaHoje.id } });
+  }
+
   return (
     <Screen title={`Olá, ${primeiroNome}`} subtitle="Resumo de hoje">
       <Card>
@@ -138,7 +153,7 @@ export default function InicioScreen() {
 
       <SectionTitle>Treino de hoje</SectionTitle>
       {diaHoje ? (
-        <Card onPress={() => router.push('/aluno/treino')}>
+        <Card onPress={irTreinar}>
           <View style={[styles.diaHeader, { borderLeftColor: trainingColor(diaHoje.tipo) }]}>
             <Body>{diaHoje.nome}</Body>
             <Caption>{diaHoje.desc}</Caption>
@@ -154,7 +169,7 @@ export default function InicioScreen() {
               </View>
             );
           })}
-          <Button label="Ir treinar" variant="ghost" color={trainingColor(diaHoje.tipo)} onPress={() => router.push('/aluno/treino')} />
+          <Button label="Ir treinar" variant="ghost" color={trainingColor(diaHoje.tipo)} onPress={irTreinar} />
         </Card>
       ) : (
         <EmptyState text="Seu treinador está montando seu plano — fica pronto em até 2 dias." />
@@ -179,7 +194,7 @@ export default function InicioScreen() {
       )}
 
       {totalItensCompra > 0 ? (
-        <Card onPress={() => router.push('/aluno/dieta')}>
+        <Card onPress={() => router.push('/aluno/lista-compras')}>
           <View style={styles.linhaEntreTexto}>
             <SectionTitle>Lista de compras</SectionTitle>
             <Caption color={Palette.text}>

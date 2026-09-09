@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -39,10 +40,18 @@ import { Palette, Radius, Spacing, trainingColor } from '@/theme';
 
 export default function TreinoScreen() {
   const user = useAuthStore((s) => s.user);
+  const { dia: diaParam } = useLocalSearchParams<{ dia?: string }>();
   const [data, setData] = useState<WorkoutData | null>(null);
   const [liberado, setLiberado] = useState(true);
   const [loading, setLoading] = useState(true);
   const [diaAtivo, setDiaAtivo] = useState<string | null>(null);
+
+  // Sobrescreve o dia selecionado quando se chega aqui com `?dia=` (ex.: "Ir treinar" do
+  // Início) — sem isso, a aba fica com o último dia escolhido manualmente (não desmonta ao
+  // trocar de aba), e o botão "Ir treinar" abria o dia errado.
+  useEffect(() => {
+    if (diaParam) setDiaAtivo(diaParam);
+  }, [diaParam]);
 
   const carregar = useCallback(async () => {
     if (!user) return;
