@@ -353,8 +353,20 @@ mordeu duas vezes (`convite.tsx`, extinto `agenda.tsx`), ver §8.
   quase preta `#0A0C0D`, sinal verde-menta `#2ED9A3`, alerta âmbar `#FFB020`, texto
   `#ECEFEE`), wordmark em mono, tracking aberto. Risco aceito: pode ler mais "clínica" que
   "treino" — aceito porque o educador físico também se vende pelo rigor técnico. **Troca o
-  accent principal do app** (hoje `Palette.accent`/`RoleColors.aluno` = rosa `#FF375F`) —
-  rebrand no código ainda não aplicado, só a direção está fechada. Voz da marca também
+  accent principal do app** (era `Palette.accent`/`RoleColors.aluno` = rosa `#FF375F`).
+  ✅ **Aplicado no código (09/set)**: `Palette.accent` agora `#2ED9A3` — cascata automática
+  pra `RoleColors.aluno` e `MacroColors.kcal`, que já reusavam o mesmo token. `TrainingColors.push`
+  foi desacoplado do accent (virou `Palette.orange`) pra não colidir com o verde de `leg`
+  agora que o accent também é verde. Login ([`login.tsx`](src/app/login.tsx)) trocou o
+  título "Treino" por wordmark "VYTRA" (ícone `pulse` do Ionicons + texto com tracking,
+  ainda sem fonte customizada — `expo-font`/IBM Plex Mono do brandbook não instalado) e a
+  tagline pra "Um plano realmente seu.". Verificado: `npx tsc --noEmit` limpo, preview web
+  conferido nos dois modos (Aluno/Profissional) sem erro de console. **Não aplicado ainda**:
+  `app.json` (`name`/`slug`/`scheme` continuam "App Treino"/`app-treino`/`apptreino` — troca
+  de slug mexe no EAS project e na URL de produção, decisão maior, não feita sem pedir),
+  ícone do app, splash screen (cor de fundo `#208AEF` ainda é azul do scaffold, não da
+  marca), e fonte IBM Plex Mono/Big Shoulders real (login usa só letterSpacing pra imitar o
+  tracking do brandbook, não é a fonte de verdade). Voz da marca também
   fechada: adjetivos É técnica/presente/direta, NUNCA genérica/sedutora/fria; frase de
   diferenciação "encaixar a dieta e o treino na rotina do paciente — não o contrário"
   (palavras do próprio Tassis, não inventada).
