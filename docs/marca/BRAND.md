@@ -56,15 +56,20 @@ pico é, isolado, a letra V. É o critério técnico e o nome da marca no mesmo 
 | Parâmetro | Valor |
 |---|---|
 | Espessura do traço | 8 unidades |
-| Pontas e junções | arredondadas (`stroke-linecap`/`linejoin: round`) |
+| Pontas e junções | retas (`stroke-linecap: butt` / `stroke-linejoin: miter`) — nunca arredondar |
 | Linha de base | y = 22 |
-| Vértice do V | (60, 52) |
+| Profundidade do vértice | y = 52 |
 | Meia-largura do V | 16 |
-| Variante larga (lockups) | x de 8 a 112 |
-| Variante compacta (ícone quadrado) | x de 22 a 98 |
+| Proporção dos braços (esquerdo:direito) | 28:40 — o V nunca fica centralizado |
+| Variante larga (lockups) | x de 8 a 112, vértice em x ≈ 53,65 |
+| Variante compacta (ícone quadrado) | x de 22 a 98, vértice em x ≈ 56,12 |
 
-O V tem 32 de largura por 30 de profundidade — quase quadrado, que é o que faz ele ler como
-letra e não como ruído do gráfico.
+O vértice fica à esquerda do centro de propósito — braço esquerdo mais curto que o direito,
+na proporção 28:40 do desenho de referência. Cada variante recalcula o x do vértice a partir
+da própria largura pra manter essa MESMA proporção visual (`apex_x()` em
+`scripts/brand/gen_brand.py`), em vez de usar uma coordenada fixa. O V tem 32 de largura por
+30 de profundidade — quase quadrado, que é o que faz ele ler como letra e não como ruído do
+gráfico.
 
 **Ajuste óptico para tamanho pequeno.** Abaixo de ~48px o traço de 8 some. Existe uma variante
 com traço 13 (`vytra-icon-small.svg`, e os favicons gerados dela). Use essa, não reduza a
