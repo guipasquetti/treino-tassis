@@ -5,6 +5,19 @@
 
 > **Fonte canônica:** este arquivo, na raiz do repositório. Todo agente (Codex ou Claude) deve lê-lo antes de alterar o projeto e atualizá-lo ao concluir mudanças relevantes, decisões, migrações, configuração de infraestrutura ou bloqueios.
 
+> ⚠️ **NUNCA DUPLICAR ESTE ARQUIVO.** Regra do Guilherme, 09/set, sem exceção. Codex e Claude
+> compartilham este mesmo arquivo e ele é a referência canônica de tudo. Não criar documento
+> paralelo que repita decisão, estado de infraestrutura ou pendência que já vive aqui: duas
+> fontes para o mesmo fato é como elas divergem, e foi assim que um desenho de DNS errado
+> sobreviveu ao lado do certo em 09/set. Documento separado só se cobrir assunto que este
+> arquivo não cobre (ex.: `docs/marca/BRAND.md`, que são regras de uso da marca), e mesmo
+> assim o handoff aponta pra ele em vez de repetir o conteúdo.
+>
+> **Antes de escrever aqui: releia a versão do disco.** Nunca gravar por cima de uma cópia
+> lida minutos antes, e nunca forçar gravação por cima de versão mais nova. O outro agente
+> pode ter escrito nesse intervalo. Em 09/set uma gravação forçada apagou 287 linhas escritas
+> pelo Codex; só foi recuperada porque já estavam commitadas.
+
 > **Migração de marca e URLs em andamento (09/set):** seguir o protocolo em “Transição Vytra” no fim deste documento. Não trocar o fallback de convite nem remover URLs legadas antes de `app.vytraoficial.com.br` passar na verificação de DNS, SSL e login.
 
 ---
@@ -396,14 +409,49 @@ mordeu duas vezes (`convite.tsx`, extinto `agenda.tsx`), ver §8.
   não virar propaganda comparativa. Texto completo no brandbook acima.
 
 - ✅ **Domínio e marca — decidido em 09/set (fecha a discussão, não reabrir sem fato novo).**
-  Documento próprio: [`docs/marca/DOMINIO-E-INPI.md`](docs/marca/DOMINIO-E-INPI.md), com as
-  alternativas descartadas e o motivo de cada uma.
-  - **Nome Vytra mantido.** Foi testado no mesmo dia contra **Vytia** (`.com.br` livre, mas
-    `vytia.fr` foi loja de sapatos fraudulenta com 15 reclamações no Signal Arnaques — busca
-    contaminada; e o fecho *-tia* puxa apatia/antipatia) e contra **Vytria** (fonética boa,
-    *-tria* puxa pediatria/geriatria e simetria, INPI já limpo, mas `vytria.com.br` está
-    registrado e suspenso e `vytria.com` é a Vytria Eyewear, e-commerce ativo). Nenhuma se
-    sustentou.
+  As alternativas descartadas e o passo a passo do INPI ficam **aqui**, não em documento
+  separado (ver a regra de arquivo único no cabeçalho). O `docs/marca/DOMINIO-E-INPI.md` que
+  existiu por algumas horas em 09/set foi dissolvido neste item justamente por duplicar o
+  handoff e chegar a divergir dele no desenho de DNS.
+
+  **Domínios descartados:**
+
+  | Opção | Por que caiu |
+  |---|---|
+  | `vytra.com.br` | Vytra Diagnósticos, vence 25/09/2027, parado em DNS automático. Comprar descartado pelo Guilherme: marca já implementada, difícil pleitear. Em monitoramento automático |
+  | `vytra.com` | EmblemHealth, plano de saúde americano |
+  | `vytra.io`, `vytra.club` | registrados |
+  | `vytra.app.br`, `appvytra.com.br`, `vytraapp.com.br`, `vytra.app` | "app" impõe teto ao produto. Decisão do Guilherme |
+  | `usevytra.com.br` | "use Vytra" lê como imperativo de vestir. Decisão do Guilherme |
+  | `vytra.co` | quem erra e digita `.com` cai na EmblemHealth: vazar tráfego de produto de saúde pra outra marca de saúde |
+  | `vytrasaude.com.br` | livre, mas "saúde" empurra o posicionamento pro clínico |
+  | `vytra.fit` | "fit" fecha em treino e puxa emagrecimento de moda, o oposto da voz "técnica, nunca sedutora" |
+  | `vytra.health`, `.care`, `.life`, `.pro` | palavra em inglês pra base de pacientes que fala português |
+  | `vytra.net.br`, `vytra.tec.br` | soam como provedor de internet e empresa de TI |
+
+  **INPI, como fazer** (nada depositado até 09/set): sistema e-INPI, `gru.inpi.gov.br` pra
+  guia e `busca.inpi.gov.br` pro pedido. Classes prováveis **NCL 9** (software/app baixável),
+  **NCL 42** (desenvolvimento de software, SaaS) e **NCL 44** (serviços de saúde/nutrição).
+  Cerca de R$ 355 por classe, ~R$ 142 com redução ME/EPP/MEI/PF; confirmar a tabela vigente.
+  Marca **mista** (mark + nome) protege mais, mas a **nominativa** é a que impede terceiro de
+  usar a palavra: se for depositar só uma, depositar a nominativa. Não é parecer jurídico.
+  - **Nome Vytra mantido — reconfirmado três vezes no mesmo dia, decisão final do Guilherme.**
+    Testado contra **Vytia** (`.com.br` livre, mas `vytia.fr` foi loja de sapatos fraudulenta
+    com 15 reclamações no Signal Arnaques — busca contaminada; e o fecho *-tia* puxa apatia/
+    antipatia); contra **Vytria** (fonética boa, *-tria* puxa pediatria/geriatria e simetria,
+    INPI já limpo, mas `vytria.com.br` está registrado e suspenso e `vytria.com` é a Vytria
+    Eyewear, e-commerce ativo); e contra uma **ronda completa de nomes começando com V**
+    (restrição deliberada: nome com V preserva mark, ícone, paleta e fontes — só o wordmark
+    seria regerado). Peneiras: `.com.br` livre no Registro.br + busca sem contaminação +
+    legível em português na primeira tentativa. Passaram Vytora (o melhor, ecoa "vitória"),
+    Vytana, Vyanta, Vysora e Vyrena; caíram `Vyntra` e `Vytria` (registrados e suspensos),
+    `Vydra` (reservado pelo Comitê Gestor), `Vyntro` (duas startups de IA), `Vyvante` (o
+    `.com` é marca de wellness de enema de café) e seis com `.com.br` ocupado.
+    **Nenhum superou Vytra**: os limpos não têm significado, e Vytora troca as duas sílabas
+    secas por três e ganha vizinhança com "Vitória".
+    ⚠️ **Não reabrir sem fato novo** — fato novo é a Vytra Diagnósticos depositar VYTRA no
+    INPI ou uma oposição real chegar, não é dúvida nem um nome bonito que apareceu. A ronda
+    inteira está em `docs/marca/DOMINIO-E-INPI.md` §4.
   - **Endereço oficial: `vytraoficial.com.br`.** Espelha o handle `@vytra.oficial` e é a única
     palavra disponível que não impõe teto ao produto ("app" limita ao aplicativo, "saúde"
     empurra pro clínico, "fit" fecha em treino). Escolha deliberadamente **reversível**:
@@ -413,9 +461,14 @@ mordeu duas vezes (`convite.tsx`, extinto `agenda.tsx`), ver §8.
     e ficou em **monitoramento automático** — tarefa agendada mensal (dia 1º, 09h BRT) que
     consulta o Registro.br e avisa se ficar disponível, entrar em processo de liberação ou
     mudar pra on hold. A mesma tarefa confere se o `vytraoficial.com.br` segue registrado.
-  - **DNS planejado:** app na **raiz** (`vytraoficial.com.br`, não em `app.` — o link do convite
-    já é longo demais) e `mail.vytraoficial.com.br` como subdomínio dedicado de envio, pra
-    isolar reputação de entrega.
+  - ⚠️ **DNS: o desenho anterior deste item está SUPERADO.** Ele previa o app na raiz e o EAS
+    como host. O que foi de fato montado é o oposto e é o que vale: **landing na raiz**
+    (projeto Vercel `vytra`) e **app em `app.vytraoficial.com.br`** (projeto Vercel separado
+    `vytra-app`), porque domínio customizado no EAS **não existe no plano Free** (confirmado
+    no dashboard). Registros exatos e ordem de rollback na seção "Estado confirmado em 09/set"
+    e "DNS a aplicar no Registro.br", mais adiante neste arquivo — **aquela seção é a
+    canônica, esta é só a decisão de nome**. `mail.vytraoficial.com.br` segue reservado pro
+    envio de e-mail, sem registro criado até o provedor ser escolhido.
   - ⚠️ **INPI: nada depositado, e essa é a parte que importa.** A busca de 08–09/set zerou, mas
     busca limpa não é proteção. **Nome empresarial anterior de terceiro no mesmo ramo é
     fundamento de oposição pelo art. 124, V da LPI**, e a Vytra Diagnósticos opera em saúde no
@@ -426,7 +479,9 @@ mordeu duas vezes (`convite.tsx`, extinto `agenda.tsx`), ver §8.
   - **Ordem de execução** (passos 1 e 7 dependem do Guilherme, o resto é execução):
     1. registrar `vytraoficial.com.br` · 2. verificar `mail.` no provedor de SMTP (SPF/DKIM/DMARC)
     · 3. SMTP no Supabase e religar confirmação de e-mail (desligada em 03/set como contorno)
-    · 4. domínio customizado no EAS Hosting · 5. Site URL e redirect URLs no Supabase
+    · 4. ~~domínio customizado no EAS Hosting~~ **DNS da Vercel** (raiz para a landing, `app.`
+    para o `vytra-app`), porque o EAS Free não tem domínio customizado
+    · 5. Site URL e redirect URLs no Supabase
     · 6. trocar o fallback `https://app-treino.expo.app` em `src/app/pro/convite.tsx`
     · 7. depositar VYTRA no INPI.
   - O `slug` do projeto Expo continua `app-treino` mesmo depois disso: trocar mexe no EAS
@@ -1829,7 +1884,7 @@ Não remover nenhuma URL antiga na mesma etapa do primeiro corte.
 | Landing | ✅ projeto Vercel `vytra`, deploy de produção pronto | publicar DNS da raiz e confirmar HTTPS |
 | Domínios na Vercel | `vytraoficial.com.br` e `www.vytraoficial.com.br` vinculados ao projeto `vytra` | DNS ainda aponta para Registro.br padrão; configurar A da raiz e `www` conforme Vercel |
 | App EAS | produção em `https://app-treino.expo.app`; EAS project `@guipasquetti/app-treino` / `f37244c8-045f-4fff-89de-ecf05f7872ce` | manter como rollback até o novo host passar nos testes |
-| App Vercel | ✅ projeto separado `vytra-app` criado e exportação web publicada; produção temporária = `https://vytra-app.vercel.app` | `app.vytraoficial.com.br` foi associado ao projeto e aguarda DNS |
+| App Vercel | ✅ projeto separado `vytra-app`, bundle **em paridade com o Expo** (mesmo hash de `entry-*.js`) e rotas dinâmicas corrigidas via `public/vercel.json` (ver item dedicado abaixo) | deploy via `vercel deploy dist --project vytra-app --prod --yes` a cada `expo export`; não usar `--prebuilt` |
 | EAS custom domain | indisponível no plano Free (confirmado no dashboard) | manter `app-treino.expo.app` como rollback; o app público novo é servido pela Vercel |
 | Supabase Auth | Site URL e redirect URL atuais: `https://app-treino.expo.app` | adicionar `https://app.vytraoficial.com.br` primeiro; trocar Site URL apenas após teste de login/convite no novo host; manter URL antiga permitida |
 | Convites | fallback nativo em `src/app/pro/convite.tsx` ainda aponta para `https://app-treino.expo.app`; na web usa `window.location.origin` | atualizar fallback só depois de o novo host responder com SSL válido |
@@ -1860,6 +1915,84 @@ Não remover nenhuma URL antiga na mesma etapa do primeiro corte.
 **Rollback:** se o novo host falhar, o app continua em `https://app-treino.expo.app`; reverter
 o Site URL do Supabase para ele e não alterar o fallback de convite. O repo antigo já é
 redirecionado pelo GitHub e não requer reversão.
+
+### ✅ Passos 1 e 2 concluídos e verificados (09/set, noite)
+
+**Landing no ar.** As três URLs servem a página institucional com o conteúdo certo (tagline
+"Um plano realmente seu.", os três passos, os seis recursos reais e o bloco do profissional):
+
+| URL | Estado |
+|---|---|
+| `https://vytra-pi.vercel.app` | ✅ |
+| `https://vytraoficial.com.br` | ✅ |
+| `https://www.vytraoficial.com.br` | ✅ |
+
+⚠️ **A causa do atraso não era DNS, era deploy de preview.** Antes do `vercel --prod` a própria
+URL `vytra-pi.vercel.app` devolvia 404 — o alias de produção estava vazio. Diagnóstico que fica:
+**se a URL `.vercel.app` do projeto também falha, o problema não é domínio.** Resolvido rodando
+`npx vercel --prod` de dentro de `site/` (a pasta já está linkada ao projeto pelo
+`site/.vercel/project.json`, projeto `vytra`, `prj_3ecvIXhccR3KcwUDGmNG2hBuktyl`).
+
+**App no ar com a identidade nova.** `https://app.vytraoficial.com.br/` renderiza a tela de
+login já rebrandeada: lockup Vytra (mark do sinal vital em menta + wordmark IBM Plex Mono em
+curvas), tagline, seletor Aluno/Profissional e botão no accent `#2ED9A3` sobre a base
+`#0A0C0D`. **Verificado por render real em navegador limpo**, não só por resposta HTTP.
+O build servido é o atual: o `dist/` de 09/set traz `vytra-lockup-2400.png`, `vytra-mark-1024.png`,
+as variantes branca/preta e as quatro fontes da marca, e o servidor entrega o arquivo com o
+hash exato dessa compilação.
+
+⚠️ **O 404 que apareceu no `app.vytraoficial.com.br` era cache do navegador, não infra.**
+Diagnóstico completo: a Vercel mostra `Valid Configuration` + `Production` para
+`app.vytraoficial.com.br` e `vytra-app.vercel.app` no projeto `vytra-app`; `/favicon.ico` e os
+assets com hash respondem; e o render em navegador limpo funciona. O que grudou foi a resposta
+404 guardada pelo navegador durante a janela em que o deploy estava quebrado — a Vercel manda
+cabeçalho de cache mesmo em 404. **Regra que fica: antes de investigar infra por um 404 relatado,
+reproduzir em janela privada.** Duas hipóteses minhas foram descartadas nesse caminho, a de DNS
+errado no `app` (o painel diz válido) e a de deploy velho (o hash do asset bate).
+
+**Estado real do DNS hoje** (medido, não planejado):
+
+| Nome | Resolve para | Observação |
+|---|---|---|
+| raiz | `76.76.21.21`, `64.29.17.1`, `216.198.79.1` | ⚠️ o `76.76.21.21` é o IP legado que esta seção manda não usar. Funciona hoje, mas some sem aviso: **apagar esse registro A** |
+| `www` | `76.76.21.123`, `66.33.60.35` | ⚠️ não é o CNAME previsto. Funciona; alinhar com o que o painel da Vercel recomenda hoje |
+| `app` | `64.29.17.1`, `216.198.79.1` | ✅ a Vercel valida como correto. Não mexer |
+| `mail` | sem registro | reservado pro SMTP, sem criar nada antes de escolher o provedor |
+
+**Próximo passo real:** passo 3 da ordem acima (Supabase Auth), já que 1 e 2 estão fechados.
+O fallback do passo 4 (`src/app/pro/convite.tsx`, hoje `https://app-treino.expo.app`) só é
+tocado depois do passo 3, conforme a regra de expandir → verificar → trocar.
+
+### ✅ Bug de rotas dinâmicas no Vercel encontrado e corrigido (09/set, noite)
+
+⚠️ **Achado ao comparar os dois hosts:** `app.vytraoficial.com.br` (Vercel) estava com bundle
+**defasado** em relação a `app-treino.expo.app` (faltavam §20 e §24) e, além disso, **toda rota
+dinâmica quebrava com 404 ao recarregar** — `/convite/[token]`, `/pro/aluno/[id]`,
+`/pro/aluno/[id]/dieta`, `/pro/aluno/[id]/resumo`. Causa: o export estático do Expo Router gera
+um arquivo físico por rota (`convite/[token].html`, `pro/aluno/[id].html`...), e o EAS Hosting
+sabe rotear parâmetro dinâmico nesse formato nativamente; o Vercel, sendo host estático genérico,
+não sabe — precisa de `rewrites` explícitos em `vercel.json`.
+
+**Correção aplicada:** [`public/vercel.json`](public/vercel.json) (copiado pro `dist/` a cada
+`npx expo export --platform web`, convenção do Expo pra pasta `public/`) com `rewrites` mapeando
+cada rota dinâmica pro path limpo correspondente — **sem** extensão `.html` no destino. Motivo
+do "sem `.html`": o `cleanUrls: true` do Vercel redireciona (308) qualquer destino terminado em
+`.html` de volta pro path sem extensão, e isso cria um loop interno que termina em 404 — só
+funciona apontando direto pro path limpo que o próprio Vercel já mapeia internamente pro arquivo
+(`overrides` no build output, ex. `"convite/[token].html": {"path": "convite/[token]"}`).
+
+⚠️ **Cuidado à parte, descoberto no processo:** `vercel deploy --prebuilt` (build local via
+`vercel build` + `vercel pull`) publicou um build que quebrou o site **inteiro**, incluindo a
+raiz e rotas estáticas que funcionavam antes — não usar esse caminho aqui. O método que funciona
+e foi usado em todo o resto desta seção é `npx vercel deploy dist --project vytra-app --prod
+--yes` (build remoto, direto da pasta `dist/` já exportada pelo Expo).
+
+**Deploy publicado e verificado (09/set, noite):** `app.vytraoficial.com.br` agora serve o
+mesmo bundle (`entry-b06e1d96a64c65f1b9f75ca213bbe996.js`) que `app-treino.expo.app` — conferido
+por hash do bundle, não só visualmente. Testado com `curl` (200 em `/`, `/aluno`,
+`/convite/teste123`, `/pro/aluno/abc`, `/pro/aluno/abc/resumo`) e no navegador: `/convite/teste123`
+renderiza "Link indisponível" (comportamento correto pra token inexistente) e sobrevive a reload
+sem crash nem 404.
 
 ## 18. Organização do fluxo profissional (09/set)
 
