@@ -1,4 +1,4 @@
-# App Treino — Handoff
+# Vytra — Handoff
 
 > Documento de contexto para replicar o estado do projeto em outro chat.
 > Última atualização: 09/Setembro/2026.
@@ -51,7 +51,8 @@ Security quando alguém for mexer lá.
 
 ## 1. Visão geral
 
-**App Treino** nasceu como app de personal trainer pro Tassis (treinador monta plano de
+**Vytra** (nome fechado em 09/set; o projeto se chamava "App Treino" até então) nasceu
+como app de personal trainer pro Tassis (treinador monta plano de
 treino/nutrição, aluno executa e registra), mas a reunião de kickoff (31/ago) elevou a
 ambição: é pra virar **plataforma SaaS white-label** — Tassis é o primeiro cliente/piloto,
 não o único usuário final. Ver §2 pros detalhes de negócio.
@@ -366,7 +367,9 @@ mordeu duas vezes (`convite.tsx`, extinto `agenda.tsx`), ver §8.
   de slug mexe no EAS project e na URL de produção, decisão maior, não feita sem pedir),
   ícone do app, splash screen (cor de fundo `#208AEF` ainda é azul do scaffold, não da
   marca), e fonte IBM Plex Mono/Big Shoulders real (login usa só letterSpacing pra imitar o
-  tracking do brandbook, não é a fonte de verdade). Voz da marca também
+  tracking do brandbook, não é a fonte de verdade).
+  ✅ **Tudo isso foi fechado no rebrand completo de 09/set — ver o item dedicado no fim do §8.**
+  Voz da marca também
   fechada: adjetivos É técnica/presente/direta, NUNCA genérica/sedutora/fria; frase de
   diferenciação "encaixar a dieta e o treino na rotina do paciente — não o contrário"
   (palavras do próprio Tassis, não inventada).
@@ -389,6 +392,43 @@ mordeu duas vezes (`convite.tsx`, extinto `agenda.tsx`), ver §8.
   critério que você já tem, sem o trabalho que te consumia". Nenhuma cita concorrente por
   nome — descreve só a função ("ferramenta pra gestão", "outra pra prescrever dieta") pra
   não virar propaganda comparativa. Texto completo no brandbook acima.
+
+- ✅ **Domínio e marca — decidido em 09/set (fecha a discussão, não reabrir sem fato novo).**
+  Documento próprio: [`docs/marca/DOMINIO-E-INPI.md`](docs/marca/DOMINIO-E-INPI.md), com as
+  alternativas descartadas e o motivo de cada uma.
+  - **Nome Vytra mantido.** Foi testado no mesmo dia contra **Vytia** (`.com.br` livre, mas
+    `vytia.fr` foi loja de sapatos fraudulenta com 15 reclamações no Signal Arnaques — busca
+    contaminada; e o fecho *-tia* puxa apatia/antipatia) e contra **Vytria** (fonética boa,
+    *-tria* puxa pediatria/geriatria e simetria, INPI já limpo, mas `vytria.com.br` está
+    registrado e suspenso e `vytria.com` é a Vytria Eyewear, e-commerce ativo). Nenhuma se
+    sustentou.
+  - **Endereço oficial: `vytraoficial.com.br`.** Espelha o handle `@vytra.oficial` e é a única
+    palavra disponível que não impõe teto ao produto ("app" limita ao aplicativo, "saúde"
+    empurra pro clínico, "fit" fecha em treino). Escolha deliberadamente **reversível**:
+    trocar depois é reverificar o domínio de envio, mudar 2 URLs no Supabase e reapontar o EAS.
+  - **`vytra.com.br` não será comprado.** Decisão do Guilherme: marca já implementada pela
+    Vytra Diagnósticos, difícil pleitear. Está parado em DNS automático, vence **25/09/2027**,
+    e ficou em **monitoramento automático** — tarefa agendada mensal (dia 1º, 09h BRT) que
+    consulta o Registro.br e avisa se ficar disponível, entrar em processo de liberação ou
+    mudar pra on hold. A mesma tarefa confere se o `vytraoficial.com.br` segue registrado.
+  - **DNS planejado:** app na **raiz** (`vytraoficial.com.br`, não em `app.` — o link do convite
+    já é longo demais) e `mail.vytraoficial.com.br` como subdomínio dedicado de envio, pra
+    isolar reputação de entrega.
+  - ⚠️ **INPI: nada depositado, e essa é a parte que importa.** A busca de 08–09/set zerou, mas
+    busca limpa não é proteção. **Nome empresarial anterior de terceiro no mesmo ramo é
+    fundamento de oposição pelo art. 124, V da LPI**, e a Vytra Diagnósticos opera em saúde no
+    Brasil — corrige a leitura anterior de "risco jurídico reduzido" registrada no §7. Depositar
+    dá data de prioridade e inverte a posição. Classes prováveis NCL 9 / 42 / 44, ~R$ 355 por
+    classe (~R$ 142 com redução ME/EPP/MEI/PF). Não é parecer jurídico; vale advogado de PI pra
+    fechar as classes.
+  - **Ordem de execução** (passos 1 e 7 dependem do Guilherme, o resto é execução):
+    1. registrar `vytraoficial.com.br` · 2. verificar `mail.` no provedor de SMTP (SPF/DKIM/DMARC)
+    · 3. SMTP no Supabase e religar confirmação de e-mail (desligada em 03/set como contorno)
+    · 4. domínio customizado no EAS Hosting · 5. Site URL e redirect URLs no Supabase
+    · 6. trocar o fallback `https://app-treino.expo.app` em `src/app/pro/convite.tsx`
+    · 7. depositar VYTRA no INPI.
+  - O `slug` do projeto Expo continua `app-treino` mesmo depois disso: trocar mexe no EAS
+    project, é decisão à parte.
 
 ⚠️ **E-mail: a causa raiz não é rate limit** (investigado em 03/set, corrige o diagnóstico
 anterior). A [documentação do Supabase](https://supabase.com/docs/guides/auth/auth-smtp)
@@ -1183,6 +1223,64 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
   emoji src` sem sobra, bundler sobe sem erro de console. Não testado logado (mesma regra
   de nunca digitar senha).
 
+- ✅ **Rebrand completo aplicado (09/set, segunda passada do mesmo dia).** A primeira passada
+  trocou só o `Palette.accent` e o título do login. Esta fecha o resto e cria a infraestrutura
+  de marca no repositório.
+  - **Brand book versionado**: [`docs/marca/BRAND.md`](docs/marca/BRAND.md) é agora a fonte
+    canônica da identidade dentro do repo — nome, situação de INPI, geometria do mark, paleta
+    com papéis, tipografia, lockups, regras de uso, voz e regras de escrita. Se o código
+    discordar dele, o código está errado.
+  - **Geometria única e reprodutível**: [`scripts/brand/gen_brand.py`](scripts/brand/gen_brand.py)
+    gera TODOS os arquivos de marca a partir de um só conjunto de números (traço 8, base y=22,
+    vértice do V em (60,52), meia-largura 16). Os assets de `assets/brand/` **não devem ser
+    editados à mão** — o script sobrescreve. Isso corrigiu uma inconsistência real: os SVGs
+    da primeira tentativa tinham duas proporções de V diferentes entre si e nenhuma batia com
+    o artifact aprovado. Os nomes antigos foram sobrescritos, não sobrou asset com geometria
+    errada no repositório.
+  - **Wordmark em curvas**: "VYTRA" é IBM Plex Mono Medium convertido em `<path>` (via
+    fontTools), não `<text>`. O logotipo fica idêntico em qualquer plataforma sem depender de
+    fonte carregada, e o app não precisou de `react-native-svg`.
+  - **Variante óptica pequena**: abaixo de ~48px o traço de 8 desaparece. Existe uma variante
+    com traço 13 usada nos favicons. Conferido renderizando em 32 e 48px de verdade.
+  - **Fontes da marca instaladas**: `assets/fonts/` com IBM Plex Mono (Medium/SemiBold) e Big
+    Shoulders Display (Bold/Black), versionadas no repo de propósito — sem pacote npm novo e
+    sem depender de rede em build. Carregadas por `useBrandFonts()` em
+    [`src/theme/fonts.ts`](src/theme/fonts.ts), com helpers `headingStyle()`/`monoStyle()`.
+    `expo-font` já era dependência, então **nenhuma dependência nova entrou**.
+  - **Splash espera a fonte**: [`_layout.tsx`](src/app/_layout.tsx) só chama `hideAsync()`
+    quando sessão E fontes resolveram, senão o texto pula no primeiro render. Erro de fonte
+    conta como resolvido de propósito — fonte quebrada não pode travar o app na splash.
+  - **`app.json`**: `name` → "Vytra", `scheme` → `vytra`, `userInterfaceStyle` → `dark`,
+    ícone/adaptive icon/monochrome/favicon/splash apontando para `assets/brand/`, splash com
+    fundo `#0A0C0D` (era `#208AEF`, azul do scaffold), `backgroundColor`/`primaryColor` da
+    marca. Removidos o `ios.icon` do Icon Composer do scaffold e o `backgroundImage` do
+    adaptive icon (virou cor sólida).
+    ⚠️ **`slug` continua `app-treino` de propósito** — trocar o slug muda o EAS project e a
+    URL `app-treino.expo.app`, que é por onde o Tassis acessa hoje. Ver "pendências do
+    rebrand" abaixo.
+  - **Paleta alinhada ao brand book**: `Palette.background` era `#000000` e virou `#0A0C0D`
+    (base Sinal Vital); `surface`/`surfaceElevated`/`border`/`text`/`textSecondary`/
+    `textTertiary` idem. Um objeto `Brand` novo exporta as cores cruas da marca para assets e
+    e-mail; a UI continua consumindo `Palette`, que mapeia marca → papel de interface.
+  - **Logotipo virou componente**: [`src/components/vytra-logo.tsx`](src/components/vytra-logo.tsx)
+    com `VytraLockup` e `VytraMark`, só nas variantes que o brand book autoriza. O login
+    passou a usar `<VytraLockup />` no lugar do ícone `pulse` do Ionicons + texto — ou seja,
+    o logotipo de verdade, não mais uma imitação com `letterSpacing`.
+  - **Verificado**: sintaxe TS sem erro nos 5 arquivos tocados (parser do próprio `tsc`),
+    `app.json` é JSON válido, todos os caminhos de asset conferidos como existentes, e os
+    PNGs inspecionados visualmente em três tamanhos (1024, 48, 32) além de uma composição da
+    tela de login com o lockup no tamanho real (196px).
+    ⚠️ **Não rodado**: `npx tsc --noEmit` completo e o app subindo — esta sessão estava sem
+    shell na máquina do Guilherme (`device_bash` falhando), então o trabalho foi por
+    stage/commit. **Rodar `npx tsc --noEmit` e `npx expo start --web` antes de commitar.**
+  - **Pendências do rebrand, deliberadamente não feitas:**
+    1. `slug` e a URL de produção (`app-treino.expo.app` → `vytra.expo.app`). Mexe no EAS
+       project e derruba o link que o Tassis já usa. Decisão comercial, não técnica.
+    2. Depósito da marca no INPI. A busca zerou, mas nada foi depositado.
+    3. Domínio próprio — continua bloqueando o SMTP do §16.
+    4. Renomear o repositório GitHub (`treino-tassis`) e a pasta local.
+
+
 ## 9. Escopo funcional v1 (proposto, não implementado)
 
 Tabela abaixo é por par paciente↔profissional (já reflete o modelo N:N do §1/§5).
@@ -1515,7 +1613,8 @@ visual (a identidade é a do §1).
 ## 14. Termo de consentimento — análise (03/set)
 
 Tassis trouxe um modelo de termo gerado por IA, escrito para consultório de nutrição autônomo.
-Análise completa no artifact **"Termo de Consentimento do App Treino"**. Resumo do que importa
+Análise completa no artifact **"Termo de Consentimento do App Treino"** (título do artifact é
+anterior ao nome Vytra; o conteúdo vale igual). Resumo do que importa
 para a engenharia:
 
 **Não é parecer jurídico — precisa de advogado antes de usar com paciente real.**

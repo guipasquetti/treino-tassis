@@ -1,10 +1,10 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Body, Button, Caption, Pill } from '@/components/ui';
+import { Button, Caption, Pill } from '@/components/ui';
+import { VytraLockup } from '@/components/vytra-logo';
 import { signIn } from '@/services/authService';
 import { FontSize, Palette, Radius, RoleColors, Spacing, type Role } from '@/theme';
 
@@ -41,10 +41,8 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.container}>
         <View style={styles.brand}>
-          <View style={styles.wordmark}>
-            <Ionicons name="pulse" size={26} color={Palette.accent} />
-            <Body style={styles.titulo}>VYTRA</Body>
-          </View>
+          {/* Logotipo de verdade (wordmark em curvas), não texto imitando a fonte. */}
+          <VytraLockup largura={196} />
           <Caption>Um plano realmente seu.</Caption>
         </View>
 
@@ -106,17 +104,7 @@ const styles = StyleSheet.create({
     gap: Spacing.xxl,
   },
   brand: {
-    gap: Spacing.xs,
-  },
-  wordmark: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  titulo: {
-    fontSize: FontSize.display,
-    fontWeight: '800',
-    letterSpacing: 2,
+    gap: Spacing.md,
   },
   switchTrack: {
     flexDirection: 'row',

@@ -1,56 +1,67 @@
-# Welcome to your Expo app 👋
+# Vytra
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Plataforma de dieta, treino e acompanhamento para profissionais de nutrição e educação
+física e seus pacientes. Um plano realmente seu.
 
-## Get started
+O Tassis Moraes é o profissional piloto, não o único usuário previsto: o modelo de dados é
+multi-tenant desde a v1, com relação paciente↔profissional N:N e assinatura própria por par.
 
-1. Install dependencies
+## Documentação
 
-   ```bash
-   npm install
-   ```
+| Onde | O que |
+|---|---|
+| [`HANDOFF.md`](HANDOFF.md) | **fonte canônica** — estado do projeto, decisões, schema, pendências. Ler antes de mexer em qualquer coisa. |
+| [`docs/marca/BRAND.md`](docs/marca/BRAND.md) | brand book: nome, mark, paleta, tipografia, lockups, voz |
+| [`AGENTS.md`](AGENTS.md) | instrução para agentes de IA que trabalham no repositório |
 
-2. Start the app
+## Stack
 
-   ```bash
-   npx expo start
-   ```
+React Native + Expo SDK 57 + Expo Router + TypeScript · Zustand · design system próprio em
+`src/theme` · Supabase (Postgres, Auth, RLS, Storage) · EAS Hosting.
 
-In the output, you'll find options to open the app in a
+Sem biblioteca de componentes de UI e sem ORM. Não introduzir dependência nova sem decisão
+registrada no `HANDOFF.md`.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Rodar
 
 ```bash
-npm run reset-project
+npm install
+npx expo start --web
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Precisa de um `.env` na raiz com `EXPO_PUBLIC_SUPABASE_URL` e `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
+Use o [`.env.example`](.env.example) como referência. Nunca colocar chave de `service_role`
+em variável `EXPO_PUBLIC_*`: ela vai embutida no bundle.
 
-### Other setup steps
+## Deploy web
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+npx expo export --platform web && eas deploy --prod
+```
 
-## Learn more
+Produção: <https://app-treino.expo.app>
 
-To learn more about developing your project with Expo, look at the following resources:
+O `slug` do projeto continua `app-treino` de propósito. Trocar muda o EAS project e a URL que
+os usuários já acessam; é decisão comercial, registrada como pendência no `HANDOFF.md`.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Antes de commitar
 
-## Join the community
+```bash
+npx tsc --noEmit
+npx expo lint
+```
 
-Join our community of developers creating universal apps.
+Migrations ficam em `supabase/migrations/`, uma por mudança lógica, com a policy de RLS escrita
+na mesma tarefa. Dado clínico é sensível: toda tabela nova carrega o vínculo
+profissional↔paciente e é protegida por RLS. Ver a seção 0 do `HANDOFF.md`.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Marca
+
+Os arquivos de logotipo em `assets/brand/` são gerados, não desenhados à mão:
+
+```bash
+pip install fonttools cairosvg
+python3 scripts/brand/gen_brand.py
+```
+
+Editar um arquivo de `assets/brand/` direto não adianta, a próxima execução sobrescreve.

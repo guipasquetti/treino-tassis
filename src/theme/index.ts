@@ -1,34 +1,50 @@
 /**
- * Design system do App Treino.
+ * Design system da Vytra.
  *
- * Identidade visual inspirada no app Apple Fitness (referência escolhida em 02/set):
- * fundo preto real, cards elevados em cinza, cores saturadas por categoria, números
- * grandes em destaque, cantos bem arredondados.
+ * Base estrutural: app Apple Fitness (referência escolhida em 02/set) — fundo quase preto,
+ * cards elevados, cores saturadas por categoria, números grandes, cantos arredondados.
+ * Base cromática: paleta "Sinal Vital" da marca Vytra (aprovada 08/set, aplicada 09/set) —
+ * ver `docs/marca/BRAND.md`, que é a fonte canônica dos valores abaixo.
  *
  * As cores por tipo de treino (push/pull/leg) preservam o significado semântico que o
- * protótipo já usava — o Tassis e o aluno já associam essas cores aos dias de treino —
- * só foram deslocadas pra paleta mais saturada da referência.
+ * protótipo já usava — o Tassis e o aluno já associam essas cores aos dias de treino.
  */
 
+/**
+ * Cores da marca, exatamente como no brand book. Não usar direto na UI: a UI consome
+ * `Palette`, que mapeia estes valores para papéis de interface. Estão exportadas porque
+ * assets, splash e e-mails precisam do valor cru.
+ */
+export const Brand = {
+  /** Base "Sinal Vital" — fundo de toda superfície da marca. */
+  ink: '#0A0C0D',
+  /** Sinal — o verde-menta do traço do mark. É o accent do produto. */
+  mint: '#2ED9A3',
+  /** Alerta âmbar — estado de atenção. Nunca é decoração. */
+  amber: '#FFB020',
+  /** Texto sobre a base. */
+  paper: '#ECEFEE',
+  paperMuted: '#9CA6A2',
+} as const;
+
 export const Palette = {
-  /** Fundo da tela — preto real, como na referência. */
-  background: '#000000',
+  /** Fundo da tela — base da marca. */
+  background: Brand.ink,
   /** Card sobre o fundo. */
-  surface: '#1C1C1E',
+  surface: '#15181A',
   /** Elemento dentro de um card (input, chip inativo). */
-  surfaceElevated: '#2C2C2E',
+  surfaceElevated: '#1D2123',
   /** Linha divisória. */
-  border: '#38383A',
+  border: '#262B2D',
 
-  text: '#FFFFFF',
-  textSecondary: '#98989F',
-  textTertiary: '#636366',
+  text: Brand.paper,
+  textSecondary: Brand.paperMuted,
+  textTertiary: '#6C7876',
 
-  /** Accent principal da marca Vytra (paleta "Sinal Vital", aprovada 08/set) — antes rosa
-   * `#FF375F` da referência Apple Fitness, trocado no rebrand de 09/set. */
-  accent: '#2ED9A3',
-  /** Alerta da paleta Sinal Vital — reservado pra estado de atenção, não é o accent. */
-  vitalAlert: '#FFB020',
+  /** Accent principal da marca (era rosa `#FF375F` até o rebrand de 09/set). */
+  accent: Brand.mint,
+  /** Alerta da paleta Sinal Vital — estado de atenção, não é o accent. */
+  vitalAlert: Brand.amber,
   /** Verde-limão dos ícones de exercício da referência. */
   lime: '#BFFF3C',
   blue: '#0A84FF',
@@ -55,9 +71,9 @@ export function trainingColor(tipo: string | null | undefined): string {
 }
 
 /**
- * Cor por perfil de acesso — aluno em rosa (já era o accent padrão), profissional em azul
- * (já era a cor dominante do Painel: pedidos/convites pendentes, agenda). Roxo fica de fora
- * porque já é a cor do módulo de dieta (aba "Dieta", botão "Salvar dieta").
+ * Cor por perfil de acesso — aluno no accent da marca, profissional em azul (já era a cor
+ * dominante do Painel: pedidos/convites pendentes, agenda). Roxo fica de fora porque já é a
+ * cor do módulo de dieta.
  */
 export const RoleColors = {
   aluno: Palette.accent,
@@ -100,3 +116,5 @@ export const FontSize = {
   display: 34,
   stat: 40,
 } as const;
+
+export { Fonts, headingStyle, monoStyle } from './fonts';

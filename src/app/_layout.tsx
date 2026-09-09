@@ -5,10 +5,11 @@ import { useEffect } from 'react';
 
 import { useAuthStore } from '@/store/authStore';
 import { Palette } from '@/theme';
+import { useBrandFonts } from '@/theme/fonts';
 
 SplashScreen.preventAutoHideAsync();
 
-/** O app é dark-only por decisão de identidade visual (referência Apple Fitness). */
+/** O app é dark-only por decisão de identidade visual (paleta "Sinal Vital" da marca). */
 const theme = {
   ...DarkTheme,
   colors: {
@@ -25,10 +26,21 @@ export default function RootLayout() {
   const { session, isLoading, profileLoaded, isProfessional, initialize } = useAuthStore();
   const router = useRouter();
   const segments = useSegments();
+  const [fontesCarregadas, erroFontes] = useBrandFonts();
 
   useEffect(() => {
-    initialize().finally(() => SplashScreen.hideAsync().catch(() => {}));
+    initialize();
   }, []);
+
+  // A splash só sai quando a sessão E as fontes estão resolvidas — senão o primeiro render
+  // usa a fonte do sistema e o texto "pula" quando a fonte da marca chega.
+  // `erroFontes` conta como resolvido de propósito: fonte quebrada não pode travar o app na
+  // splash; nesse caso o React Native cai na fonte do sistema sozinho.
+  useEffect(() => {
+    if (!isLoading && (fontesCarregadas || erroFontes)) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [isLoading, fontesCarregadas, erroFontes]);
 
   useEffect(() => {
     if (isLoading) return;
