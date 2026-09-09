@@ -10,7 +10,10 @@ export type ResumoAluno = AlunoVinculado & {
   ultimoCheckin: string | null;
 };
 
+export type EspecialidadePainel = 'nutricionista' | 'personal_trainer';
+
 export type PainelGestao = {
+  especialidade: EspecialidadePainel;
   totalAlunos: number;
   ativos: number;
   semPlano: number;
@@ -41,8 +44,9 @@ export async function obterPainelGestao(professionalId: string): Promise<PainelG
   const alunos = await listarAlunos(professionalId);
   const clientIds = alunos.map((a) => a.clientId);
 
-  const [{ data: comTreino }, { data: comDieta }, { data: anamneses }, { data: convites }, { data: checkins }, agenda] =
+  const [{ data: profissional }, { data: comTreino }, { data: comDieta }, { data: anamneses }, { data: convites }, { data: checkins }, agenda] =
     await Promise.all([
+      supabase.from('professionals').select('especialidade').eq('id', professionalId).maybeSingle(),
       supabase.from('plans').select('client_id').eq('professional_id', professionalId),
       supabase.from('planos_alimentares').select('client_id').eq('professional_id', professionalId),
       clientIds.length
@@ -63,6 +67,8 @@ export async function obterPainelGestao(professionalId: string): Promise<PainelG
         .order('created_at', { ascending: false }),
       listarAgenda(professionalId),
     ]);
+
+  const especialidade: EspecialidadePainel = profissional?.especialidade === 'nutricionista' ? 'nutricionista' : 'personal_trainer';
 
   const treinoSet = new Set((comTreino ?? []).map((p) => p.client_id));
   const dietaSet = new Set((comDieta ?? []).map((p) => p.client_id));
@@ -89,10 +95,11 @@ export async function obterPainelGestao(professionalId: string): Promise<PainelG
   });
 
   return {
+    especialidade,
     totalAlunos: alunos.length,
     ativos: alunos.filter((a) => a.status === 'ativa').length,
-    semPlano: resumos.filter((a) => !a.temPlanoTreino && !a.temPlanoDieta).length,
-    semTreino7d: alunos.filter((a) => {
+    semPlano: resumos.filter((a) => (especialidade === 'nutricionista' ? !a.temPlanoDieta : !a.temPlanoTreino)).length,
+    semTreino7d: especialidade === 'nutricionista' ? 0 : alunos.filter((a) => {
       const dias = diasDesde(a.ultimoTreino);
       return dias === null || dias > 7;
     }).length,

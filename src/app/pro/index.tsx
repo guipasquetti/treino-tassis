@@ -2,14 +2,14 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
-import { Body, Button, Caption, Card, EmptyState, Field, Loading, Pill, Screen, SectionTitle, Stat } from '@/components/ui';
+import { Body, Button, Caption, Card, EmptyState, Field, Loading, Pill, Screen, SectionTitle } from '@/components/ui';
 import { formatarDataHora } from '@/models/domain';
-import { obterPainelGestao, type PainelGestao, type ResumoAluno } from '@/services/gestaoService';
+import { obterPainelGestao, type EspecialidadePainel, type PainelGestao, type ResumoAluno } from '@/services/gestaoService';
 import { confirmarPlanoSolicitado } from '@/services/professionalService';
 import { atualizarStatusTeleconsulta, criarTeleconsulta, type TeleconsultaComPaciente } from '@/services/teleconsultaService';
 import { obterMinhaVerificacao, type VerificacaoProfissional } from '@/services/verificacaoService';
 import { useAuthStore } from '@/store/authStore';
-import { Palette, Radius, RoleColors, Spacing } from '@/theme';
+import { FontSize, Palette, Radius, RoleColors, Spacing } from '@/theme';
 
 type Alerta = { clientId: string; nome: string; texto: string };
 
@@ -18,24 +18,29 @@ function diasDesde(iso: string | null): number | null {
   return Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000);
 }
 
-function montarAlertas(alunos: ResumoAluno[]): Alerta[] {
+function montarAlertas(alunos: ResumoAluno[], especialidade: EspecialidadePainel): Alerta[] {
   const alertas: Alerta[] = [];
   for (const aluno of alunos) {
     const dias = diasDesde(aluno.ultimoTreino);
-    if (dias === null || dias > 7) {
+    if (especialidade === 'personal_trainer' && (dias === null || dias > 7)) {
       alertas.push({
         clientId: aluno.clientId,
         nome: aluno.nome,
         texto: dias === null ? 'Nunca treinou' : `Sem treino há ${dias} dia${dias === 1 ? '' : 's'}`,
       });
     }
-    if (!aluno.temPlanoTreino && !aluno.temPlanoDieta) {
-      alertas.push({ clientId: aluno.clientId, nome: aluno.nome, texto: 'Sem plano montado ainda' });
+    const temPrescricao = especialidade === 'nutricionista' ? aluno.temPlanoDieta : aluno.temPlanoTreino;
+    if (!temPrescricao) {
+      alertas.push({
+        clientId: aluno.clientId,
+        nome: aluno.nome,
+        texto: especialidade === 'nutricionista' ? 'Sem plano alimentar montado' : 'Sem treino montado ainda',
+      });
     }
     if (aluno.flagSaude) {
       alertas.push({ clientId: aluno.clientId, nome: aluno.nome, texto: `Saúde: ${aluno.flagSaude}` });
     }
-    if (aluno.temPlanoTreino || aluno.temPlanoDieta) {
+    if (temPrescricao) {
       const diasCheckin = diasDesde(aluno.ultimoCheckin);
       if (diasCheckin === null || diasCheckin > 14) {
         alertas.push({
@@ -59,6 +64,7 @@ export default function PainelScreen() {
   const [verificacao, setVerificacao] = useState<VerificacaoProfissional | null>(null);
   const [loading, setLoading] = useState(true);
   const [agendando, setAgendando] = useState(false);
+  const [diaSelecionado, setDiaSelecionado] = useState(chaveDoDia(new Date()));
 
   const carregar = useCallback(async () => {
     if (!user) return;
@@ -81,12 +87,13 @@ export default function PainelScreen() {
 
   if (loading || !user || !painel) return <Loading />;
 
-  const alertas = montarAlertas(painel.alunos);
+  const nutricionista = painel.especialidade === 'nutricionista';
+  const alertas = montarAlertas(painel.alunos, painel.especialidade);
 
   return (
     <Screen
-      title="Painel"
-      subtitle="Visão geral dos seus pacientes"
+      title="Início"
+      subtitle={nutricionista ? 'Adesão alimentar e próximos retornos' : 'Treinos, evolução e próximas ações'}
       right={
         <Pressable
           onPress={() => router.push('/pro/leads')}
@@ -110,25 +117,19 @@ export default function PainelScreen() {
         </Card>
       ) : null}
 
-      <Card>
-        <View style={styles.stats}>
-          <Stat value={String(painel.totalAlunos)} label="Total" />
-          <Stat value={String(painel.ativos)} label="Ativos" color={Palette.green} />
-          <Stat value={String(painel.semPlano)} label="Sem plano" color={Palette.orange} />
-        </View>
-        <View style={styles.stats}>
-          <Stat value={String(painel.semTreino7d)} label="Sem treino 7d+" color={Palette.orange} />
-          <Stat value={String(painel.leadsPendentes)} label="Convites pendentes" color={Palette.blue} />
-          <Stat value={String(painel.solicitacoesPendentes)} label="Pedidos de plano" color={Palette.blue} />
-        </View>
-        <View style={styles.stats}>
-          <Stat value={String(painel.checkinsAtrasados)} label="Check-in atrasado" color={Palette.orange} />
-        </View>
-      </Card>
+      <SectionTitle>Visão da carteira</SectionTitle>
+      <View style={styles.indicadores}>
+        <Indicador value={painel.totalAlunos} label="Pacientes" />
+        <Indicador value={painel.ativos} label="Acompanhamentos ativos" destaque />
+        <Indicador value={painel.semPlano} label={nutricionista ? 'Sem plano alimentar' : 'Sem treino montado'} atencao />
+        <Indicador value={painel.checkinsAtrasados} label="Check-ins atrasados" atencao />
+        {!nutricionista ? <Indicador value={painel.semTreino7d} label="Sem treino há 7 dias" atencao /> : null}
+        <Indicador value={painel.leadsPendentes} label="Convites aguardando" />
+      </View>
 
       {painel.alunos.some((a) => !a.planoNome && a.planoSolicitadoId) ? (
         <>
-          <SectionTitle>Pedidos de plano</SectionTitle>
+          <SectionTitle>Pedidos de serviço</SectionTitle>
           {painel.alunos
             .filter((a) => !a.planoNome && a.planoSolicitadoId)
             .map((a) => <PedidoPlanoCard key={a.subscriptionId} aluno={a} onMudou={carregar} />)}
@@ -138,7 +139,7 @@ export default function PainelScreen() {
       <SectionTitle>Atenção necessária</SectionTitle>
       {alertas.length ? (
         alertas.map((a, i) => (
-          <Card key={`${a.clientId}-${i}`} onPress={() => router.push(`/pro/aluno/${a.clientId}`)}>
+          <Card key={`${a.clientId}-${i}`} onPress={() => router.push(`/pro/aluno/${a.clientId}/resumo`)}>
             <Body>{a.nome}</Body>
             <Caption color={Palette.orange}>{a.texto}</Caption>
           </Card>
@@ -147,11 +148,18 @@ export default function PainelScreen() {
         <EmptyState text="Nada pedindo atenção agora." />
       )}
 
-      <SectionTitle>Teleconsultas</SectionTitle>
-      {painel.agenda.length ? (
-        painel.agenda.map((c) => <ConsultaCard key={c.id} consulta={c} onMudou={carregar} />)
+      <SectionTitle>Agenda de teleconsultas</SectionTitle>
+      <AgendaSemana
+        consultas={painel.agenda}
+        diaSelecionado={diaSelecionado}
+        onSelecionarDia={setDiaSelecionado}
+      />
+      {painel.agenda.filter((consulta) => chaveDoDia(new Date(consulta.data_hora)) === diaSelecionado).length ? (
+        painel.agenda
+          .filter((consulta) => chaveDoDia(new Date(consulta.data_hora)) === diaSelecionado)
+          .map((c) => <ConsultaCard key={c.id} consulta={c} onMudou={carregar} />)
       ) : (
-        <EmptyState text="Nenhuma teleconsulta agendada ainda." />
+        <EmptyState text="Nenhuma teleconsulta neste dia." />
       )}
       {agendando ? (
         <NovaConsultaForm
@@ -167,47 +175,82 @@ export default function PainelScreen() {
         <Button label="Agendar teleconsulta" variant="ghost" onPress={() => setAgendando(true)} />
       )}
 
-      <SectionTitle>Alunos</SectionTitle>
-      {painel.alunos.length ? (
-        painel.alunos.map((aluno) => <AlunoCard key={aluno.clientId} aluno={aluno} />)
-      ) : (
-        <EmptyState text="Nenhum aluno vinculado ainda. Alunos aparecem aqui quando têm uma assinatura com você." />
-      )}
+      <SectionTitle>Pacientes</SectionTitle>
+      <Caption>Abra a carteira para consultar cada paciente, seus planos e histórico.</Caption>
+      <Button label="Ver pacientes" variant="ghost" onPress={() => router.push('/pro/pacientes')} />
     </Screen>
   );
 }
 
-function AlunoCard({ aluno }: { aluno: ResumoAluno }) {
-  const router = useRouter();
-  const dias = diasDesde(aluno.ultimoTreino);
-  const alerta = dias === null || dias > 7;
+function chaveDoDia(data: Date): string {
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
+}
 
+function proximosSeteDias(): Date[] {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  return Array.from({ length: 7 }, (_, indice) => {
+    const dia = new Date(hoje);
+    dia.setDate(hoje.getDate() + indice);
+    return dia;
+  });
+}
+
+function AgendaSemana({
+  consultas,
+  diaSelecionado,
+  onSelecionarDia,
+}: {
+  consultas: TeleconsultaComPaciente[];
+  diaSelecionado: string;
+  onSelecionarDia: (dia: string) => void;
+}) {
   return (
-    <Card onPress={() => router.push(`/pro/aluno/${aluno.clientId}`)}>
-      <View style={styles.header}>
-        <Body style={styles.nome}>{aluno.nome}</Body>
-        <View
-          style={[
-            styles.status,
-            { backgroundColor: aluno.status === 'ativa' ? Palette.green : Palette.orange },
-          ]}>
-          <Caption color={Palette.background} style={styles.statusText}>
-            {aluno.status}
-          </Caption>
-        </View>
-      </View>
+    <View style={styles.semana}>
+      {proximosSeteDias().map((dia) => {
+        const chave = chaveDoDia(dia);
+        const quantidade = consultas.filter(
+          (consulta) => consulta.status === 'agendada' && chaveDoDia(new Date(consulta.data_hora)) === chave,
+        ).length;
+        const selecionado = chave === diaSelecionado;
+        return (
+          <Pressable
+            key={chave}
+            onPress={() => onSelecionarDia(chave)}
+            style={[styles.diaAgenda, selecionado && styles.diaAgendaSelecionado]}>
+            <Caption color={selecionado ? Palette.accent : Palette.textTertiary} style={styles.diaSemana}>
+              {dia.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')}
+            </Caption>
+            <Body color={selecionado ? Palette.text : Palette.textSecondary} style={styles.diaNumero}>
+              {dia.getDate()}
+            </Body>
+            <View style={[styles.diaMarcador, quantidade > 0 && styles.diaMarcadorAtivo]} />
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
 
-      <View style={styles.badges}>
-        <Caption color={aluno.temPlanoTreino ? Palette.green : Palette.textTertiary}>Treino</Caption>
-        <Caption color={aluno.temPlanoDieta ? Palette.green : Palette.textTertiary}>Dieta</Caption>
-      </View>
-
-      <Caption color={alerta ? Palette.orange : Palette.textSecondary}>
-        {aluno.ultimoTreino
-          ? `Último treino: ${dias === 0 ? 'hoje' : `há ${dias} dia${dias === 1 ? '' : 's'}`}`
-          : 'Nunca registrou um treino'}
-      </Caption>
-    </Card>
+function Indicador({
+  value,
+  label,
+  destaque = false,
+  atencao = false,
+}: {
+  value: number;
+  label: string;
+  destaque?: boolean;
+  atencao?: boolean;
+}) {
+  const cor = atencao ? Palette.vitalAlert : destaque ? Palette.accent : Palette.text;
+  return (
+    <View style={[styles.indicador, atencao && styles.indicadorAtencao]}>
+      <Caption style={styles.indicadorLabel}>{label}</Caption>
+      <Body color={cor} style={styles.indicadorValor}>
+        {value}
+      </Body>
+    </View>
   );
 }
 
@@ -232,7 +275,7 @@ function PedidoPlanoCard({ aluno, onMudou }: { aluno: ResumoAluno; onMudou: () =
   }
 
   return (
-    <Card onPress={() => router.push(`/pro/aluno/${aluno.clientId}`)}>
+      <Card onPress={() => router.push(`/pro/aluno/${aluno.clientId}/resumo`)}>
       <View style={styles.header}>
         <Body style={styles.nome}>{aluno.nome}</Body>
         <Caption color={Palette.blue}>Pediu: {aluno.planoSolicitadoNome}</Caption>
@@ -316,7 +359,7 @@ function NovaConsultaForm({
 
   async function salvar() {
     if (!pacienteId) {
-      setErro('Escolhe o aluno.');
+      setErro('Escolha o paciente.');
       return;
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
@@ -358,7 +401,7 @@ function NovaConsultaForm({
     <Card>
       <SectionTitle>Nova teleconsulta</SectionTitle>
 
-      <Caption>Aluno</Caption>
+      <Caption>Paciente</Caption>
       <View style={styles.alunosPicker}>
         {alunos.map((a) => (
           <Pill
@@ -410,10 +453,67 @@ const styles = StyleSheet.create({
   convidarText: {
     fontWeight: '800',
   },
-  stats: {
+  indicadores: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  semana: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: Spacing.md,
+    gap: Spacing.xs,
+  },
+  diaAgenda: {
+    flex: 1,
+    minHeight: 76,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Palette.border,
+    borderRadius: Radius.sm,
+  },
+  diaAgendaSelecionado: {
+    borderColor: Palette.accent,
+    backgroundColor: Palette.surface,
+  },
+  diaSemana: {
+    fontSize: FontSize.caption,
+    textTransform: 'uppercase',
+  },
+  diaNumero: {
+    fontSize: FontSize.headline,
+    fontWeight: '800',
+  },
+  diaMarcador: {
+    width: 4,
+    height: 4,
+    borderRadius: Radius.pill,
+    backgroundColor: 'transparent',
+  },
+  diaMarcadorAtivo: {
+    backgroundColor: Palette.accent,
+  },
+  indicador: {
+    width: '48%',
+    minHeight: 92,
+    justifyContent: 'space-between',
+    padding: Spacing.md,
+    borderRadius: Radius.md,
+    backgroundColor: Palette.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Palette.border,
+  },
+  indicadorAtencao: {
+    borderColor: Palette.vitalAlert,
+  },
+  indicadorLabel: {
+    lineHeight: 16,
+  },
+  indicadorValor: {
+    fontSize: FontSize.stat,
+    fontWeight: '800',
+    lineHeight: FontSize.stat,
   },
   header: {
     flexDirection: 'row',
@@ -424,22 +524,9 @@ const styles = StyleSheet.create({
   nome: {
     flex: 1,
   },
-  status: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: Radius.pill,
-  },
-  statusText: {
-    fontWeight: '800',
-    textTransform: 'capitalize',
-  },
   statusUpper: {
     textTransform: 'uppercase',
     fontWeight: '700',
-  },
-  badges: {
-    flexDirection: 'row',
-    gap: Spacing.md,
   },
   acoes: {
     flexDirection: 'row',

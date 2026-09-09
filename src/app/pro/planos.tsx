@@ -41,11 +41,11 @@ export default function PlanosScreen() {
   if (loading || !user) return <Loading />;
 
   return (
-    <Screen title="Planos" subtitle="O que você vende aos alunos">
+    <Screen title="Serviços" subtitle="O que você oferece e vincula aos pacientes">
       {planos.length ? (
         planos.map((plano) => <PlanoCard key={plano.id} plano={plano} onMudou={carregar} />)
       ) : (
-        <EmptyState text="Nenhum plano criado. Crie o primeiro para poder vincular alunos a ele." />
+        <EmptyState text="Nenhum serviço criado. Crie um para poder vincular pacientes a ele." />
       )}
 
       {criando ? (
@@ -58,7 +58,7 @@ export default function PlanosScreen() {
           }}
         />
       ) : (
-        <Button label="Novo plano" onPress={() => setCriando(true)} />
+        <Button label="Novo serviço" onPress={() => setCriando(true)} />
       )}
     </Screen>
   );
@@ -99,7 +99,7 @@ function PlanoCard({ plano, onMudou }: { plano: PlanoProfissional; onMudou: () =
   if (editando) {
     return (
       <PlanoForm
-        titulo="Editar plano"
+        titulo="Editar serviço"
         valores={valoresIniciais(plano)}
         onCancelar={() => setEditando(false)}
         onSalvar={async (dados) => {
@@ -151,7 +151,7 @@ function NovoPlanoForm({
 }) {
   return (
     <PlanoForm
-      titulo="Novo plano"
+      titulo="Novo serviço"
       valores={valoresIniciais()}
       onCancelar={onCancelar}
       onSalvar={async (dados) => {
@@ -256,7 +256,7 @@ function PlanoForm({
 
       {erro ? <Caption color={Palette.danger}>{erro}</Caption> : null}
 
-      <Button label="Salvar plano" onPress={salvar} loading={salvando} />
+      <Button label="Salvar serviço" onPress={salvar} loading={salvando} />
       <Button label="Cancelar" variant="ghost" onPress={onCancelar} />
     </Card>
   );

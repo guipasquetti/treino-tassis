@@ -12,7 +12,7 @@ import {
   type CheckIn,
 } from '@/services/checkinService';
 import { buscarCategoriasPorIds, getPlanoAlimentar, type PlanoAlimentar } from '@/services/nutritionService';
-import { temPlanoConfirmado } from '@/services/professionalService';
+import { listarMeusProfissionais, temPlanoConfirmado } from '@/services/professionalService';
 import { proximaTeleconsulta, type Teleconsulta } from '@/services/teleconsultaService';
 import { concluidoHoje, getWorkoutData, streakTreino, type WorkoutData } from '@/services/workoutService';
 import { useAuthStore } from '@/store/authStore';
@@ -49,12 +49,12 @@ export default function InicioScreen() {
 
   const carregar = useCallback(async () => {
     if (!user) return;
-    const [workout, liberado, plano, checkins, checkinDisponivel, consulta] = await Promise.all([
+    const [workout, liberado, plano, checkins, profissionais, consulta] = await Promise.all([
       getWorkoutData(user.id),
       temPlanoConfirmado(user.id),
       getPlanoAlimentar(user.id),
       listarMeusCheckins(user.id),
-      checkinPendente(user.id),
+      listarMeusProfissionais(user.id),
       proximaTeleconsulta(user.id),
     ]);
 
@@ -77,7 +77,8 @@ export default function InicioScreen() {
       }
     }
 
-    setEstado({ workout, liberado, plano, categorias, checkins, checkinDisponivel, consulta, comprasMarcadas });
+    const pendencias = await Promise.all(profissionais.map((profissional) => checkinPendente(profissional.subscriptionId)));
+    setEstado({ workout, liberado, plano, categorias, checkins, checkinDisponivel: pendencias.some(Boolean), consulta, comprasMarcadas });
   }, [user?.id]);
 
   useEffect(() => {

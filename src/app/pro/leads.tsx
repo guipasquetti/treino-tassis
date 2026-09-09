@@ -43,12 +43,17 @@ export default function LeadsScreen() {
   const perdidos = leads.filter((l) => l.status === 'perdido');
 
   return (
-    <Screen title="Leads" subtitle="Consultas de sensibilização, antes do convite">
-      <SectionTitle>Em aberto</SectionTitle>
+    <Screen title="Leads" subtitle="Pessoas em conversa que ainda não são pacientes">
+      <Card>
+        <SectionTitle>Como funciona</SectionTitle>
+        <Caption>Registre a conversa, envie o convite e acompanhe o cadastro. Depois de concluir o convite, a pessoa entra em Pacientes.</Caption>
+      </Card>
+
+      <SectionTitle>Em avaliação</SectionTitle>
       {abertos.length ? (
         abertos.map((lead) => <LeadCard key={lead.id} lead={lead} onMudou={carregar} />)
       ) : (
-        <EmptyState text="Nenhum lead em aberto. Registre a consulta de sensibilização antes de gerar o convite." />
+        <EmptyState text="Nenhum lead em avaliação. Adicione alguém antes de registrar a primeira conversa." />
       )}
 
       {criando ? (
@@ -61,12 +66,12 @@ export default function LeadsScreen() {
           }}
         />
       ) : (
-        <Button label="Novo lead" onPress={() => setCriando(true)} />
+        <Button label="Adicionar lead" onPress={() => setCriando(true)} />
       )}
 
       {perdidos.length ? (
         <>
-          <SectionTitle>Perdidos</SectionTitle>
+          <SectionTitle>Encerrados</SectionTitle>
           {perdidos.map((lead) => <LeadCard key={lead.id} lead={lead} onMudou={carregar} />)}
         </>
       ) : null}
@@ -96,6 +101,7 @@ function LeadCard({ lead, onMudou }: { lead: Lead; onMudou: () => Promise<void> 
   const router = useRouter();
   const [editando, setEditando] = useState(false);
   const [expandido, setExpandido] = useState(false);
+  const [opcoes, setOpcoes] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
   async function alternarPerdido() {
@@ -129,24 +135,29 @@ function LeadCard({ lead, onMudou }: { lead: Lead; onMudou: () => Promise<void> 
     <Card style={lead.status === 'perdido' ? styles.perdido : undefined}>
       <View style={styles.header}>
         <Body style={styles.nome}>{lead.nome}</Body>
-        {lead.convite_id ? <Caption color={Palette.green}>Convite gerado</Caption> : null}
+        <Caption color={lead.status === 'perdido' ? Palette.textTertiary : lead.convite_id ? Palette.accent : Palette.textSecondary}>
+          {lead.status === 'perdido' ? 'Encerrado' : lead.convite_id ? 'Convite enviado' : 'Em avaliação'}
+        </Caption>
       </View>
       {lead.telefone || lead.email ? (
         <Caption>{[lead.telefone, lead.email].filter(Boolean).join(' · ')}</Caption>
       ) : null}
       {lead.data_retomada ? (
         <Caption color={retomadaVencida ? Palette.orange : Palette.textSecondary}>
-          Retomar em {formatarData(lead.data_retomada)}
+          Próxima retomada: {formatarData(lead.data_retomada)}
         </Caption>
       ) : null}
       {lead.observacoes ? <Caption>{lead.observacoes}</Caption> : null}
 
       <View style={styles.acoes}>
-        <Button label="Editar" variant="ghost" onPress={() => setEditando(true)} />
-        <Button label={expandido ? 'Ocultar atendimentos' : 'Atendimentos'} variant="ghost" onPress={() => setExpandido((v) => !v)} />
-        {lead.status === 'lead' ? (
+        <Button
+          label={expandido ? 'Fechar histórico' : 'Registrar conversa'}
+          variant="ghost"
+          onPress={() => setExpandido((v) => !v)}
+        />
+        {lead.status === 'lead' && !lead.convite_id ? (
           <Button
-            label="Gerar convite"
+            label="Enviar convite"
             onPress={() =>
               router.push(
                 `/pro/convite?leadId=${lead.id}&nome=${encodeURIComponent(lead.nome)}&email=${encodeURIComponent(lead.email ?? '')}`
@@ -154,14 +165,23 @@ function LeadCard({ lead, onMudou }: { lead: Lead; onMudou: () => Promise<void> 
             }
           />
         ) : null}
+        <Button label="Mais opções" variant="ghost" onPress={() => setOpcoes((v) => !v)} />
+      </View>
+
+      {lead.convite_id ? <Caption>Convite enviado. Aguardando a conclusão do cadastro para entrar em Pacientes.</Caption> : null}
+
+      {opcoes ? (
+        <View style={styles.opcoes}>
+          <Button label="Editar dados" variant="ghost" onPress={() => setEditando(true)} />
         <Button
-          label={lead.status === 'perdido' ? 'Reabrir' : 'Marcar perdido'}
+          label={lead.status === 'perdido' ? 'Reabrir avaliação' : 'Encerrar lead'}
           variant="ghost"
           color={lead.status === 'perdido' ? Palette.accent : Palette.danger}
           onPress={alternarPerdido}
           disabled={salvando}
         />
-      </View>
+        </View>
+      ) : null}
 
       {expandido ? <AtendimentosDoLead leadId={lead.id} professionalId={lead.professional_id} /> : null}
     </Card>
@@ -197,7 +217,8 @@ function AtendimentosDoLead({ leadId, professionalId }: { leadId: string; profes
 
   return (
     <View style={styles.atendimentos}>
-      {carregado && atendimentos.length === 0 ? <Caption>Nenhum atendimento registrado ainda.</Caption> : null}
+      <SectionTitle>Histórico de conversas</SectionTitle>
+      {carregado && atendimentos.length === 0 ? <Caption>Nenhuma conversa registrada ainda.</Caption> : null}
       {atendimentos.map((a) => (
         <View key={a.id} style={styles.atendimento}>
           <Caption color={Palette.text}>{formatarDataHora(a.data_atendimento)}</Caption>
@@ -205,13 +226,13 @@ function AtendimentosDoLead({ leadId, professionalId }: { leadId: string; profes
         </View>
       ))}
       <Field
-        label="Registrar atendimento"
+        label="Registrar conversa"
         value={notas}
         onChangeText={setNotas}
         placeholder="Hábitos, expectativa, contexto, objeções..."
         multiline
       />
-      <Button label="Salvar atendimento" variant="ghost" onPress={registrar} loading={salvando} />
+      <Button label="Salvar conversa" variant="ghost" onPress={registrar} loading={salvando} />
     </View>
   );
 }
@@ -323,6 +344,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.sm,
+  },
+  opcoes: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    paddingTop: Spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Palette.border,
   },
   atendimentos: {
     gap: Spacing.sm,

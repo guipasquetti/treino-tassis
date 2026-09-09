@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useRoleColor } from '@/contexts/role-theme';
-import { FontSize, Palette, Radius, Spacing } from '@/theme';
+import { FontSize, headingStyle, monoStyle, Palette, Radius, Spacing } from '@/theme';
 
 /** Tela com fundo preto, título grande e conteúdo rolável — padrão da referência. */
 export function Screen({
@@ -136,8 +136,8 @@ export function Pill({
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.pill, active ? { backgroundColor: color } : styles.pillInactive]}>
-      <Text style={[styles.pillText, active ? styles.pillTextActive : undefined]}>{label}</Text>
+      style={[styles.pill, active ? { borderColor: color } : styles.pillInactive]}>
+      <Text style={[styles.pillText, active ? { color } : undefined]}>{label}</Text>
     </Pressable>
   );
 }
@@ -160,19 +160,20 @@ export function Button({
   const roleColor = useRoleColor();
   color ??= roleColor;
   const solid = variant === 'solid';
+  const solidColor = color === Palette.danger ? Palette.danger : Palette.text;
   return (
     <Pressable
       onPress={disabled || loading ? undefined : onPress}
       style={({ pressed }) => [
         styles.button,
-        solid ? { backgroundColor: color } : styles.buttonGhost,
+        solid ? { backgroundColor: solidColor } : [styles.buttonGhost, { borderColor: color }],
         (disabled || loading) && styles.buttonDisabled,
         pressed && styles.cardPressed,
       ]}>
       {loading ? (
-        <ActivityIndicator color={solid ? Palette.text : color} />
+        <ActivityIndicator color={solid ? Palette.background : color} />
       ) : (
-        <Text style={[styles.buttonText, !solid && { color }]}>{label}</Text>
+        <Text style={[styles.buttonText, solid ? styles.buttonTextSolid : { color }]}>{label}</Text>
       )}
     </Pressable>
   );
@@ -274,7 +275,7 @@ export function ToggleRow({
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ true: Palette.green, false: Palette.surfaceElevated }}
+        trackColor={{ true: Palette.accent, false: Palette.surfaceElevated }}
       />
     </View>
   );
@@ -312,17 +313,20 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    width: '100%',
+    maxWidth: 960,
+    alignSelf: 'center',
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.xxl * 2,
-    gap: Spacing.md,
+    gap: Spacing.lg,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: Spacing.md,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.xs,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.sm,
   },
   headerText: {
     flex: 1,
@@ -330,9 +334,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: Palette.text,
-    fontSize: FontSize.display,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+    ...headingStyle(FontSize.display, true),
+    textTransform: 'uppercase',
   },
   subtitle: {
     color: Palette.textSecondary,
@@ -341,18 +344,18 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: Palette.surface,
-    borderRadius: Radius.xl,
+    borderRadius: Radius.lg,
     padding: Spacing.lg,
     gap: Spacing.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Palette.border,
   },
   cardPressed: {
     opacity: 0.7,
   },
   sectionTitle: {
     color: Palette.textSecondary,
-    fontSize: FontSize.caption,
-    fontWeight: '700',
-    letterSpacing: 0.8,
+    ...monoStyle(FontSize.caption, true),
     textTransform: 'uppercase',
     marginTop: Spacing.sm,
   },
@@ -369,51 +372,50 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   statValue: {
-    fontSize: FontSize.stat,
-    fontWeight: '800',
-    letterSpacing: -1,
+    ...headingStyle(FontSize.stat, true),
     fontVariant: ['tabular-nums'],
   },
   statLabel: {
     color: Palette.textSecondary,
-    fontSize: FontSize.caption,
-    fontWeight: '600',
+    ...monoStyle(FontSize.caption, true),
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
   pill: {
-    paddingHorizontal: Spacing.lg,
+    backgroundColor: Palette.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Palette.border,
+    paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.pill,
   },
   pillInactive: {
-    backgroundColor: Palette.surfaceElevated,
+    backgroundColor: 'transparent',
   },
   pillText: {
     color: Palette.textSecondary,
-    fontSize: FontSize.small,
-    fontWeight: '700',
-  },
-  pillTextActive: {
-    color: Palette.text,
+    ...monoStyle(FontSize.caption, true),
   },
   button: {
-    borderRadius: Radius.md,
+    borderRadius: Radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   buttonGhost: {
-    backgroundColor: Palette.surfaceElevated,
+    backgroundColor: 'transparent',
   },
   buttonDisabled: {
     opacity: 0.4,
   },
   buttonText: {
-    color: Palette.text,
-    fontSize: FontSize.body,
-    fontWeight: '700',
+    ...monoStyle(FontSize.caption, true),
+    textTransform: 'uppercase',
+  },
+  buttonTextSolid: {
+    color: Palette.background,
   },
   stepper: {
     width: 44,
@@ -435,8 +437,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     color: Palette.textSecondary,
-    fontSize: FontSize.caption,
-    fontWeight: '600',
+    ...monoStyle(FontSize.caption, true),
   },
   input: {
     backgroundColor: Palette.surfaceElevated,

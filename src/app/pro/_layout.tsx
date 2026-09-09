@@ -15,13 +15,22 @@ export default function ProLayout() {
           tabBarStyle: {
             backgroundColor: Palette.surface,
             borderTopColor: Palette.border,
+            borderTopWidth: 1,
+            elevation: 0,
           },
         }}>
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Painel',
+            title: 'Início',
             tabBarIcon: ({ color, size }) => <Ionicons name="grid" size={size} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="pacientes"
+          options={{
+            title: 'Pacientes',
+            tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} />,
           }}
         />
         <Tabs.Screen
@@ -36,7 +45,7 @@ export default function ProLayout() {
         <Tabs.Screen
           name="planos"
           options={{
-            title: 'Planos',
+            title: 'Serviços',
             tabBarIcon: ({ color, size }) => <Ionicons name="pricetags" size={size} color={color} />,
           }}
         />
@@ -66,6 +75,17 @@ export default function ProLayout() {
             href: null,
             headerShown: true,
             title: 'Plano alimentar',
+            headerStyle: { backgroundColor: Palette.background },
+            headerTintColor: Palette.text,
+            headerShadowVisible: false,
+          }}
+        />
+        <Tabs.Screen
+          name="aluno/[id]/resumo"
+          options={{
+            href: null,
+            headerShown: true,
+            title: 'Paciente',
             headerStyle: { backgroundColor: Palette.background },
             headerTintColor: Palette.text,
             headerShadowVisible: false,

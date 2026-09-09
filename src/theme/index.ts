@@ -45,23 +45,22 @@ export const Palette = {
   accent: Brand.mint,
   /** Alerta da paleta Sinal Vital — estado de atenção, não é o accent. */
   vitalAlert: Brand.amber,
-  /** Verde-limão dos ícones de exercício da referência. */
-  lime: '#BFFF3C',
-  blue: '#0A84FF',
-  green: '#32D74B',
-  purple: '#BF5AF2',
-  orange: '#FF9F0A',
-  yellow: '#FFD60A',
+  /** Aliases legados mantidos para os módulos existentes consumirem só a paleta Vytra. */
+  lime: Brand.mint,
+  blue: Brand.mint,
+  green: Brand.mint,
+  purple: Brand.mint,
+  orange: Brand.amber,
+  yellow: Brand.amber,
   danger: '#FF453A',
 } as const;
 
 /** Cor por tipo de dia de treino. Mesma semântica do protótipo. */
 export const TrainingColors = {
-  // `push` era Palette.accent (rosa) — fixado em laranja no rebrand de 09/set porque o
-  // accent virou verde-menta, perto demais do verde já usado por `leg`.
-  push: Palette.orange,
-  pull: Palette.blue,
-  leg: Palette.green,
+  // A diferença entre os dias fica no rótulo; a cor só sinaliza estado dentro da paleta Vytra.
+  push: Palette.vitalAlert,
+  pull: Palette.accent,
+  leg: Palette.accent,
 } as const;
 
 export type TrainingType = keyof typeof TrainingColors;
@@ -71,13 +70,11 @@ export function trainingColor(tipo: string | null | undefined): string {
 }
 
 /**
- * Cor por perfil de acesso — aluno no accent da marca, profissional em azul (já era a cor
- * dominante do Painel: pedidos/convites pendentes, agenda). Roxo fica de fora porque já é a
- * cor do módulo de dieta.
+ * O papel não muda a identidade visual: aluno e profissional compartilham o mesmo sinal Vytra.
  */
 export const RoleColors = {
   aluno: Palette.accent,
-  profissional: Palette.blue,
+  profissional: Palette.accent,
 } as const;
 
 export type Role = keyof typeof RoleColors;

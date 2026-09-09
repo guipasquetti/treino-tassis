@@ -54,6 +54,8 @@ export default function ClientLayout() {
             tabBarStyle: {
               backgroundColor: Palette.surface,
               borderTopColor: Palette.border,
+              borderTopWidth: 1,
+              elevation: 0,
             },
           }}>
           <Tabs.Screen
