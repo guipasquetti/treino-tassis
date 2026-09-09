@@ -2,29 +2,29 @@ import { useCallback, useEffect, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 
 import { CheckinFlow, CheckinResumo } from '@/components/checkin-flow';
-import { Button, Caption, Card, EmptyState, Loading, Screen, SectionTitle } from '@/components/ui';
+import { Button, Caption, Card, EmptyState, Loading, Pill, Screen, SectionTitle } from '@/components/ui';
 import { formatarDataHora } from '@/models/domain';
 import type { ResumoCheckin } from '@/models/checkin';
 import {
   checkinPendente,
-  listarMeusCheckins,
+  listarCheckinsDaAssinatura,
   obterComparacaoFotos,
   type CheckIn,
   type ComparacaoAngulo,
 } from '@/services/checkinService';
-import { listarMeusProfissionais } from '@/services/professionalService';
+import { listarMeusProfissionais, type ProfissionalVinculado } from '@/services/professionalService';
 import { useAuthStore } from '@/store/authStore';
 import { Palette, Radius, Spacing } from '@/theme';
 
 /**
  * Check-in do aluno (FA do roadmap, 06/set): série recorrente respondida pelo paciente,
- * separada do plano de treino/dieta. Escolhe o primeiro profissional vinculado — paciente
- * com nutri e treinador distintos (N:N) ainda respondem um check-in só; simplificação
- * conhecida, mesma classe do gate tudo-ou-nada de Treino/Dieta já documentado no HANDOFF.
+ * separado por acompanhamento contratado. Quem tem nutricionista e treinador escolhe para
+ * qual profissional responder; histórico, fotos e prazo ficam isolados por assinatura.
  */
 export default function CheckinScreen() {
   const user = useAuthStore((s) => s.user);
-  const [professionalId, setProfessionalId] = useState<string | null>(null);
+  const [profissionais, setProfissionais] = useState<ProfissionalVinculado[] | null>(null);
+  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
   const [pendente, setPendente] = useState<boolean | null>(null);
   const [historico, setHistorico] = useState<CheckIn[]>([]);
   const [comparacao, setComparacao] = useState<ComparacaoAngulo[]>([]);
@@ -33,23 +33,39 @@ export default function CheckinScreen() {
 
   const carregar = useCallback(async () => {
     if (!user) return;
-    const [profissionais, pend, hist, fotos] = await Promise.all([
-      listarMeusProfissionais(user.id),
-      checkinPendente(user.id),
-      listarMeusCheckins(user.id),
-      obterComparacaoFotos(user.id),
+    const vinculos = await listarMeusProfissionais(user.id);
+    setProfissionais(vinculos);
+    setSubscriptionId((atual) => (atual && vinculos.some((v) => v.subscriptionId === atual) ? atual : vinculos.length === 1 ? vinculos[0].subscriptionId : null));
+  }, [user?.id]);
+
+  const carregarAcompanhamento = useCallback(async () => {
+    if (!subscriptionId) {
+      setPendente(null);
+      setHistorico([]);
+      setComparacao([]);
+      return;
+    }
+    const [pend, hist, fotos] = await Promise.all([
+      checkinPendente(subscriptionId),
+      listarCheckinsDaAssinatura(subscriptionId),
+      obterComparacaoFotos(subscriptionId),
     ]);
-    setProfessionalId(profissionais[0]?.professionalId ?? null);
     setPendente(pend);
     setHistorico(hist);
     setComparacao(fotos);
-  }, [user?.id]);
+  }, [subscriptionId]);
 
   useEffect(() => {
     carregar();
   }, [carregar]);
 
-  if (!user || pendente === null) return <Loading />;
+  useEffect(() => {
+    carregarAcompanhamento();
+  }, [carregarAcompanhamento]);
+
+  const profissionalSelecionado = profissionais?.find((v) => v.subscriptionId === subscriptionId) ?? null;
+
+  if (!user || profissionais === null || (subscriptionId !== null && pendente === null)) return <Loading />;
 
   if (resumo) {
     return (
@@ -58,25 +74,50 @@ export default function CheckinScreen() {
         onFechar={() => {
           setResumo(null);
           setEmAndamento(false);
-          carregar();
+          carregarAcompanhamento();
         }}
       />
     );
   }
 
-  if (emAndamento && professionalId) {
-    return <CheckinFlow clientId={user.id} professionalId={professionalId} onConcluido={setResumo} />;
+  if (emAndamento && profissionalSelecionado) {
+    return (
+      <CheckinFlow
+        clientId={user.id}
+        professionalId={profissionalSelecionado.professionalId}
+        subscriptionId={profissionalSelecionado.subscriptionId}
+        onConcluido={setResumo}
+      />
+    );
   }
 
   return (
     <Screen title="Check-in" subtitle="Acompanhamento periódico">
-      {!professionalId ? (
+      {!profissionais.length ? (
         <EmptyState text="Você ainda não tem um profissional vinculado." />
+      ) : !profissionalSelecionado ? (
+        <Card>
+          <SectionTitle>Para quem é este check-in?</SectionTitle>
+          <Caption>Escolha o acompanhamento para manter suas respostas e evolução no lugar certo.</Caption>
+          <View style={styles.profissionais}>
+            {profissionais.map((profissional) => (
+              <Pill
+                key={profissional.subscriptionId}
+                label={rotuloProfissional(profissional)}
+                active={false}
+                onPress={() => {
+                  setPendente(null);
+                  setSubscriptionId(profissional.subscriptionId);
+                }}
+              />
+            ))}
+          </View>
+        </Card>
       ) : pendente ? (
         <Card>
           <SectionTitle>Check-in disponível</SectionTitle>
           <Caption>
-            Leva poucos minutos e ajuda seu profissional a acompanhar sua evolução de perto.
+            Para {rotuloProfissional(profissionalSelecionado)}. Leva poucos minutos e ajuda no seu acompanhamento.
           </Caption>
           <Button label="Começar check-in" onPress={() => setEmAndamento(true)} />
         </Card>
@@ -87,6 +128,22 @@ export default function CheckinScreen() {
           </Caption>
         </Card>
       )}
+
+      {profissionalSelecionado && profissionais.length > 1 ? (
+        <View style={styles.profissionais}>
+          {profissionais.map((profissional) => (
+            <Pill
+              key={profissional.subscriptionId}
+              label={rotuloProfissional(profissional)}
+              active={profissional.subscriptionId === profissionalSelecionado.subscriptionId}
+              onPress={() => {
+                setPendente(null);
+                setSubscriptionId(profissional.subscriptionId);
+              }}
+            />
+          ))}
+        </View>
+      ) : null}
 
       {comparacao.length > 0 ? (
         <>
@@ -141,6 +198,11 @@ export default function CheckinScreen() {
 }
 
 const styles = StyleSheet.create({
+  profissionais: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
   linha: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -167,3 +229,8 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.surfaceElevated,
   },
 });
+
+function rotuloProfissional(profissional: ProfissionalVinculado): string {
+  const especialidade = profissional.especialidade === 'nutricionista' ? 'Nutrição' : 'Treino';
+  return `${especialidade} · ${profissional.nome}`;
+}

@@ -23,10 +23,12 @@ import { Palette, Spacing } from '@/theme';
 export function CheckinFlow({
   clientId,
   professionalId,
+  subscriptionId,
   onConcluido,
 }: {
   clientId: string;
   professionalId: string;
+  subscriptionId: string;
   onConcluido: (resumo: ResumoCheckin) => void;
 }) {
   const [respostas, setRespostas] = useState<RespostasCheckin>({});
@@ -58,7 +60,7 @@ export function CheckinFlow({
     setErro(null);
     setEnviando(true);
     try {
-      const resumo = await submeterCheckin(clientId, professionalId, respostasFinais, fotos);
+      const resumo = await submeterCheckin(clientId, professionalId, subscriptionId, respostasFinais, fotos);
       onConcluido(resumo);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não consegui enviar seu check-in.');
@@ -161,7 +163,7 @@ export function CheckinFlow({
                 {pergunta.opcoes?.map((opcao) => (
                   <Button
                     key={opcao.valor}
-                    label={opcao.emoji ? `${opcao.emoji}  ${opcao.label}` : opcao.label}
+                    label={opcao.label}
                     variant="ghost"
                     onPress={() => escolherOpcao(opcao)}
                     disabled={enviando}

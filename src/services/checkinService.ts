@@ -10,6 +10,7 @@ const PERIODICIDADE_DIAS = 14;
 export async function submeterCheckin(
   clientId: string,
   professionalId: string,
+  subscriptionId: string,
   respostas: RespostasCheckin,
   fotos: { esquerdo?: string; direito?: string; costas?: string },
 ): Promise<ResumoCheckin> {
@@ -17,6 +18,7 @@ export async function submeterCheckin(
   const { error } = await supabase.from('check_ins').insert({
     client_id: clientId,
     professional_id: professionalId,
+    subscription_id: subscriptionId,
     respostas,
     pontuacao_geral: resumo.pontuacaoGeral,
     pontuacao_categorias: Object.fromEntries(
@@ -63,6 +65,16 @@ export async function listarMeusCheckins(clientId: string): Promise<CheckIn[]> {
   return data ?? [];
 }
 
+/** Histórico de um acompanhamento específico — nunca mistura profissionais do mesmo paciente. */
+export async function listarCheckinsDaAssinatura(subscriptionId: string): Promise<CheckIn[]> {
+  const { data } = await supabase
+    .from('check_ins')
+    .select('*')
+    .eq('subscription_id', subscriptionId)
+    .order('created_at', { ascending: false });
+  return data ?? [];
+}
+
 /** Histórico de um paciente, visto pelo profissional (RLS já escopa por `is_professional_of`). */
 export async function listarCheckinsDoAluno(clientId: string): Promise<CheckIn[]> {
   return listarMeusCheckins(clientId);
@@ -88,8 +100,8 @@ export type ComparacaoAngulo = {
  * Só devolve algo quando há pelo menos 2 check-ins distintos com foto — 1 só não é
  * "comparação". Sem análise automática (postura/simetria) — isso é IA, fora de escopo aqui.
  */
-export async function obterComparacaoFotos(clientId: string): Promise<ComparacaoAngulo[]> {
-  const checkins = await listarMeusCheckins(clientId); // mais recente primeiro
+export async function obterComparacaoFotos(subscriptionId: string): Promise<ComparacaoAngulo[]> {
+  const checkins = await listarCheckinsDaAssinatura(subscriptionId); // mais recente primeiro
   const comFoto = checkins.filter(
     (c) => c.foto_perfil_esquerdo_path || c.foto_perfil_direito_path || c.foto_costas_path,
   );
@@ -136,11 +148,11 @@ export function historicoPeso(checkins: CheckIn[]): RegistroPeso[] {
 }
 
 /** Se o paciente já pode enviar um novo check-in (nunca enviou, ou já passou a periodicidade). */
-export async function checkinPendente(clientId: string): Promise<boolean> {
+export async function checkinPendente(subscriptionId: string): Promise<boolean> {
   const { data } = await supabase
     .from('check_ins')
     .select('created_at')
-    .eq('client_id', clientId)
+    .eq('subscription_id', subscriptionId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();

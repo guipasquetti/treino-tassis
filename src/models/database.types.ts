@@ -176,6 +176,7 @@ export type Database = {
           pontuacao_geral: number | null
           professional_id: string
           respostas: Json
+          subscription_id: string
         }
         Insert: {
           client_id: string
@@ -188,6 +189,7 @@ export type Database = {
           pontuacao_geral?: number | null
           professional_id: string
           respostas?: Json
+          subscription_id: string
         }
         Update: {
           client_id?: string
@@ -200,6 +202,7 @@ export type Database = {
           pontuacao_geral?: number | null
           professional_id?: string
           respostas?: Json
+          subscription_id?: string
         }
         Relationships: [
           {
@@ -214,6 +217,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "check_ins_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
             referencedColumns: ["id"]
           },
         ]
@@ -866,6 +876,7 @@ export type Database = {
           token: string
         }[]
       }
+      pode_ler_foto_checkin: { Args: { p_caminho: string }; Returns: boolean }
       recusar_convite: { Args: { p_token: string }; Returns: boolean }
       submeter_anamnese: {
         Args: { p_respostas: Json; p_token: string }

@@ -12,7 +12,7 @@
  * treino (§10) já recebe: "precisa do Tassis" antes de virar produção.
  *
  * Regras de modelagem que vieram do §13 e não podem ser "simplificadas":
- * - Guardar o VALOR de cada opção (`pontuacao`), nunca o rótulo — rótulo/emoji são só
+ * - Guardar o VALOR de cada opção (`pontuacao`), nunca o rótulo — rótulo é só
  *   apresentação. A ordem das opções na lista não indica direção; cada uma carrega a
  *   própria pontuação (vegetais/frutas listam a melhor opção primeiro, sono/aderência
  *   listam a pior primeiro — inferir pela posição quebra a série).
@@ -29,7 +29,6 @@ export type TipoPerguntaCheckin = 'ordinal' | 'escala' | 'categorica' | 'numero'
 export type OpcaoCheckin = {
   valor: string;
   label: string;
-  emoji?: string;
   /** Pontuação 0-100 dessa opção — só usada quando a pergunta é `ordinal`. */
   pontuacao?: number;
   /** Quando presente, escolher esta opção revela um campo de texto com este placeholder. */
@@ -57,11 +56,19 @@ export type PerguntaCheckin = {
 };
 
 const ESCALA_DISPOSICAO: OpcaoCheckin[] = [
-  { valor: '1', label: 'Muito indisposto(a)', emoji: '😩', pontuacao: 0 },
-  { valor: '2', label: 'Indisposto(a) na maior parte do tempo', emoji: '😕', pontuacao: 25 },
-  { valor: '3', label: 'Neutro(a)', emoji: '😐', pontuacao: 50 },
-  { valor: '4', label: 'Geralmente disposto(a)', emoji: '🙂', pontuacao: 75 },
-  { valor: '5', label: 'Muito disposto(a)', emoji: '😄', pontuacao: 100 },
+  { valor: '1', label: 'Muito indisposto(a)', pontuacao: 0 },
+  { valor: '2', label: 'Indisposto(a) na maior parte do tempo', pontuacao: 25 },
+  { valor: '3', label: 'Neutro(a)', pontuacao: 50 },
+  { valor: '4', label: 'Geralmente disposto(a)', pontuacao: 75 },
+  { valor: '5', label: 'Muito disposto(a)', pontuacao: 100 },
+];
+
+const ESCALA_QUALIDADE_SONO: OpcaoCheckin[] = [
+  { valor: '1', label: 'Muito ruim — não descansei nada', pontuacao: 0 },
+  { valor: '2', label: 'Ruim — acordei cansado(a) várias vezes', pontuacao: 25 },
+  { valor: '3', label: 'Regular — dormi, mas sem descanso completo', pontuacao: 50 },
+  { valor: '4', label: 'Boa — acordei descansado(a) na maior parte dos dias', pontuacao: 75 },
+  { valor: '5', label: 'Muito boa — acordei descansado(a) todos os dias', pontuacao: 100 },
 ];
 
 const ESCALA_PORCOES: OpcaoCheckin[] = [
@@ -90,11 +97,11 @@ export const PERGUNTAS_CHECKIN: PerguntaCheckin[] = [
     texto: 'Como foi seu desempenho nos treinos essa semana?',
     tipo: 'ordinal',
     opcoes: [
-      { valor: '1', label: 'Muito abaixo do esperado', emoji: '😩', pontuacao: 0 },
-      { valor: '2', label: 'Abaixo do esperado', emoji: '😕', pontuacao: 25 },
-      { valor: '3', label: 'Dentro do esperado', emoji: '😐', pontuacao: 50 },
-      { valor: '4', label: 'Acima do esperado', emoji: '🙂', pontuacao: 75 },
-      { valor: '5', label: 'Muito acima do esperado', emoji: '😄', pontuacao: 100 },
+      { valor: '1', label: 'Muito abaixo do esperado', pontuacao: 0 },
+      { valor: '2', label: 'Abaixo do esperado', pontuacao: 25 },
+      { valor: '3', label: 'Dentro do esperado', pontuacao: 50 },
+      { valor: '4', label: 'Acima do esperado', pontuacao: 75 },
+      { valor: '5', label: 'Muito acima do esperado', pontuacao: 100 },
     ],
   },
   {
@@ -113,7 +120,7 @@ export const PERGUNTAS_CHECKIN: PerguntaCheckin[] = [
     categoria: 'Qualidade do sono',
     texto: 'Como você avalia a qualidade do seu sono?',
     tipo: 'ordinal',
-    opcoes: ESCALA_DISPOSICAO.map((o) => ({ ...o })),
+    opcoes: ESCALA_QUALIDADE_SONO.map((o) => ({ ...o })),
   },
   {
     id: 'aderencia_plano',
