@@ -429,6 +429,29 @@ mordeu duas vezes (`convite.tsx`, extinto `agenda.tsx`), ver §8.
     · 7. depositar VYTRA no INPI.
   - O `slug` do projeto Expo continua `app-treino` mesmo depois disso: trocar mexe no EAS
     project, é decisão à parte.
+- ✅ **Passo 1 concluído (09/set): `vytraoficial.com.br` registrado.** Confirmado por `whois`:
+  titular Guilherme Pasquetti, status ativo, DNS automático do Registro.br
+  (`a.auto.dns.br`/`b.auto.dns.br`). A pendência da Receita Federal descrita abaixo foi
+  resolvida dentro do prazo. Falta só publicar o registro A (ver o item da LP no §8).
+- 📌 **Histórico do bloqueio que atrasou o passo 1 (09/set).** Tentativa inicial
+  no Registro.br bloqueada — o CPF do Guilherme (377.991.498-09) já tinha "Provedor de
+  Serviços" vinculado (HSTDOMAINS, a revenda de domínio da Hostinger), herdado de dois
+  domínios antigos e sem relação com o projeto (`theworkhouse.com.br`, `fluxoneural.com.br`,
+  migrados de GODADDY pra HSTDOMAINS em 07/ago/2025). Resolvido trocando o Provedor de
+  Serviços da entidade pra **NENHUM** direto na tela "Provedor de serviços" do Registro.br
+  (não mexe em DNS/hospedagem, só em quem administra o registro). E-mail correto da conta
+  Registro.br/Hostinger é `guilherme.pasquetti@gmail.com` (não `gui.pasquetti@gmail.com`,
+  usado em outros contextos do projeto) — achado buscando o e-mail "Recover your Hostinger
+  account" na caixa de entrada.
+  - **Ticket**: `VYTRAOFICIAL.COM.BR`, número `32157056`, 09/09/2026, com pendência
+    automática de validação do CPF contra a Receita Federal (prazo `10/09/2026 14:48`).
+    Resolveu dentro do prazo, domínio ativo.
+  - ⚠️ **Decisão de raiz mudou (09/set, Guilherme):** a raiz `vytraoficial.com.br` passa a
+    ser da **LP institucional**, e o app vai para `app.vytraoficial.com.br` quando migrar do
+    `app-treino.expo.app`. Isso substitui a decisão anterior deste mesmo §7 ("app na raiz,
+    porque o link do convite já é longo demais") — o custo aceito é o link de convite ficar
+    4 caracteres mais longo. O passo 6 da ordem de execução (trocar o fallback em
+    `src/app/pro/convite.tsx`) passa a apontar para `app.vytraoficial.com.br`, não para a raiz.
 
 ⚠️ **E-mail: a causa raiz não é rate limit** (investigado em 03/set, corrige o diagnóstico
 anterior). A [documentação do Supabase](https://supabase.com/docs/guides/auth/auth-smtp)
@@ -1291,6 +1314,57 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
   trocado, ver pendência acima). A correção não-commitada de `checkin-flow.tsx`/`checkin.ts`
   (§ anterior sobre emoji/escala de sono) foi junto no export, porque `expo export` usa o
   working tree, não o commit — segue sem commit, não é trabalho desta sessão.
+
+- ✅ **Landing page institucional no ar (09/set).** Pedido do Guilherme: "uma LP apenas para
+  estarmos no ar", agora que o domínio existe. Página estática, uma rota só, sem build step.
+  - **Fonte**: [`site/`](site/) na raiz do repo (`index.html` único, com CSS embutido,
+    `vercel.json` e os assets de marca copiados de `assets/brand/`). Mesmo padrão do projeto
+    irmão OLI (`landing/` servido direto, sem framework).
+  - **Hospedagem: Vercel**, projeto `vytra`, team "Guilherme's projects"
+    (`guilhermes-projects-8cc030f5`) — a mesma que já serve `oli-landing` e `admin`. URL de
+    produção enquanto o DNS não aponta: `https://vytra-pi.vercel.app`.
+  - ⚠️ **Netlify foi tentado primeiro e descartado, com motivo real.** O repo do OLI tem
+    `netlify.toml` e `.netlify/state.json`, que me levaram a concluir que o site irmão estava
+    na Netlify. É **config morta**: o handoff do OLI (§14 de lá) registra que o site migrou
+    pra Vercel em 21/jul porque a conta Netlify (team **Oliteam**, Free) **estourou o crédito
+    e passou a pular todo deploy silenciosamente** (`Skipped due to account credit usage
+    exceeded`), e o `state.json` ainda aponta pro site errado e vazio (`bespoke-starship-3fd6f9`).
+    Cheguei a criar e publicar um site Netlify (`vytraoficial.netlify.app`, team Oliteam)
+    antes de o Guilherme apontar o erro; **esse site foi apagado** a pedido dele no mesmo dia
+    (confirmado: a URL responde 404), justamente pra não virar a config órfã que confundiu o OLI.
+    **Regra que fica**: não confiar em arquivo de config de host como prova de onde algo está
+    publicado, conferir o handoff do projeto e a API do provedor. `netlify.toml` e
+    `site/_headers` foram removidos daqui pra não repetir a mesma armadilha neste repo; os
+    cabeçalhos viraram `site/vercel.json`.
+  - **DNS pendente (passo do Guilherme)**: publicar no painel do Registro.br
+    (`Editar zona`, DNS automático já ativo) o registro **`A` da raiz → `76.76.21.21`** e,
+    opcionalmente, **`CNAME www` → `cname.vercel-dns.com`**. Os dois domínios
+    (`vytraoficial.com.br` e `www.`) já estão vinculados ao projeto `vytra` na Vercel,
+    esperando só o DNS. O IP `216.198.79.1` que aparece no handoff do OLI é de outra época,
+    usar o que a Vercel informa hoje.
+  - **Conteúdo**, seguindo as regras de escrita do brand book (§7 do BRAND.md — sem travessão,
+    sem "não é X, é Y", sem exclamação, sem prometer prazo, sem citar concorrente, sem emoji):
+    hero com a tagline "Um plano realmente seu.", três passos (Avaliação, Prescrição,
+    Check-in), seis recursos que **já existem no app de verdade** (histórico de carga, macro
+    por refeição, lista de compras, evolução/fotos, teleconsulta, verificação de CREF/CRN) e
+    um bloco para profissional fechando com "o critério que você já tem, sem o trabalho que te
+    consumia". Nada de feature inventada, tudo bate com o §8.
+  - **Marca aplicada de verdade**: `VytraLockup` real (SVG de `assets/brand/`, wordmark em
+    curvas), paleta Sinal Vital, Big Shoulders Display + IBM Plex Mono **auto-hospedadas** em
+    `site/fonts/` (TTF do repo convertido pra WOFF2 e subsetado pra latim, 17-20KB cada).
+    Nenhuma requisição sai do domínio: sem Google Fonts, sem analytics, sem cookie — decisão
+    pela lente do §0 (CDN de fonte entrega o IP do visitante a terceiro sem base legal).
+    A linha divisória reproduz a geometria exata do mark (V de 32x30, braços 28:40) com um
+    SVG de proporção fixa entre duas réguas flexíveis, porque a primeira versão usava
+    `preserveAspectRatio="none"` e achatava o V, contrariando o brand book.
+  - **Segurança**: CSP restritiva por `<meta>` (`default-src 'none'`, só `self` para imagem,
+    fonte e script), mais `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`,
+    `Permissions-Policy` e HSTS por header no `vercel.json`. Conferido ao vivo com `curl`.
+  - **Verificado**: renderização real no navegador (desktop e viewport 375px), zero erro de
+    console, zero overflow horizontal (`scrollWidth === clientWidth`), as três fontes com
+    status `loaded`, e os cabeçalhos conferidos na resposta HTTP de produção.
+  - **Pendências**: apontar o DNS (acima); a LP não captura e-mail (sem backend e sem caixa
+    de e-mail no domínio ainda, ver passos 2 e 3 da ordem de execução do §7).
 
 
 ## 9. Escopo funcional v1 (proposto, não implementado)
