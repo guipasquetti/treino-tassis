@@ -5,6 +5,8 @@
 
 > **Fonte canônica:** este arquivo, na raiz do repositório. Todo agente (Codex ou Claude) deve lê-lo antes de alterar o projeto e atualizá-lo ao concluir mudanças relevantes, decisões, migrações, configuração de infraestrutura ou bloqueios.
 
+> **Migração de marca e URLs em andamento (09/set):** seguir o protocolo em “Transição Vytra” no fim deste documento. Não trocar o fallback de convite nem remover URLs legadas antes de `app.vytraoficial.com.br` passar na verificação de DNS, SSL e login.
+
 ---
 
 ## 0. Princípio obrigatório: segurança e LGPD
@@ -1807,3 +1809,189 @@ PATCH https://api.supabase.com/v1/projects/<ref>/config/auth
 
 Depois de configurado, dá para verificar por aqui: disparar um recovery de teste e conferir a
 entrega e os logs de auth.
+
+## 17. Transição Vytra — publicação, URLs e plataformas (09/set)
+
+### Objetivo e regra de compatibilidade
+
+Concluir a publicação institucional em `https://vytraoficial.com.br` e mover o app web para
+`https://app.vytraoficial.com.br`, eliminando referências públicas a “App Treino” e
+“treino-tassis” sem invalidar logins, links de convite, redirects de autenticação ou o deploy
+atual. A transição segue **expandir → verificar → trocar leitores/escritores → manter legado**.
+Não remover nenhuma URL antiga na mesma etapa do primeiro corte.
+
+### Estado confirmado em 09/set
+
+| Superfície | Estado | Próxima ação |
+| --- | --- | --- |
+| Marca no app | `name: Vytra`, `scheme: vytra`, ícones e splash Vytra | `slug` continua `app-treino` até o projeto EAS ser renomeado no dashboard |
+| GitHub | ✅ repo renomeado para `https://github.com/guipasquetti/vytra`; homepage = `https://vytraoficial.com.br`; remote local atualizado | manter URL anterior como redirecionamento do GitHub |
+| Landing | ✅ projeto Vercel `vytra`, deploy de produção pronto | publicar DNS da raiz e confirmar HTTPS |
+| Domínios na Vercel | `vytraoficial.com.br` e `www.vytraoficial.com.br` vinculados ao projeto `vytra` | DNS ainda aponta para Registro.br padrão; configurar A da raiz e `www` conforme Vercel |
+| App EAS | produção em `https://app-treino.expo.app`; EAS project `@guipasquetti/app-treino` / `f37244c8-045f-4fff-89de-ecf05f7872ce` | manter como rollback até o novo host passar nos testes |
+| App Vercel | ✅ projeto separado `vytra-app` criado e exportação web publicada; produção temporária = `https://vytra-app.vercel.app` | `app.vytraoficial.com.br` foi associado ao projeto e aguarda DNS |
+| EAS custom domain | indisponível no plano Free (confirmado no dashboard) | manter `app-treino.expo.app` como rollback; o app público novo é servido pela Vercel |
+| Supabase Auth | Site URL e redirect URL atuais: `https://app-treino.expo.app` | adicionar `https://app.vytraoficial.com.br` primeiro; trocar Site URL apenas após teste de login/convite no novo host; manter URL antiga permitida |
+| Convites | fallback nativo em `src/app/pro/convite.tsx` ainda aponta para `https://app-treino.expo.app`; na web usa `window.location.origin` | atualizar fallback só depois de o novo host responder com SSL válido |
+
+### DNS a aplicar no Registro.br
+
+1. **Landing:** `A @ → 216.198.79.1` **e** `A @ → 64.29.17.1` (Vercel, projeto `vytra`).
+   Não usar o IP legado `76.76.21.21` enquanto os dois A atuais forem a recomendação do painel.
+2. **App:** `CNAME app → 09877c60c63ba7a2.vercel-dns-017.com.` (Vercel, projeto
+   `vytra-app`). Não usar A record no subdomínio enquanto esse CNAME específico for a
+   recomendação do painel.
+3. **SMTP posterior:** reservar `mail.vytraoficial.com.br`; não criar registros de envio antes
+   de decidir o provedor e receber os valores de SPF/DKIM/DMARC.
+
+### Ordem de execução e rollback
+
+1. Publicar/validar DNS da landing. Verificar `https://vytraoficial.com.br` e `www`.
+2. Completar DNS/SSL do app na Vercel. Verificar login, refresh de sessão, deep link e convite
+   em `app.vytraoficial.com.br`.
+3. Adicionar o novo app URL à configuração de Auth do Supabase; testar login e convite; então
+   promover o novo endereço a Site URL. Preservar o endereço Expo anterior como redirect URL.
+4. Atualizar o fallback de convite, README, documentação e qualquer texto de produto que ainda
+   exponha o nome antigo; publicar novo deploy EAS.
+5. Só após pelo menos uma janela de operação estável, avaliar troca de slug/nome no dashboard
+   EAS e a remoção do domínio `app` da Vercel. URLs de deploy e links históricos não precisam
+   ser apagados.
+
+**Rollback:** se o novo host falhar, o app continua em `https://app-treino.expo.app`; reverter
+o Site URL do Supabase para ele e não alterar o fallback de convite. O repo antigo já é
+redirecionado pelo GitHub e não requer reversão.
+
+## 18. Organização do fluxo profissional (09/set)
+
+✅ O fluxo profissional deixou de usar “Plano” para dois conceitos diferentes. A barra agora
+separa **Início** (pendências e teleconsultas), **Pacientes** (carteira com acompanhamento já
+criado), **Leads** (pessoas pré-cadastro) e **Serviços** (catálogo comercial de
+`professional_plans`). A rota `pro/planos.tsx` foi mantida para não quebrar links internos,
+mas o texto da interface passou a chamar o item de “Serviços”.
+
+✅ Cada card em Pacientes e alerta do Início abre `pro/aluno/[id]/resumo`: o resumo mostra o
+status do acompanhamento, serviço vinculado, solicitações pendentes, consultas registradas e
+ações inequívocas para **Criar/Editar treino** e **Criar/Editar dieta**. Os editores existentes
+continuam nas rotas anteriores, sem migration nem alteração de RLS/dados. `AlunoTabs` ganhou a
+aba Resumo para a pessoa nunca cair no editor sem contexto.
+
+**Critério de leitura:** lead só aparece em Leads até finalizar o convite/cadastro; paciente só
+aparece na carteira quando a `subscription` existe. “Serviço” é o produto comercial; treino e
+dieta são prescrições desse paciente. A agenda permanece no Início nesta etapa, e o resumo
+mostra as consultas daquele paciente; não foi criada nova tabela nem mudado o fluxo de convite.
+
+✅ O bloco de indicadores do Início foi refeito como uma grade de 2 colunas com altura e
+alinhamento constantes. A cor menta fica reservada para acompanhamentos ativos, o âmbar
+`Palette.vitalAlert` apenas para pendências e os demais números usam a cor de texto da marca.
+Foram removidos azul/verde/laranja decorativos desse bloco; pedidos de serviço continuam na
+seção própria logo abaixo.
+
+## 19. Sistema visual minimalista Vytra (09/set)
+
+✅ Reforma visual aplicada pela base compartilhada, para alcançar as telas existentes sem
+recriar fluxos clínicos: títulos e placares usam Big Shoulders, rótulos/ações usam IBM Plex
+Mono, cards passaram a ter borda fina e cantos menos arredondados, e botões/pills deixaram de
+usar preenchimentos de cor como decoração. Ações principais usam Paper sobre Ink; Mint sinaliza
+seleção/atividade; Amber fica restrito a atenção. `Palette.blue`/`green`/`purple`/`orange` e
+similares permanecem como aliases temporários para não quebrar módulos, mas agora remetem a
+Mint/Amber, nunca a cores externas à identidade. A exceção é `Palette.danger`, preservada para
+erros e ações destrutivas.
+
+**Escopo deliberado:** não houve alteração em schema, RLS, fluxos de convite, dados de treino
+ou conteúdo clínico. Próximos ajustes de tela devem consumir `Screen`, `Card`, `Button`,
+`Pill`, `Field` e os tokens em `src/theme`, em vez de introduzir cores ou tipografia próprias.
+
+## 20. Leads e agenda operacional (09/set)
+
+✅ A aba Leads passou a explicar o funil dentro da própria tela: pessoa em avaliação → conversa
+registrada → convite enviado → cadastro concluído → Pacientes. Cada card agora expõe apenas as
+ações da próxima etapa (`Registrar conversa` e, enquanto não há convite, `Enviar convite`);
+edição e encerramento foram agrupados em “Mais opções”. Um lead com convite enviado não permite
+criar convite duplicado e informa que está aguardando o cadastro.
+
+✅ A seção de teleconsultas do Início ganhou calendário compacto dos próximos sete dias. Cada
+dia mostra um marcador quando há consulta agendada e filtra a lista ao ser selecionado. A agenda
+reaproveita `teleconsultas`/`listarAgenda`, sem tabela, RLS ou integração externa nova; o
+formulário de criação continua logo abaixo para manter o fluxo curto.
+
+## 21. Serviços comerciais do Tassis (09/set)
+
+✅ Cadastrados diretamente em produção para o profissional Tassis, ambos ativos e incluindo
+dieta + treino: **Acompanhamento mensal** (`R$ 350,00`, mensal) e **Acompanhamento trimestral**
+(`R$ 800,00`, trimestral). A inserção é idempotente por nome e profissional, para evitar
+duplicação em nova execução. O registro técnico **Padrão (migração)** foi preservado e continua
+ativo porque pode estar vinculado a uma assinatura existente; não desativar ou editar sem uma
+decisão explícita e checagem dos vínculos.
+
+## 22. Largura de trabalho em desktop (09/set)
+
+✅ `Screen`, a base de todas as telas roláveis, limita o conteúdo a **960px** e o centraliza em
+viewports maiores. Isso evita cards, formulários e placares excessivamente largos em monitores
+ultrawide, sem breakpoint novo nem efeito no mobile, que mantém `width: 100%` dentro do padding.
+
+## 23. Deploys desta rodada (09/set)
+
+✅ Todos os ajustes das seções 18–22 foram exportados e promovidos no **EAS Hosting** para a
+produção `https://app-treino.expo.app`. O último deploy desta rodada é
+`https://app-treino--q6r91tyj0y.expo.app` (preview imutável) e contém, além da reorganização
+profissional e do design Vytra, a agenda compacta de teleconsultas, os serviços comerciais
+cadastrados e o limite de 960px em desktop. A URL de produção pode manter o bundle anterior por
+alguns minutos devido ao cache da CDN; o preview é a referência imediata para validação.
+
+## 24. Direção de produto: especialidades e contratação (09/set)
+
+✅ Decisão de produto registrada em [`ROADMAP.md`](ROADMAP.md): o Vytra passa a organizar a
+próxima frente em torno de **especialidades clínicas separadas**. Há um núcleo compartilhado
+(Início, Pacientes, Leads, Serviços, Agenda, Perfil e cobrança), mas nutricionistas e educadores
+físicos terão painéis, check-ins, alertas e ações coerentes com a própria prática. O paciente
+continua com uma área única, porém os módulos de Nutrição e Treino aparecem apenas conforme os
+serviços ativos e sempre identificam o profissional responsável.
+
+⚠️ Lacuna estrutural conhecida antes do início dessa frente: `aluno/checkin.tsx` hoje escolhe o
+primeiro profissional vinculado e o check-in é compartilhado quando o paciente tem nutri e treino.
+Não criar telas especializadas por cima desse comportamento. A primeira entrega desta frente é
+uma modelagem/migração reversível que vincule acompanhamento, check-ins, evolução e permissões à
+assinatura paciente↔profissional; a revisão de RLS, consentimento e compartilhamento de anamnese
+é obrigatória antes de qualquer deploy.
+
+✅ Duas relações comerciais permanecem separadas: **profissional → Vytra** (assinatura SaaS,
+ainda não implementada) e **paciente → profissional** (serviço clínico, hoje com confirmação de
+pagamento manual). Não reaproveitar `subscriptions` do paciente como assinatura SaaS do
+profissional.
+
+✅ **Fundação publicada em produção (09/set):** aplicada a migração
+[`20260909173000_checkins_por_assinatura.sql`](supabase/migrations/20260909173000_checkins_por_assinatura.sql)
+e a adaptação do app para que o check-in use `subscription_id`. A migração faz backfill
+determinístico, falha se existir check-in sem assinatura correspondente, valida o par
+paciente/profissional por trigger e reduz a política de leitura/fotos ao vínculo exato. A tela
+do paciente deixa de escolher o primeiro profissional: quando houver mais de um, ele seleciona o
+acompanhamento e vê histórico, prazo e fotos daquele vínculo. `database.types.ts` foi expandido
+e comparado aos tipos oficiais gerados do schema remoto; o único acréscimo era o helper
+`pode_ler_foto_checkin`, já registrado no arquivo.
+
+**Validação pendente:** ainda falta exercitar o cenário com paciente ligado a nutricionista e
+treinador distintos, verificando inserts, filtros, fotos assinadas e RLS nas três identidades.
+O rollback não remove dados: restaurar as policies anteriores, remover trigger/funções/índice e
+só depois a coluna `check_ins.subscription_id`, se necessário. Não fazer a contração sem essa
+validação.
+
+✅ **Deploy realizado (09/set):** a leitura remota encontrou 1 check-in e 0 sem assinatura
+correspondente; `subscription_id` está `uuid NOT NULL`, as policies de insert/select e a proteção
+de fotos existem em produção. Como o histórico de migrations local e remoto segue desalinhado,
+esta migration foi executada explicitamente pelo arquivo e registrada como
+`20260909173000` no histórico remoto — não usar `db push` até reconciliar as migrations antigas.
+Bundle exportado e promovido para `https://app-treino.expo.app`; preview imutável:
+`https://app-treino--itjtn76iyn.expo.app`.
+
+✅ **Primeiro recorte dos painéis especializados publicado (09/set):**
+`obterPainelGestao()` agora lê a especialidade do profissional e calcula “sem prescrição” a
+partir do plano alimentar para nutricionista e do treino para educador físico. O Início muda o
+subtítulo, os indicadores e os alertas: nutrição não recebe aviso de treino parado; treino não
+recebe pendência de plano alimentar. Leads, Pacientes, Serviços e Agenda continuam comuns.
+Não foi criada nova tabela nem liberada nova informação clínica. Publicado em
+`https://app-treino.expo.app`; preview imutável:
+`https://app-treino--bcruldkvt9.expo.app`.
+
+**Estado do repositório:** essas mudanças continuam sem commit nesta sessão. Há também alterações
+preexistentes de check-in em `src/components/checkin-flow.tsx` e `src/models/checkin.ts`; não as
+reverter ou separar sem revisar a intenção registrada na seção de check-ins.
