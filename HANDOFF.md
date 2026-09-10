@@ -2226,3 +2226,49 @@ bateram o esperado. Removida a rota e a linha do layout depois — `git status` 
 `_layout.tsx` sem diff. `npx tsc --noEmit` limpo.
 **Não testado logado com histórico real de produção** — mesma regra de nunca digitar senha; vale
 conferir com o Tassis/Guilherme quando o próximo deploy for pro ar.
+
+✅ **Deploy dos dois hosts feito nesta sessão** (depois do bloqueio do classificador ceder numa
+segunda tentativa): `npx eas deploy --prod` e
+`npx vercel deploy dist --project vytra-app --prod --yes` rodaram com sucesso, os dois hosts
+serví­am o mesmo bundle (`entry-a4ed93998072a820c6f9ebffafa28fa3.js`, conferido por hash) — até
+o achado abaixo aparecer.
+
+⚠️→✅ **Achado real de infra, não do app: ícones sumindo só no espelho Vercel — corrigido.**
+Guilherme reportou (print) que os botões de +/- do seletor de carga/reps e os ícones da barra
+de abas (Início/Treino/Dieta/Check-in/Perfil) apareciam como quadrado vazio — não em todo
+lugar, só onde o `@expo/vector-icons` (Ionicons) desenha um glifo. Causa raiz, achada
+comparando os dois hosts: `npx expo export --platform web` aninha a fonte de terceiro do
+Ionicons em `dist/assets/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.*.ttf`
+— caminho que **espelha** onde o pacote mora dentro do `node_modules` real do projeto, mas
+dentro do próprio `dist/`. O Vercel CLI, sem um `.vercelignore` no diretório publicado, aplica
+uma lista de ignore embutida que inclui qualquer pasta chamada **`node_modules`** — mesmo
+sendo, aqui, só uma convenção de nomenclatura do Expo, não dependência de verdade. Resultado:
+o arquivo nunca subia (confirmado por hash: `dist/` tem 73 arquivos, a Vercel só recebia 36 —
+faltavam exatamente os 37 de `assets/node_modules/`), a fonte dava 404 em produção
+(`app.vytraoficial.com.br`) mas 200 no EAS Hosting (`app-treino.expo.app`, que não tem esse
+comportamento de ignore). Achado batendo hash/tamanho do arquivo (200, `font/ttf`,
+389724 bytes, idêntico ao `dist/` local) depois da correção.
+
+**A correção não foi só criar um `.vercelignore` vazio** — testado e não bastou (o CLI ainda
+reportava "Found 26 rules" vindas de uma lista padrão interna, e o upload continuava sem os 37
+arquivos). O que funcionou foi um `.vercelignore` com **negação explícita**:
+```
+!assets/node_modules
+!assets/node_modules/**
+```
+Arquivo em [`public/.vercelignore`](public/.vercelignore) — mesma convenção já usada pro
+`vercel.json` (§17): tudo em `public/` é copiado pro `dist/` a cada `npx expo export`, então
+não precisa lembrar de recriar isso a cada deploy.
+
+⚠️ **Risco aceito, registrado:** se um dia o Expo passar a aninhar QUALQUER outro asset de
+terceiro sob um caminho diferente de `assets/node_modules/...` (ex.: uma fonte de outro pacote
+de ícones), o mesmo bug volta pra esse caminho novo — não existe uma negação genérica "nunca
+ignore nada dentro de assets/" tentada aqui porque isso reabriria a superfície que o ignore
+padrão do Vercel existe pra fechar (evitar subir dependência de verdade sem querer). Se
+aparecer ícone sumindo de novo, o primeiro passo é `find dist -type f | wc -l` vs. o total que
+a Vercel realmente recebe (linha "Found N files" do `--debug`).
+
+**Verificado**: os 37 arquivos de `assets/node_modules/` conferidos um a um por `curl`, todos
+200 na produção; bundle hash inalterado (o código não mudou, só a config de deploy).
+**Não é um bug de UI/React** — os componentes `Button`/`StepperButton` renderizam certo em
+qualquer navegador; o glifo simplesmente não existia no servidor pro navegador baixar.

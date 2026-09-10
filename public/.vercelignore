@@ -1,0 +1,7 @@
+# Sem isso, o Vercel CLI aplica uma lista de ignore padrão que inclui qualquer pasta chamada
+# "node_modules" — e o export estático do Expo aninha assets de terceiro (ex.: a fonte do
+# Ionicons) em `assets/node_modules/@expo/vector-icons/...`, espelhando o caminho real dentro
+# do node_modules do projeto. Resultado: a fonte nunca subia (404 em produção), ícones (aba,
+# +/- de carga/reps) viravam quadrado vazio. Achado em 10/set, ver HANDOFF.md.
+!assets/node_modules
+!assets/node_modules/**
