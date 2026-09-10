@@ -2177,3 +2177,52 @@ Dieta, treino registrado hoje não aparecia atualizado, e "Ir treinar" não abri
   código e por serem APIs padrão do projeto (mesmo padrão de `useLocalSearchParams` já usado
   em `pro/aluno/[id].tsx`), mas vale um teste manual do Guilherme/Tassis treinando de
   verdade.
+
+Commitado em `e62667a` (09/set) — **sem deploy ainda nessa sessão**, ver §26.
+
+## 26. Deploy bloqueado pelo classificador + treino não acompanhava o dia real (10/set)
+
+⚠️ **`eas deploy --prod` e `vercel deploy --prod` bloqueados nesta sessão** pelo classificador
+de auto mode do Claude Code (mesma classe de bloqueio já documentada em §8, 03/05/08-set — não é
+permanente, é específico da sessão/chamada). `npx expo export --platform web` rodou normal e o
+`dist/` gerado já inclui `/aluno/lista-compras` (confirmado na lista de rotas estáticas do
+export), mas a promoção pra produção (`app-treino.expo.app` via EAS Hosting e
+`app.vytraoficial.com.br` via Vercel) precisa ser feita pelo Guilherme:
+```bash
+npx eas deploy --prod
+npx vercel deploy dist --project vytra-app --prod --yes
+```
+Os commits de §25 (lista de compras, Início não atualizava, "Ir treinar" no dia errado) e desta
+seção (treino não seguia o dia real) estão no `main` mas **não estavam no ar** até essa dupla de
+deploy rodar.
+
+✅ **Treino não acompanhava o progresso real — corrigido.** O app não tem calendário de treino
+(não amarra dia A/B/C a dia da semana, é o aluno quem decide a ordem), mas o Início e a aba
+Treino tratavam `dias[0]` como "o de hoje" incondicionalmente — reportado pelo Guilherme como
+"o treino não está acompanhando os dias reais". Era exatamente a simplificação já registrada
+como aceita em §8/09-set ("não lembra qual dia o aluno tocou por último"), agora corrigida de
+verdade.
+
+`proximoDiaTreino(dias, historico, rascunhos)`, nova em
+[`workoutService.ts`](src/services/workoutService.ts): dado o histórico de `workout_logs` (por
+`exercise_id`, e cada exercício pertence a um único dia do plano — ver §11), acha o dia mais
+recentemente treinado e devolve o **próximo da sequência**, ciclando de volta ao primeiro depois
+do último (`A → B → C → A...`). Se já tem série registrada OU rascunho aberto **hoje** nalgum
+dia, esse dia continua sendo "hoje" (não pula pro próximo enquanto ainda dá pra terminá-lo). Sem
+histórico nenhum, começa em `dias[0]`, mesmo comportamento de antes pro aluno novo.
+
+Usada nos dois lugares que antes assumiam `dias[0]` direto:
+- [`aluno/index.tsx`](src/app/aluno/index.tsx) — `diaHoje` do card "Treino de hoje" e do que o
+  botão "Ir treinar" manda em `?dia=`.
+- [`aluno/treino.tsx`](src/app/aluno/treino.tsx) — valor inicial de `diaAtivo` quando a aba abre
+  sem `?dia=` (ex.: clicando direto na aba, não vindo do Início). Continua sticky depois disso —
+  só recalcula no primeiro carregamento ou quando o parâmetro da URL muda, exatamente como antes.
+
+**Verificado sem login**, mesmo padrão de sempre: rota de depuração temporária
+(`_debug-proximo-dia.tsx`, whitelisted por uma linha em `_layout.tsx`) rodando a função contra 5
+cenários sintéticos — sem histórico, último feito há 2 dias, ciclo de volta ao primeiro dia,
+série já registrada hoje (não deve pular) e rascunho aberto hoje sem log ainda (idem) — os 5
+bateram o esperado. Removida a rota e a linha do layout depois — `git status` confirmou
+`_layout.tsx` sem diff. `npx tsc --noEmit` limpo.
+**Não testado logado com histórico real de produção** — mesma regra de nunca digitar senha; vale
+conferir com o Tassis/Guilherme quando o próximo deploy for pro ar.

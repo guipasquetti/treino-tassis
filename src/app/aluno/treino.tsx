@@ -28,6 +28,7 @@ import {
   concluidoHoje,
   corrigirUltimaSerie,
   getWorkoutData,
+  proximoDiaTreino,
   registrarSerie,
   seriesDeHoje,
   sessaoAnterior,
@@ -61,7 +62,12 @@ export default function TreinoScreen() {
     ]);
     setData(resultado);
     setLiberado(confirmado);
-    setDiaAtivo((atual) => atual ?? resultado.plano?.dias[0]?.id ?? null);
+    setDiaAtivo(
+      (atual) =>
+        atual ??
+        proximoDiaTreino(resultado.plano?.dias ?? [], resultado.historico, resultado.rascunhos)?.id ??
+        null,
+    );
     setLoading(false);
   }, [user]);
 

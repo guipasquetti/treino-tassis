@@ -85,6 +85,48 @@ export function streakTreino(historico: Record<string, Sessao[]>): number {
   return streak;
 }
 
+/**
+ * Qual dia do plano (A/B/C...) é "o de hoje" — o app não tem calendário de treino, é o
+ * aluno quem escolhe a ordem, então "hoje" é o próximo da sequência depois do último dia
+ * batido, ciclando de volta ao início. Antes disso, tanto o Início quanto a aba Treino
+ * assumiam sempre `dias[0]` (§8/09-set do handoff, "simplificação aceita") — parava de bater
+ * com o progresso real assim que o aluno passava do primeiro dia do plano.
+ *
+ * Se já tem série registrada OU rascunho aberto hoje num dia, esse dia "ganha" e continua
+ * sendo o de hoje (não pula pro próximo enquanto o dia de hoje ainda pode ser completado).
+ * Sem histórico nenhum, começa no primeiro dia do plano.
+ */
+export function proximoDiaTreino(
+  dias: DiaTreino[],
+  historico: Record<string, Sessao[]>,
+  rascunhos: Record<string, Sessao>,
+): DiaTreino | null {
+  if (!dias.length) return null;
+
+  const hoje = hojeISO();
+  const emAndamentoHoje = dias.find((dia) =>
+    dia.ex.some((ex) => historico[ex.id]?.some((s) => s.data === hoje) || rascunhos[ex.id]),
+  );
+  if (emAndamentoHoje) return emAndamentoHoje;
+
+  let indiceUltimo = -1;
+  let dataUltimo = '';
+  dias.forEach((dia, i) => {
+    for (const ex of dia.ex) {
+      const sessoes = historico[ex.id];
+      if (!sessoes?.length) continue;
+      const data = sessoes[sessoes.length - 1].data;
+      if (data > dataUltimo) {
+        dataUltimo = data;
+        indiceUltimo = i;
+      }
+    }
+  });
+
+  if (indiceUltimo === -1) return dias[0];
+  return dias[(indiceUltimo + 1) % dias.length];
+}
+
 /** Séries já registradas hoje — do log (se concluído) ou do rascunho. */
 export function seriesDeHoje(
   historico: Sessao[] | undefined,

@@ -14,7 +14,13 @@ import {
 import { buscarCategoriasPorIds, getPlanoAlimentar, type PlanoAlimentar } from '@/services/nutritionService';
 import { listarMeusProfissionais, temPlanoConfirmado } from '@/services/professionalService';
 import { proximaTeleconsulta, type Teleconsulta } from '@/services/teleconsultaService';
-import { concluidoHoje, getWorkoutData, streakTreino, type WorkoutData } from '@/services/workoutService';
+import {
+  concluidoHoje,
+  getWorkoutData,
+  proximoDiaTreino,
+  streakTreino,
+  type WorkoutData,
+} from '@/services/workoutService';
 import { useAuthStore } from '@/store/authStore';
 import { MacroColors, Palette, Radius, Spacing, trainingColor } from '@/theme';
 
@@ -103,7 +109,7 @@ export default function InicioScreen() {
   }
 
   const dias = estado.workout?.plano?.publicado ? estado.workout.plano.dias : [];
-  const diaHoje = dias[0] ?? null;
+  const diaHoje = proximoDiaTreino(dias, estado.workout?.historico ?? {}, estado.workout?.rascunhos ?? {});
   const exerciciosHoje = diaHoje?.ex ?? [];
   const concluidosHoje = exerciciosHoje.filter((ex) =>
     concluidoHoje(estado.workout!.historico[ex.id]),
