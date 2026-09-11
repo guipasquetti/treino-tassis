@@ -8,6 +8,8 @@ export type ResumoAluno = AlunoVinculado & {
   flagSaude: string | null;
   /** Data do check-in mais recente respondido por esse aluno, ou null se nunca respondeu. */
   ultimoCheckin: string | null;
+  objetivoAnamnese: string | null;
+  alergiasAnamnese: string | null;
 };
 
 export type EspecialidadePainel = 'nutricionista' | 'personal_trainer';
@@ -52,9 +54,17 @@ export async function obterPainelGestao(professionalId: string): Promise<PainelG
       clientIds.length
         ? supabase
             .from('anamnese')
-            .select('client_id, condicoes_medicas, lesoes_dores')
+            .select('client_id, condicoes_medicas, lesoes_dores, objetivo_principal, alergias')
             .in('client_id', clientIds)
-        : Promise.resolve({ data: [] as { client_id: string; condicoes_medicas: string; lesoes_dores: string }[] }),
+        : Promise.resolve({
+            data: [] as {
+              client_id: string;
+              condicoes_medicas: string;
+              lesoes_dores: string;
+              objetivo_principal: string;
+              alergias: string;
+            }[],
+          }),
       supabase
         .from('convites')
         .select('id')
@@ -91,6 +101,8 @@ export async function obterPainelGestao(professionalId: string): Promise<PainelG
       temPlanoDieta: dietaSet.has(aluno.clientId),
       flagSaude: sinaisSaude || null,
       ultimoCheckin: ultimoCheckinPorCliente.get(aluno.clientId) ?? null,
+      objetivoAnamnese: anamnese?.objetivo_principal?.trim() || null,
+      alergiasAnamnese: anamnese?.alergias?.trim() || null,
     };
   });
 

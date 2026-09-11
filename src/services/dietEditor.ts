@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
-import { macrosPorGramas, type ItemRefeicao, type Refeicao } from '@/models/domain';
+import { macrosPorGramas, type ItemRefeicao, type ItemSubstituicao, type Refeicao } from '@/models/domain';
+import type { FormulaCalculo } from '@/models/gastoEnergetico';
 import type { AlimentoTaco } from '@/services/nutritionService';
 
 /**
@@ -22,6 +23,13 @@ export type PlanoAlimentarEditavel = {
   refeicoes: Refeicao[];
   /** Rascunho (false) fica invisível pro aluno até o profissional publicar explicitamente. */
   publicado: boolean;
+  /** Config da calculadora de meta calórica — null até o profissional calcular pela 1ª vez. */
+  formulaCalculo: FormulaCalculo | null;
+  fatorAtividade: string;
+  percentualGordura: string;
+  /** Resultado no momento do cálculo, preservado mesmo se o profissional ajustar as metas depois. */
+  tmbCalculada: number | null;
+  getCalculado: number | null;
 };
 
 export function novoItem(): ItemRefeicao {
@@ -80,6 +88,11 @@ export function planoAlimentarParaEdicao(
     observacoes: string;
     refeicoes: Refeicao[];
     publicado: boolean;
+    formula_calculo?: string | null;
+    fator_atividade?: number | null;
+    percentual_gordura?: number | null;
+    tmb_calculada?: number | null;
+    get_calculado?: number | null;
   } | null,
   nomeProfissional: string,
 ): PlanoAlimentarEditavel {
@@ -95,6 +108,11 @@ export function planoAlimentarParaEdicao(
       observacoes: '',
       refeicoes: [novaRefeicao()],
       publicado: false,
+      formulaCalculo: null,
+      fatorAtividade: '',
+      percentualGordura: '',
+      tmbCalculada: null,
+      getCalculado: null,
     };
   }
   return {
@@ -107,6 +125,11 @@ export function planoAlimentarParaEdicao(
     observacoes: plano.observacoes ?? '',
     refeicoes: plano.refeicoes.length ? plano.refeicoes : [novaRefeicao()],
     publicado: plano.publicado,
+    formulaCalculo: (plano.formula_calculo as FormulaCalculo | null) ?? null,
+    fatorAtividade: plano.fator_atividade?.toString() ?? '',
+    percentualGordura: plano.percentual_gordura?.toString() ?? '',
+    tmbCalculada: plano.tmb_calculada ?? null,
+    getCalculado: plano.get_calculado ?? null,
   };
 }
 
@@ -135,9 +158,43 @@ export async function salvarPlanoAlimentar(
       observacoes: plano.observacoes.trim(),
       refeicoes,
       publicado: plano.publicado,
+      formula_calculo: plano.formulaCalculo,
+      fator_atividade: numeroOuNulo(plano.fatorAtividade),
+      percentual_gordura: numeroOuNulo(plano.percentualGordura),
+      tmb_calculada: plano.tmbCalculada,
+      get_calculado: plano.getCalculado,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'client_id' },
   );
   if (error) throw error;
+}
+
+/** Adiciona uma substituição vazia a um item — mesmo padrão de `novoItem`. */
+export function adicionarSubstituicao(item: ItemRefeicao): ItemRefeicao {
+  return { ...item, substituicoes: [...item.substituicoes, { nome: '', quantidade: '', macros: null }] };
+}
+
+export function removerSubstituicao(item: ItemRefeicao, indice: number): ItemRefeicao {
+  return { ...item, substituicoes: item.substituicoes.filter((_, i) => i !== indice) };
+}
+
+export function atualizarSubstituicao(
+  item: ItemRefeicao,
+  indice: number,
+  patch: Partial<ItemSubstituicao>,
+): ItemRefeicao {
+  return {
+    ...item,
+    substituicoes: item.substituicoes.map((s, i) => (i === indice ? { ...s, ...patch } : s)),
+  };
+}
+
+/** Monta uma substituição a partir de um alimento da TACO — mesmo cálculo de `itemDeTaco`. */
+export function substituicaoDeTaco(alimento: AlimentoTaco, gramas: number): ItemSubstituicao {
+  return {
+    nome: alimento.nome,
+    quantidade: `${gramas}g`,
+    macros: macrosPorGramas(alimento, gramas),
+  };
 }

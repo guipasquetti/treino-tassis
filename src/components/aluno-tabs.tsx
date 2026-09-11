@@ -10,7 +10,7 @@ export function AlunoTabs({
   ativo,
 }: {
   clientId: string;
-  ativo: 'resumo' | 'treino' | 'dieta';
+  ativo: 'resumo' | 'treino' | 'dieta' | 'anamnese';
 }) {
   const router = useRouter();
 
@@ -33,6 +33,12 @@ export function AlunoTabs({
         active={ativo === 'dieta'}
         color={Palette.purple}
         onPress={() => router.replace(`/pro/aluno/${clientId}/dieta`)}
+      />
+      <Pill
+        label="Anamnese"
+        active={ativo === 'anamnese'}
+        color={Palette.orange}
+        onPress={() => router.replace(`/pro/aluno/${clientId}/anamnese`)}
       />
     </View>
   );

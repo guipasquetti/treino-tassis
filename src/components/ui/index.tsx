@@ -120,6 +120,45 @@ export function Stat({ value, label, color = Palette.text }: { value: string; la
   );
 }
 
+/**
+ * Barra de progresso simples — sem lib nova, só `View` com largura proporcional. Extraída de
+ * `aluno/index.tsx` (09/set) pra ser reaproveitada no dashboard de evolução do profissional
+ * (`pro/aluno/[id]/resumo.tsx`), sem duplicar a mesma implementação em dois arquivos.
+ */
+export function BarraProgresso({ valor, total, cor }: { valor: number; total: number; cor: string }) {
+  const pct = total > 0 ? Math.min(1, valor / total) * 100 : 0;
+  return (
+    <View style={styles.progressoTrilha}>
+      <View style={[styles.progressoPreenchido, { width: `${pct}%`, backgroundColor: cor }]} />
+    </View>
+  );
+}
+
+/**
+ * Mini-gráfico de barras — sem lib de chart, só `View`s escaladas pelo min/max da série.
+ * Mesma origem/motivo de extração da `BarraProgresso` acima.
+ */
+export function Sparkline({ valores, cor }: { valores: number[]; cor: string }) {
+  const min = Math.min(...valores);
+  const max = Math.max(...valores);
+  const amplitude = max - min || 1;
+  const ultimos = valores.slice(-12);
+  return (
+    <View style={styles.sparkline}>
+      {ultimos.map((v, i) => {
+        const altura = 8 + ((v - min) / amplitude) * 40;
+        const ultimo = i === ultimos.length - 1;
+        return (
+          <View
+            key={i}
+            style={[styles.sparklineBarra, { height: altura, backgroundColor: ultimo ? cor : Palette.surfaceElevated }]}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
 export function Pill({
   label,
   active,
@@ -230,6 +269,7 @@ export function Field({
   placeholder,
   keyboardType,
   multiline,
+  editable = true,
   style,
 }: {
   label?: string;
@@ -239,19 +279,21 @@ export function Field({
   keyboardType?: 'default' | 'number-pad' | 'decimal-pad';
   /** Vira textarea de 3 linhas — usado nas perguntas de resposta longa da anamnese. */
   multiline?: boolean;
+  editable?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   return (
     <View style={[styles.field, style]}>
       {label ? <Text style={styles.fieldLabel}>{label}</Text> : null}
       <TextInput
-        style={[styles.input, multiline && styles.inputMultiline]}
+        style={[styles.input, multiline && styles.inputMultiline, !editable && styles.inputDesabilitado]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor={Palette.textTertiary}
         keyboardType={keyboardType}
         multiline={multiline}
+        editable={editable}
         numberOfLines={multiline ? 3 : undefined}
         textAlignVertical={multiline ? 'top' : undefined}
       />
@@ -307,6 +349,28 @@ export function Loading() {
 }
 
 const styles = StyleSheet.create({
+  progressoTrilha: {
+    height: 8,
+    borderRadius: Radius.pill,
+    backgroundColor: Palette.surfaceElevated,
+    overflow: 'hidden',
+  },
+  progressoPreenchido: {
+    height: '100%',
+    borderRadius: Radius.pill,
+  },
+  sparkline: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 4,
+    height: 48,
+    marginTop: Spacing.sm,
+  },
+  sparklineBarra: {
+    flex: 1,
+    borderRadius: Radius.sm,
+    minHeight: 8,
+  },
   screen: {
     flex: 1,
     backgroundColor: Palette.background,
@@ -450,6 +514,9 @@ const styles = StyleSheet.create({
   inputMultiline: {
     minHeight: 72,
     paddingTop: Spacing.md,
+  },
+  inputDesabilitado: {
+    opacity: 0.6,
   },
   toggleRow: {
     flexDirection: 'row',

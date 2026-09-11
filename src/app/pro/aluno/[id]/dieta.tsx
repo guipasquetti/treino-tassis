@@ -22,16 +22,30 @@ import {
   somaMacros,
   totalConferidoPeloNutricionista,
   type ItemRefeicao,
+  type ItemSubstituicao,
   type Refeicao,
 } from '@/models/domain';
-import { getProfile } from '@/services/authService';
 import {
+  calcularGET,
+  calcularTMB,
+  idadeApartirDe,
+  sugerirMacros,
+  type FormulaCalculo,
+  type Objetivo,
+} from '@/models/gastoEnergetico';
+import { getProfile, type Profile } from '@/services/authService';
+import { obterAnamnese } from '@/services/anamneseService';
+import {
+  adicionarSubstituicao,
+  atualizarSubstituicao,
   itemDeTaco,
   novaRefeicao,
   novoItem,
   planoAlimentarParaEdicao,
   recalcularPorGramas,
+  removerSubstituicao,
   salvarPlanoAlimentar,
+  substituicaoDeTaco,
   type PlanoAlimentarEditavel,
 } from '@/services/dietEditor';
 import {
@@ -43,12 +57,34 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { MacroColors, Palette, Radius, Spacing } from '@/theme';
 
+const OPCOES_FORMULA: { valor: FormulaCalculo; label: string }[] = [
+  { valor: 'mifflin_st_jeor', label: 'Mifflin-St Jeor' },
+  { valor: 'harris_benedict', label: 'Harris-Benedict' },
+  { valor: 'cunningham', label: 'Cunningham' },
+];
+
+const OPCOES_FATOR_ATIVIDADE = [
+  { valor: '1.2', label: 'Sedentário (1.2)' },
+  { valor: '1.375', label: 'Leve (1.375)' },
+  { valor: '1.55', label: 'Moderado (1.55)' },
+  { valor: '1.725', label: 'Intenso (1.725)' },
+  { valor: '1.9', label: 'Muito intenso (1.9)' },
+];
+
+const OPCOES_OBJETIVO: { valor: Objetivo; label: string }[] = [
+  { valor: 'deficit', label: 'Déficit' },
+  { valor: 'manutencao', label: 'Manutenção' },
+  { valor: 'superavit', label: 'Superávit' },
+];
+
 export default function EditorDietaScreen() {
   const { id: clientId } = useLocalSearchParams<{ id: string }>();
   const user = useAuthStore((s) => s.user);
   const profile = useAuthStore((s) => s.profile);
 
   const [nomeAluno, setNomeAluno] = useState('');
+  const [perfilAluno, setPerfilAluno] = useState<Profile | null>(null);
+  const [nivelAtividadeAnamnese, setNivelAtividadeAnamnese] = useState('');
   const [plano, setPlano] = useState<PlanoAlimentarEditavel | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [publicando, setPublicando] = useState(false);
@@ -57,8 +93,14 @@ export default function EditorDietaScreen() {
 
   const carregar = useCallback(async () => {
     if (!clientId) return;
-    const [perfil, atual] = await Promise.all([getProfile(clientId), getPlanoAlimentar(clientId)]);
+    const [perfil, atual, anamnese] = await Promise.all([
+      getProfile(clientId),
+      getPlanoAlimentar(clientId),
+      obterAnamnese(clientId),
+    ]);
     setNomeAluno(perfil?.nome || 'Aluno');
+    setPerfilAluno(perfil);
+    setNivelAtividadeAnamnese(anamnese?.respostasCompletas.pratica_atividade ?? '');
     setPlano(planoAlimentarParaEdicao(atual, profile?.nome || ''));
   }, [clientId, profile?.nome]);
 
@@ -173,6 +215,13 @@ export default function EditorDietaScreen() {
         </Caption>
       </Card>
 
+      <CalculadoraMetaCalorica
+        perfilAluno={perfilAluno}
+        nivelAtividadeAnamnese={nivelAtividadeAnamnese}
+        plano={plano}
+        onCalcular={(patch) => setPlano({ ...plano, ...patch })}
+      />
+
       <Card>
         <Field
           label="Período"
@@ -249,6 +298,131 @@ export default function EditorDietaScreen() {
 
       <Button label="Salvar dieta" color={Palette.purple} onPress={salvar} loading={salvando} />
     </Screen>
+  );
+}
+
+/**
+ * Calculadora de meta calórica — puro cálculo determinístico (`gastoEnergetico.ts`), o
+ * profissional escolhe fórmula/fator/objetivo e SEMPRE revisa o resultado antes de publicar:
+ * "Calcular sugestão" só preenche os campos de meta já existentes, nunca salva sozinho.
+ */
+function CalculadoraMetaCalorica({
+  perfilAluno,
+  nivelAtividadeAnamnese,
+  plano,
+  onCalcular,
+}: {
+  perfilAluno: Profile | null;
+  nivelAtividadeAnamnese: string;
+  plano: PlanoAlimentarEditavel;
+  onCalcular: (patch: Partial<PlanoAlimentarEditavel>) => void;
+}) {
+  const [formula, setFormula] = useState<FormulaCalculo>(plano.formulaCalculo ?? 'mifflin_st_jeor');
+  const [fatorAtividade, setFatorAtividade] = useState(plano.fatorAtividade || '1.55');
+  const [percentualGordura, setPercentualGordura] = useState(plano.percentualGordura);
+  const [objetivo, setObjetivo] = useState<Objetivo>('manutencao');
+
+  const sexo = perfilAluno?.sexo as 'feminino' | 'masculino' | 'outro' | null;
+  const faltaDado =
+    !perfilAluno?.peso_kg ||
+    !perfilAluno?.altura_cm ||
+    !perfilAluno?.data_nascimento ||
+    !sexo ||
+    (formula === 'cunningham' && !percentualGordura);
+
+  function calcular() {
+    if (!perfilAluno?.peso_kg || !perfilAluno?.altura_cm || !perfilAluno?.data_nascimento || !sexo) return;
+    const idade = idadeApartirDe(perfilAluno.data_nascimento);
+    const tmb = calcularTMB(formula, {
+      pesoKg: perfilAluno.peso_kg,
+      alturaCm: perfilAluno.altura_cm,
+      idade,
+      sexo,
+      percentualGordura: percentualGordura ? Number(percentualGordura.replace(',', '.')) : undefined,
+    });
+    if (tmb == null) return;
+    const fator = Number(fatorAtividade.replace(',', '.'));
+    const get = calcularGET(tmb, fator);
+    const macros = sugerirMacros(get, objetivo, perfilAluno.peso_kg);
+    onCalcular({
+      formulaCalculo: formula,
+      fatorAtividade,
+      percentualGordura,
+      tmbCalculada: Math.round(tmb),
+      getCalculado: get,
+      meta_kcal: String(macros.kcal),
+      meta_proteina_g: String(macros.proteinaG),
+      meta_carboidrato_g: String(macros.carboidratoG),
+      meta_gordura_g: String(macros.lipideosG),
+    });
+  }
+
+  return (
+    <Card>
+      <SectionTitle>Calculadora de meta calórica</SectionTitle>
+      {faltaDado && !(formula === 'cunningham' && !percentualGordura) ? (
+        <Caption color={Palette.orange}>
+          Complete peso, altura, data de nascimento e sexo no perfil do paciente antes de calcular.
+        </Caption>
+      ) : null}
+      {nivelAtividadeAnamnese ? (
+        <Caption color={Palette.textTertiary}>Atividade relatada na anamnese: {nivelAtividadeAnamnese}</Caption>
+      ) : null}
+
+      <Caption>Fórmula</Caption>
+      <View style={styles.linhaPills}>
+        {OPCOES_FORMULA.map((opcao) => (
+          <Pill
+            key={opcao.valor}
+            label={opcao.label}
+            active={formula === opcao.valor}
+            onPress={() => setFormula(opcao.valor)}
+          />
+        ))}
+      </View>
+
+      {formula === 'cunningham' ? (
+        <Field
+          label="% de gordura corporal"
+          value={percentualGordura}
+          keyboardType="decimal-pad"
+          onChangeText={setPercentualGordura}
+          placeholder="Ex.: 18"
+        />
+      ) : null}
+
+      <Caption>Fator de atividade</Caption>
+      <View style={styles.linhaPills}>
+        {OPCOES_FATOR_ATIVIDADE.map((opcao) => (
+          <Pill
+            key={opcao.valor}
+            label={opcao.label}
+            active={fatorAtividade === opcao.valor}
+            onPress={() => setFatorAtividade(opcao.valor)}
+          />
+        ))}
+      </View>
+
+      <Caption>Objetivo</Caption>
+      <View style={styles.linhaPills}>
+        {OPCOES_OBJETIVO.map((opcao) => (
+          <Pill
+            key={opcao.valor}
+            label={opcao.label}
+            active={objetivo === opcao.valor}
+            onPress={() => setObjetivo(opcao.valor)}
+          />
+        ))}
+      </View>
+
+      {plano.tmbCalculada && plano.getCalculado ? (
+        <Caption color={Palette.textTertiary}>
+          Último cálculo: TMB {plano.tmbCalculada} kcal · GET {plano.getCalculado} kcal
+        </Caption>
+      ) : null}
+
+      <Button label="Calcular sugestão" variant="ghost" onPress={calcular} disabled={faltaDado} />
+    </Card>
   );
 }
 
@@ -380,6 +554,104 @@ function ItemEditor({
       )}
 
       {item.obs ? <Caption color={Palette.textTertiary}>{item.obs}</Caption> : null}
+
+      <Caption>Substituições</Caption>
+      {item.substituicoes.map((sub, si) => (
+        <SubstituicaoEditor
+          key={si}
+          substituicao={sub}
+          onMudar={(patch) => onMudar(atualizarSubstituicao(item, si, patch))}
+          onRemover={() => onMudar(removerSubstituicao(item, si))}
+        />
+      ))}
+      <View style={styles.linha}>
+        <Button
+          label="+ Substituição"
+          variant="ghost"
+          onPress={() => onMudar(adicionarSubstituicao(item))}
+        />
+      </View>
+    </View>
+  );
+}
+
+function SubstituicaoEditor({
+  substituicao,
+  onMudar,
+  onRemover,
+}: {
+  substituicao: ItemSubstituicao;
+  onMudar: (patch: Partial<ItemSubstituicao>) => void;
+  onRemover: () => void;
+}) {
+  return (
+    <View style={styles.substituicao}>
+      <View style={styles.linha}>
+        <Field
+          value={substituicao.nome}
+          onChangeText={(nome) => onMudar({ nome })}
+          placeholder="Nome da substituição"
+        />
+        <RemoveButton label="✕" onPress={onRemover} />
+      </View>
+      <View style={styles.linha}>
+        <Field
+          value={substituicao.quantidade}
+          onChangeText={(quantidade) => onMudar({ quantidade })}
+          placeholder="Ex.: 100g"
+        />
+        <BuscaTacoInline
+          onEscolher={(alimento) => onMudar(substituicaoDeTaco(alimento, 100))}
+        />
+      </View>
+      {substituicao.macros ? (
+        <Caption color={Palette.textTertiary}>
+          {Math.round(substituicao.macros.kcal)} kcal · P {substituicao.macros.proteina_g}g · C{' '}
+          {substituicao.macros.carboidrato_g}g · G {substituicao.macros.lipideos_g}g
+        </Caption>
+      ) : null}
+    </View>
+  );
+}
+
+function BuscaTacoInline({ onEscolher }: { onEscolher: (alimento: AlimentoTaco) => void }) {
+  const [termo, setTermo] = useState('');
+  const [resultados, setResultados] = useState<AlimentoTaco[]>([]);
+  const [buscando, setBuscando] = useState(false);
+  const [aberto, setAberto] = useState(false);
+
+  async function buscar() {
+    setBuscando(true);
+    try {
+      setResultados(await buscarAlimentos(termo));
+    } finally {
+      setBuscando(false);
+    }
+  }
+
+  if (!aberto) {
+    return <Button label="TACO" variant="ghost" onPress={() => setAberto(true)} />;
+  }
+
+  return (
+    <View style={styles.busca}>
+      <View style={styles.linha}>
+        <Field value={termo} onChangeText={setTermo} placeholder="Buscar na TACO" />
+        <Button label="Buscar" variant="ghost" onPress={buscar} loading={buscando} />
+      </View>
+      {resultados.map((alimento) => (
+        <Card
+          key={alimento.id}
+          style={styles.resultado}
+          onPress={() => {
+            onEscolher(alimento);
+            setResultados([]);
+            setTermo('');
+            setAberto(false);
+          }}>
+          <Body>{alimento.nome}</Body>
+        </Card>
+      ))}
     </View>
   );
 }
@@ -445,6 +717,11 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     alignItems: 'flex-end',
   },
+  linhaPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
   refeicaoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -463,6 +740,12 @@ const styles = StyleSheet.create({
   },
   busca: {
     gap: Spacing.sm,
+  },
+  substituicao: {
+    backgroundColor: Palette.surfaceElevated,
+    borderRadius: Radius.sm,
+    padding: Spacing.sm,
+    gap: Spacing.xs,
   },
   resultado: {
     backgroundColor: Palette.surfaceElevated,

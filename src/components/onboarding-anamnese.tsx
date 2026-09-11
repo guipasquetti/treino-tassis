@@ -9,6 +9,44 @@ import { useAuthStore } from '@/store/authStore';
 import { Palette, Spacing } from '@/theme';
 
 /**
+ * Formulário puro da anamnese — as 10 seções de `SECOES_ANAMNESE`, sem lógica de onboarding
+ * nem de escolha de plano. Reaproveitado pelo onboarding (`OnboardingAnamnese` abaixo), pela
+ * reedição do paciente (`aluno/anamnese.tsx`) e pela revisão do profissional
+ * (`pro/aluno/[id]/anamnese.tsx`) — extrair aqui evita ter a mesma lista de `Field` em 3 lugares.
+ */
+export function AnamneseCampos({
+  respostas,
+  onChange,
+  somenteLeitura = false,
+}: {
+  respostas: RespostasAnamnese;
+  onChange: (id: string, valor: string) => void;
+  somenteLeitura?: boolean;
+}) {
+  return (
+    <>
+      {SECOES_ANAMNESE.map((secao) => (
+        <Card key={secao.titulo}>
+          <SectionTitle>{secao.titulo}</SectionTitle>
+          {secao.campos.map((campo) => (
+            <Field
+              key={campo.id}
+              label={campo.label}
+              value={respostas[campo.id] ?? ''}
+              onChangeText={(v) => onChange(campo.id, v)}
+              placeholder={campo.placeholder}
+              keyboardType={campo.tipo === 'numero' ? 'decimal-pad' : 'default'}
+              multiline={campo.tipo === 'area'}
+              editable={!somenteLeitura}
+            />
+          ))}
+        </Card>
+      ))}
+    </>
+  );
+}
+
+/**
  * Onboarding dentro do app (§12, 04/set): lead já criou conta e está logado, mas ainda não
  * respondeu a anamnese. `aluno/_layout.tsx` mostra isto no lugar das abas até isso acontecer.
  * O plano escolhido aqui é só um PEDIDO (`plano_solicitado_id`) — quem libera treino/dieta é
@@ -69,22 +107,7 @@ export function OnboardingAnamnese({ onConcluido }: { onConcluido: () => void })
         </Caption>
       </Card>
 
-      {SECOES_ANAMNESE.map((secao) => (
-        <Card key={secao.titulo}>
-          <SectionTitle>{secao.titulo}</SectionTitle>
-          {secao.campos.map((campo) => (
-            <Field
-              key={campo.id}
-              label={campo.label}
-              value={respostas[campo.id] ?? ''}
-              onChangeText={(v) => atualizarResposta(campo.id, v)}
-              placeholder={campo.placeholder}
-              keyboardType={campo.tipo === 'numero' ? 'decimal-pad' : 'default'}
-              multiline={campo.tipo === 'area'}
-            />
-          ))}
-        </Card>
-      ))}
+      <AnamneseCampos respostas={respostas} onChange={atualizarResposta} />
 
       <Card>
         <SectionTitle>Qual plano você quer contratar?</SectionTitle>

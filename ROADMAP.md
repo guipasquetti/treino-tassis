@@ -123,10 +123,20 @@ construídos.
 
 ## Itens explicitamente fora deste ciclo
 
-- Diagnóstico ou prescrição automatizada por IA.
 - Compartilhamento indiscriminado de anamnese/dados de saúde entre profissionais.
 - Marketplace e descoberta pública de profissionais.
 - Cobrança processada dentro do aplicativo.
+
+## IA para sugestão de dieta/treino (decisão 11/set)
+
+Reaberta como direção do produto — não é mais "fora de ciclo". Guilherme quer o profissional
+revisando (não digitando do zero) uma sugestão de dieta/treino que a IA (Claude API) monta a
+partir da anamnese. Condição explícita dele: toda sugestão tem que se basear nas fórmulas e
+parâmetros que o próprio profissional configura no painel — a IA nunca decide sozinha o cálculo
+de meta calórica. Sequenciamento escolhido: primeiro os painéis completos e a calculadora
+determinística de meta calórica (HANDOFF.md §27, Entrega 2), depois a IA entra em cima desse
+dado real e dessa configuração já existente. Ainda não iniciado — nenhuma chamada a IA/LLM
+existe no código.
 
 ## Métricas de validação
 

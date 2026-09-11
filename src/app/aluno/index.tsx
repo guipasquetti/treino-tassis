@@ -3,7 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 
-import { Body, Button, Caption, Card, EmptyState, Loading, Screen, SectionTitle, Stat } from '@/components/ui';
+import { BarraProgresso, Body, Button, Caption, Card, EmptyState, Loading, Screen, SectionTitle, Sparkline, Stat } from '@/components/ui';
 import { formatarData, formatarDataHora, itensReais, listaDeCompras, somaMacros } from '@/models/domain';
 import {
   checkinPendente,
@@ -22,7 +22,7 @@ import {
   type WorkoutData,
 } from '@/services/workoutService';
 import { useAuthStore } from '@/store/authStore';
-import { MacroColors, Palette, Radius, Spacing, trainingColor } from '@/theme';
+import { MacroColors, Palette, Spacing, trainingColor } from '@/theme';
 
 /** Chave igual à usada em `aluno/dieta.tsx` — mesmo checklist, lido aqui só pro resumo. */
 function chaveMarcados(userId: string): string {
@@ -291,38 +291,6 @@ function TendenciaCheckin({ atual, anterior }: { atual: CheckIn; anterior: Check
   );
 }
 
-/** Barra de progresso simples — sem lib nova, só `View` com largura proporcional. */
-function BarraProgresso({ valor, total, cor }: { valor: number; total: number; cor: string }) {
-  const pct = total > 0 ? Math.min(1, valor / total) * 100 : 0;
-  return (
-    <View style={styles.progressoTrilha}>
-      <View style={[styles.progressoPreenchido, { width: `${pct}%`, backgroundColor: cor }]} />
-    </View>
-  );
-}
-
-/** Mini-gráfico de barras — sem lib de chart, só `View`s escaladas pelo min/max da série. */
-function Sparkline({ valores, cor }: { valores: number[]; cor: string }) {
-  const min = Math.min(...valores);
-  const max = Math.max(...valores);
-  const amplitude = max - min || 1;
-  const ultimos = valores.slice(-12);
-  return (
-    <View style={styles.sparkline}>
-      {ultimos.map((v, i) => {
-        const altura = 8 + ((v - min) / amplitude) * 40;
-        const ultimo = i === ultimos.length - 1;
-        return (
-          <View
-            key={i}
-            style={[styles.sparklineBarra, { height: altura, backgroundColor: ultimo ? cor : Palette.surfaceElevated }]}
-          />
-        );
-      })}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
@@ -346,27 +314,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  progressoTrilha: {
-    height: 8,
-    borderRadius: Radius.pill,
-    backgroundColor: Palette.surfaceElevated,
-    overflow: 'hidden',
-  },
-  progressoPreenchido: {
-    height: '100%',
-    borderRadius: Radius.pill,
-  },
-  sparkline: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 4,
-    height: 48,
-    marginTop: Spacing.sm,
-  },
-  sparklineBarra: {
-    flex: 1,
-    borderRadius: Radius.sm,
-    minHeight: 8,
   },
 });

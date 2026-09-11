@@ -521,6 +521,178 @@ Ou seja, o provedor padrão **nunca** entregaria e-mail a um paciente, nem com v
 Os erros que vimos (`connection_failed` no reset de senha, `over_email_send_rate_limit` no
 signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver §16.
 
+- 📌 **Decisão (11/set, Guilherme): cobrir 3 gaps reais do WebDiet, mantendo a essência do
+  Vytra.** Análise comparativa feita introspectando o MCP do WebDiet (`api.mcp.ai/p_webdiet`,
+  62 tools) contra o estado atual do Vytra. Vytra já ganha em check-in recorrente com
+  pontuação, lista de compras dinâmica e progresso visual por foto — nenhum desses existe no
+  WebDiet. Mas 3 áreas o WebDiet cobre e o Vytra não tem nada ainda:
+  1. **Financeiro + recibo** — hoje pagamento é 100% manual fora do app (§5, §12 passo 6);
+     nenhum ledger, nenhuma categoria, nenhum recibo gerado pelo Vytra.
+  2. **Prontuário evolutivo por sessão** — `atendimentos` só cobre a fase pré-conversão
+     (lead); não existe nota clínica ligada a cada teleconsulta/sessão pós-cadastro.
+  3. **Anexos do paciente** (exames, laudos) — check-in só tem foto de corpo (§13); não há
+     upload genérico de arquivo do lado paciente, só do lado profissional (carteirinha
+     CREF/CRN, §8).
+  Copiar a **função**, não a UX — Tassis chama WebDiet de "odiado" por UX mobile ruim, isso
+  não é referência de tela, só de capacidade. Lente §0 obrigatória nos 3: financeiro é dado
+  sensível novo (valor cobrado, categoria), prontuário e anexos são dado de saúde adicional —
+  cada um entra com checklist de RLS/base legal próprio antes de virar schema, mesma regra já
+  aplicada em `check_ins`/`professional_verificacoes`. **Ainda não priorizado entre os três nem
+  iniciado** — só a decisão de escopo está fechada.
+  - ✅ **Priorizado (11/set): financeiro/cobrança entra primeiro.** Guilherme escolheu cobrir
+    cobrança antes de prontuário evolutivo e anexos. Desenho completo (2 fluxos — paciente→
+    profissional e profissional→Vytra — com telas/funções/estados) num artifact:
+    `https://claude.ai/code/artifact/7b1e541b-6e03-4a79-b813-a3a352b6e368`. Decisões fechadas
+    nessa mesma data:
+    - **Gateway: Asaas, sub-conta individual por profissional dentro da conta master da
+      Vytra** (não é "cada profissional com a própria chave Asaas solta" — é conta White
+      Label/sub-contas do Asaas, Vytra é a conta pai). Vale pros dois fluxos: a cobrança
+      paciente→profissional roda na sub-conta do profissional; profissional→Vytra roda na
+      conta master. Reduz risco de transferência internacional (§14) — Asaas é brasileiro.
+    - **Formas de pagamento: todas as que o Asaas oferecer** (pix, boleto, cartão de
+      crédito recorrente, o que mais existir na API) — sem restringir no app, a lista vem
+      do gateway.
+    - **Regra de carência: nenhuma.** "Corta caso pagamento pare" — sem prazo de tolerância,
+      nos dois fluxos (paciente perde acesso a Treino/Dieta, profissional perde acesso —
+      ver ressalva abaixo sobre o quê exatamente trava no Painel).
+    - **Ainda em aberto:** o que exatamente "corta" no Painel do profissional quando a
+      mensalidade Vytra atrasa — decidido como corte total (ver abaixo), mas ainda falta
+      desenhar a TELA desse estado bloqueado; reembolso/cancelamento de assinatura, fora
+      do escopo deste desenho, entra num passe seguinte.
+    - ✅ **Fechado (11/set, "resolver pra não deixar passivo de problema"):**
+      - **`professional_plans.periodicidade`**: fica texto, ganha `CHECK` fechando em
+        `mensal|trimestral|semestral|anual` — **não virou enum de banco**, mesmo padrão já
+        usado em `especialidade`/`status` do projeto (texto + CHECK é mais fácil de
+        estender depois, como já aconteceu com `convites.status` ganhando `'recusado'`).
+      - **Achado antes de escrever schema**: `is_professional_of()`/`is_client_of()` (base
+        de quase toda RLS do projeto) dependem de `subscriptions.status = 'ativa'`. Se
+        inadimplência fosse gravada nesse mesmo campo, o profissional **perderia
+        visibilidade do próprio paciente inadimplente** no momento exato em que mais
+        precisa dela — bug sério, silencioso, e oposto ao propósito da feature. Por isso
+        `billing_status` é coluna **separada**, nunca entra em policy de RLS, só é lido
+        pelo gate de leitura de Treino/Dieta na aplicação.
+      - **Segredo do gateway**: chave master do Asaas vive só em **Edge Function secret**
+        (nunca em `EXPO_PUBLIC_*`, nunca em tabela). Token/chave por sub-conta (se o Asaas
+        emitir um por sub-conta) vai em **Supabase Vault** (`supabase_vault` já instalado
+        no projeto, confirmado via `list_extensions`, versão 0.3.1) — decrypt só dentro de
+        função `SECURITY DEFINER` chamável apenas por `service_role`, nunca por
+        `anon`/`authenticated`. Nenhum valor de segredo entra em migração versionada no
+        git — a migração só cria a estrutura que vai *guardar* a referência.
+      - **Webhook**: valida o header de autenticação que o Asaas envia (token configurado
+        no painel, não o payload em si) e, antes de mudar `subscriptions.billing_status`/
+        `professionals.billing_status`, **reconfirma a cobrança direto na API do Asaas**
+        com a própria chave — não confia cegamente no corpo do webhook (defesa contra
+        callback forjado/repetido). Upsert por `gateway_charge_id` (idempotente — Asaas
+        reenvia em caso de falha) grava o estado atual em `cobrancas`; cada evento bruto
+        recebido fica também em `cobranca_eventos`, log imutável só pra auditoria (sem
+        policy de leitura nenhuma — nem paciente, nem profissional, só `service_role`).
+    - ✅ **Migração rascunhada, NÃO aplicada ainda**:
+      [`20260911_cobranca_estrutura_base.sql`](supabase/migrations/20260911_cobranca_estrutura_base.sql)
+      — `professional_plans` ganha o CHECK de periodicidade; `subscriptions` e
+      `professionals` ganham `billing_status` (`default 'ativo'` nos dois, preserva o
+      comportamento atual do Tassis e do aluno dele sem backfill, mesma lógica de
+      `plans.publicado default true` do F0); `professionals` ganha `asaas_subconta_id`
+      (id da sub-conta, não é segredo); tabelas novas `cobrancas` (estado atual) e
+      `cobranca_eventos` (log bruto imutável) com RLS — paciente lê só a própria cobrança,
+      profissional lê a dos próprios pacientes + a própria fatura Vytra, ninguém além de
+      `service_role` escreve. **Falta rodar `apply_migration` — decisão do Guilherme, não
+      tomada sozinha porque mexe em produção com paciente real.**
+    - ✅ **Aplicada (11/set)**, com autorização explícita do Guilherme. `get_advisors(security)`
+      depois: um achado novo, esperado e intencional (`cobranca_eventos` sem policy de
+      select — é log de auditoria, só `service_role` lê). Resto é o mesmo warning padrão já
+      aceito (RPCs `security definer` anon-chamáveis, leaked password protection). Nenhuma
+      categoria nova. `database.types.ts` regenerado via `generate_typescript_types` e
+      `npx tsc --noEmit` limpo. **Não testado logado** — só estrutura, nenhuma tela ainda lê
+      ou escreve essas colunas/tabelas; `default 'ativo'` garante que Tassis e o aluno dele
+      continuam exatamente como estavam. **Próxima etapa real**: criar a sub-conta Asaas do
+      Tassis, guardar o segredo (Vault/Edge Function secret, nunca em coluna), e só então
+      construir `aluno/pagamento.tsx` + `criarCobranca()` (passo 3 do Fluxo 1 no artifact).
+    - ⛔ **Bloqueado (11/set): Vytra ainda não tem CNPJ ativo.** Confirmado com o Guilherme.
+      Conta Asaas PJ + habilitação de Sub-contas White Label normalmente exigem CNPJ, e a
+      criação de conta é ação que só ele pode fazer (nunca crio conta em nome de
+      terceiro). **Todo o resto do Fluxo 1/2 (Edge Function, `criarCobranca()`, tela de
+      pagamento) para aqui até o CNPJ existir** — não tem o que construir sem chave real
+      pra testar contra.
+      - Duas rotas possíveis pro CNPJ, sem eu decidir qual: **MEI** (abertura rápida,
+        online, gratuita, pelo Portal do Empreendedor) vs. **CNPJ formal** (LTDA/etc.,
+        passa por contador, mais lento). MEI tem teto de faturamento (~R$81k/ano — a receita
+        SaaS de profissionais sozinha já pode estourar isso rápido se a base crescer) e
+        restrição de atividade (nem todo CNAE de software é elegível pra MEI). **Não é
+        parecer contábil/jurídico** — mesma ressalva já usada pro INPI (§7) — vale
+        contador antes de escolher.
+      - Enquanto isso não resolve, nada muda no app: `billing_status default 'ativo'`
+        (já aplicado) garante que Tassis e o aluno dele continuam sem nenhum efeito
+        colateral.
+      - 🔎 **Checado na doc oficial do Asaas (11/set), enquanto o CNPJ não sai** —
+        [Criar subconta](https://docs.asaas.com/reference/criar-subconta),
+        [Sandbox](https://docs.asaas.com/docs/sandbox),
+        [Como configurar sua conta no Sandbox](https://docs.asaas.com/docs/como-configurar-sua-conta-no-sandbox),
+        [FAQ - Sandbox](https://docs.asaas.com/docs/faq-sandbox):
+        - **Confirmado**: sub-conta aceita `cpfCnpj` como CPF **ou** CNPJ
+          (`personType: FISICA`/`JURIDICA` na resposta) — fecha, com fonte oficial, o que
+          já estava registrado acima como "confirmar depois": profissional entra com CPF
+          autônomo, não precisa abrir CNPJ só pra usar a Vytra.
+        - **Confirmado**: a conta-mãe que cria sub-contas precisa ser CNPJ — já era o
+          plano (é a própria Vytra), só reforça.
+        - **Confirmado**: Sandbox é conta separada da produção (dado, chave de API,
+          tudo isolado), aprovação automática quando os campos obrigatórios batem.
+        - **Não documentado**: se o cadastro da conta sandbox em si aceita CNPJ
+          fictício/checksum-válido (tipo os CPFs de teste que o Asaas dá pra simular
+          transferência) ou exige documento real registrado na Receita. As páginas de
+          setup/FAQ do sandbox não cobrem esse ponto. **Não é algo que eu possa testar** —
+          cadastro de conta é ação que só o Guilherme faz (nunca crio conta). Dois
+          caminhos pra ele resolver: tentar cadastrar o sandbox com o próprio CPF
+          (onboarding do Asaas costuma começar por pessoa física), ou perguntar direto
+          pro suporte (0800 009 0037 / contato@asaas.com.br) antes de gastar tempo.
+      - ✅ **Confirmado na prática (11/set)**: Guilherme conseguiu iniciar cadastro
+        **de produção** no Asaas com o próprio CPF — onboarding de fato aceita começar
+        por pessoa física, sem precisar do CNPJ da Vytra existir primeiro. É conta de
+        produção, não sandbox: serve de ponto de partida, mas **não cria sub-conta**
+        até o titular virar CNPJ (restrição confirmada na doc, ver acima).
+      - 📌 **Guilherme registrou `contato@vytraoficial.com.br`** (11/set) — provedor não
+        especificado ainda. **Não é** o mesmo item que `mail.vytraoficial.com.br` do §16/§17
+        (infra de SMTP transacional do Supabase Auth, com SPF/DKIM/DMARC, ainda pendente de
+        decisão de provedor) — são dois pedaços diferentes: esse é caixa de e-mail humana
+        (contato comercial, cadastro em serviços como o próprio Asaas), aquele é envio
+        automatizado do app. Não mexe na ordem de execução do §16/§17.
+      - ✅ **Decidido (11/set): fica em standby, desenho fechado.** Guilherme optou por
+        esperar a decisão do CNPJ em vez de adotar a rota "cada profissional com conta
+        Asaas própria" (avaliada nesta mesma sessão). Motivo explícito dele: **profissional
+        não pode precisar gerar/colar API key** — tem que ser cadastro fácil, dentro do
+        app. Isso derruba a opção de conta própria por profissional (exigiria exatamente
+        isso) e reconfirma o desenho original de sub-conta sob o CNPJ da Vytra.
+      - ✅ **Onboarding do profissional sem API key, desenhado.** Novo passo 0 no Fluxo 1
+        do artifact: profissional aprovado (`admin.tsx`) preenche formulário in-app —
+        nome, CPF/CNPJ, endereço, telefone (campos reais exigidos pela API de criar
+        sub-conta do Asaas, conferido na doc oficial) — e o backend (`criarSubcontaAsaas()`,
+        Edge Function com a chave master) cria a sub-conta por trás. Profissional nunca
+        vê, cola ou gerencia credencial nenhuma. `professionals.asaas_subconta_id`
+        (já existe no schema aplicado) grava o resultado.
+      - Artifact atualizado com o passo 0, banner de standby e as duas decisões acima:
+        https://claude.ai/code/artifact/7b1e541b-6e03-4a79-b813-a3a352b6e368
+  - 🔁 **Retomando os outros 2 gaps do WebDiet enquanto o CNPJ não sai (11/set)** — prontuário
+    evolutivo por sessão e anexos do paciente, os dois sem nenhuma dependência de
+    CNPJ/gateway.
+    - 🔎 **Segunda fonte checada**: [mcp.ai/webdiet](https://mcp.ai/webdiet) (página de
+      marketing do mesmo MCP, distinta da introspecção direta feita antes). Número bate:
+      página diz 56 tools, introspecção direta trouxe 62 — reconcilia exato como
+      62 − 6 utilitários (`show_version`/`report_bug`/`connect`/`toolkit_info`/
+      `marketplace`/`authenticate`) = 56 de domínio. **Confirma os 3 gaps já decididos**
+      (financeiro, prontuário, anexos — essa página cita até "slides educacionais" como
+      tipo de anexo, reforça o #3).
+      - **Achado novo, não mapeado na introspecção direta**: a página cita "food diary
+        entries, meal reactions" (diário alimentar + reação à refeição, dia a dia) — não
+        bateu com nenhum tool nomeado dos 62 (pode ser feature só do app web do WebDiet,
+        sem tool MCP próprio, ou estar sem nome dentro de `orientacoes`/`prontuario_write`).
+        Categoria diferente do check-in periódico do Vytra (que já é superior nesse
+        recorte, ver comparação de 11/set). **Não entra na fila agora** — só registrado
+        pra não perder o achado.
+    - **Retomando por prontuário evolutivo primeiro** (mais parecido com o que já existe —
+      `atendimentos` — menos novidade que anexos). **Decisão em aberto, não resolvida
+      ainda**: estender `atendimentos` (já tem `client_id`+`professional_id`, falta só
+      ligar a uma `teleconsulta_id` opcional) vs. tabela nova `sessoes_clinicas` separada.
+      Pergunta feita ao Guilherme, resposta pendente.
+
 ## 8. Estado atual
 
 - Histórico do início do projeto (scaffold Expo renomeado, rotas provisórias em grupo
@@ -1780,6 +1952,37 @@ para a engenharia:
 4. **Menor de idade não tratado** — e o check-in coleta foto de corpo. Recomendação: bloquear
    cadastro de menor de 18 até existir fluxo de consentimento de responsável.
 
+### CNPJ dos profissionais — separado do CNPJ da Vytra (11/set)
+
+Pergunta do Guilherme, direto ligada à lacuna 1 acima (falta definir controlador × operador):
+o Tassis precisa de CNPJ próprio de nutrição? E os educadores físicos? **Não é parecer
+contábil/jurídico** — mesma ressalva do §7 sobre o INPI — mas o desenho já deixa claro o
+formato do problema:
+
+- **Vytra é o operador** (plataforma/software) — o CNPJ que está em aberto (§7) é esse, e
+  só esse. Ele não substitui, nem cobre, o profissional.
+- **Cada profissional é o controlador** — é ele quem presta o serviço (nutrição/treino) e
+  quem recebe o pagamento do paciente de verdade. Pra receber via Asaas, precisa de CPF
+  autônomo ou CNPJ próprio, **sempre separado do CNPJ da Vytra** — a sub-conta Asaas
+  (decisão do §7, Fluxo 1) é criada em cima do CPF/CNPJ de cada profissional, não do
+  documento da plataforma.
+- **Bom pro produto**: sub-conta Asaas aceita tanto CPF autônomo quanto CNPJ — não é
+  obrigatório cada profissional abrir empresa só pra entrar na Vytra. Reduz fricção de
+  onboarding, relevante pro modelo white-label multi-profissional do §1/§2.
+- **Nutrição (CRN) é profissão regulamentada** — no geral, profissão regulamentada costuma
+  ficar de fora da lista de atividades elegíveis pro MEI. Se o Tassis quiser CNPJ (em vez
+  de CPF autônomo com RPA/carnê-leão), o caminho provável é **ME direto, pulando o MEI**.
+  **Confirmar com contador e/ou o CRN dele** antes de decidir — não é algo pra assumir do
+  desenho técnico.
+- **Educador físico (CREF)**: mesma lógica de documento separado do CNPJ da Vytra, mas não
+  confirmei se a atividade entra ou não na lista de exclusão do MEI — mesma ressalva,
+  confirmar com contador antes de orientar qualquer profissional novo.
+- **MEI → ME é caminho normal e comum** — startup abrindo como MEI (o fundador sozinho) e
+  subindo pra ME quando cresce (receita, sócio novo, atividade que o MEI não cobre) é
+  padrão no Brasil. Chama-se desenquadramento do MEI + enquadramento como ME no Simples
+  Nacional; ME exige contador (MEI não exige). Não é decisão técnica, é decisão de
+  quando/quanto a Vytra vai faturar — mas não há bloqueio estrutural em começar pequeno.
+
 ### Requisitos de implementação que o termo cria
 
 - Guardar **versão do termo aceita** + data, hora, IP e dispositivo do aceite
@@ -2272,3 +2475,83 @@ a Vercel realmente recebe (linha "Found N files" do `--debug`).
 200 na produção; bundle hash inalterado (o código não mudou, só a config de deploy).
 **Não é um bug de UI/React** — os componentes `Button`/`StepperButton` renderizam certo em
 qualquer navegador; o glifo simplesmente não existia no servidor pro navegador baixar.
+
+## 27. Fase 1 de painéis/anamnese/evolução — sem IA (11/set)
+
+Pedido do Guilherme: painéis completos de dieta/perfil, dashboards de evolução, e (numa fase
+posterior) IA (Claude API) interpretando anamnese pra sugerir dieta/treino a partir de fórmulas
+que o profissional seta. Decisão dele: **painéis primeiro, IA depois, em cima de dado real** —
+plano completo em `/Users/guilhermepasquetti/.claude/plans/vast-crunching-pretzel.md`.
+`ROADMAP.md` — o item "Diagnóstico ou prescrição automatizada por IA" sai da lista "fora deste
+ciclo": não é mais descartado, só adiado pra depois desta fase (nota adicionada lá).
+
+✅ **Entrega 1 — Perfil completo + anamnese revisável.**
+- `profiles.sexo` novo (`feminino|masculino|outro`, CHECK), backfill best-effort a partir de
+  `anamnese.respostas_completas->>'sexo'` — [`20260911_profiles_sexo.sql`](supabase/migrations/20260911_profiles_sexo.sql),
+  aplicada. Motivo: insumo obrigatório das fórmulas de gasto energético da Entrega 2. Lente LGPD:
+  mesma sensibilidade de nome/telefone/data de nascimento já coletados, RLS existente cobre sem
+  mudança.
+- `extrairColunasAnamnese()` em [`anamnese.ts`](src/models/anamnese.ts) replica o mapeamento
+  exato da RPC `submeter_anamnese_autenticado` — usada por
+  [`anamneseService.ts`](src/services/anamneseService.ts) (`obterAnamnese`,
+  `salvarAnamneseComoProfissional`) pra o profissional revisar/corrigir a anamnese direto na
+  tabela (RLS `anamnese_update_professional` já liberava, só faltava a tela). **Nunca** usa a
+  RPC do lado do profissional — ela é escopada em `auth.uid()` do paciente.
+- `AnamneseCampos` extraído de [`onboarding-anamnese.tsx`](src/components/onboarding-anamnese.tsx)
+  (formulário puro, sem lógica de onboarding) — reaproveitado em 3 lugares: onboarding original,
+  [`aluno/anamnese.tsx`](src/app/aluno/anamnese.tsx) (paciente reedita a própria, novo — reusa
+  `submeterAnamneseEPlano(respostas, null)`) e
+  [`pro/aluno/[id]/anamnese.tsx`](src/app/pro/aluno/%5Bid%5D/anamnese.tsx) (revisão do
+  profissional, novo). `AlunoTabs` ganhou 4ª pill "Anamnese"; `perfil-screen.tsx` ganhou seletor
+  de sexo (Pill, não texto livre) e link "Ver/editar minha anamnese"; `resumo.tsx` ganhou card de
+  anamnese (objetivo/condições/alergias, já extraídos por `gestaoService.ts`).
+- `Field` (`ui/index.tsx`) ganhou prop `editable` (usada como base pra somenteLeitura futuro, não
+  usada ainda em nenhuma tela).
+- Verificado: `npx tsc --noEmit` limpo; `AnamneseCampos` e o seletor de sexo conferidos
+  visualmente sem login via rota de depuração temporária (removida depois, `git status` limpo no
+  `_layout.tsx`). **Não testado logado** — mesma regra de nunca digitar senha de conta nenhuma.
+
+✅ **Entrega 2 — Calculadora de meta calórica + edição de substituições.**
+- `planos_alimentares` ganhou `formula_calculo` (CHECK `mifflin_st_jeor|harris_benedict|
+  cunningham`), `fator_atividade`, `percentual_gordura`, `tmb_calculada`, `get_calculado` —
+  [`20260911_calculadora_meta_calorica.sql`](supabase/migrations/20260911_calculadora_meta_calorica.sql),
+  aplicada. Config do mesmo plano 1-por-aluno já existente, não é histórico novo. Lente LGPD:
+  só o profissional grava, RLS `dieta_*_professional` já cobre.
+- [`gastoEnergetico.ts`](src/models/gastoEnergetico.ts) novo: `calcularTMB` (3 fórmulas),
+  `calcularGET`, `sugerirMacros` (distribuição inicial editável, nunca publica sozinho),
+  `idadeApartirDe`. **Validado contra valores de referência** via `npx tsx` antes de plugar na
+  tela (Mifflin homem/mulher, Harris-Benedict, Cunningham, GET, macros — todos bateram).
+- `dietEditor.ts` estendido com os novos campos do plano + helpers de substituição
+  (`adicionarSubstituicao`/`removerSubstituicao`/`atualizarSubstituicao`/`substituicaoDeTaco`).
+- `pro/aluno/[id]/dieta.tsx`: bloco "Calculadora de meta calórica" no topo (fórmula/fator de
+  atividade/objetivo em Pills, busca TACO opcional pra substituição) — botão "Calcular sugestão"
+  só preenche os campos de meta já existentes, profissional sempre revisa antes de publicar.
+  Avisa quando falta sexo/peso/altura/data de nascimento do paciente, linkando pra tela de
+  anamnese da Entrega 1. Editor de substituições dentro de cada item (antes só existiam no tipo,
+  não editáveis pela UI).
+- Verificado: `npx tsc --noEmit` limpo; calculadora conferida visualmente sem login (rota de
+  depuração temporária com dado mockado, removida depois) — as 3 fórmulas, o campo condicional
+  de % de gordura (Cunningham) e o resultado batendo com os mesmos números do teste `tsx`.
+
+✅ **Entrega 3 — Dashboard de evolução no lado profissional.**
+- `Sparkline`/`BarraProgresso` (antes locais em `aluno/index.tsx`) promovidos pra
+  [`components/ui/index.tsx`](src/components/ui/index.tsx) como exports nomeados — elimina
+  duplicação, sem mudança de comportamento no lado aluno.
+- `checkinService.ts` ganhou `historicoPontuacao` (série de `pontuacao_geral`, mesma forma de
+  `historicoPeso`) e `resumoAdesao` (média por categoria de `pontuacao_categorias` nos últimos 3
+  check-ins) — dado que já existia (gravado desde o check-in de 06/set), nunca antes plotado em
+  série nem visível pro profissional.
+- `pro/aluno/[id]/resumo.tsx` ganhou seção "Evolução": peso (sparkline), pontuação de check-in
+  (sparkline), adesão por categoria (barra), fotos de progresso (`obterComparacaoFotos`, já
+  existia, nunca exibida nesse lado), streak de treino (`streakTreino`, já existia). Nenhuma
+  tabela/coluna nova — só agregação de leitura, mesma RLS de sempre.
+- Verificado: `npx tsc --noEmit` limpo, sem erro de bundler/console na tela de login (Metro
+  reiniciado com cache limpo pra confirmar). **Não testado logado com dado real de evolução** —
+  precisa de paciente com histórico de peso/check-in real; vale conferir quando o Tassis logar.
+
+**Pendências desta fase**: nenhuma migração aplicada sem `get_advisors(security)` — conferido
+duas vezes, mesma lista de warnings já aceita (nenhuma categoria nova). Nenhuma tela testada com
+sessão real (mesma regra de nunca digitar senha de conta nenhuma, nem descartável) — vale um
+teste manual do Guilherme/Tassis: perfil (sexo + anamnese), calculadora de dieta com paciente
+real, e o dashboard de evolução em `resumo.tsx`. **Deploy pendente** — nada disso está no ar
+ainda (`app-treino.expo.app`/`app.vytraoficial.com.br`), só no working tree local.

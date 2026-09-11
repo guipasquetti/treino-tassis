@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { calcularResumo, type RespostasCheckin, type ResumoCheckin } from '@/models/checkin';
+import { calcularResumo, rotuloQualitativo, type RespostasCheckin, type ResumoCheckin } from '@/models/checkin';
 import type { Tables } from '@/models/database.types';
 
 export type CheckIn = Tables<'check_ins'>;
@@ -145,6 +145,50 @@ export function historicoPeso(checkins: CheckIn[]): RegistroPeso[] {
     })
     .filter((r): r is RegistroPeso => r !== null)
     .reverse();
+}
+
+export type RegistroPontuacao = { data: string; pontuacao: number };
+
+/**
+ * Série temporal de `pontuacao_geral` — mesma forma de `historicoPeso`, ordem cronológica
+ * crescente. `check_ins` já grava essa nota por linha desde `submeterCheckin`, nunca antes
+ * plotada em série (só o valor mais recente aparecia, em `gestaoService.ts` e no Início do
+ * aluno) — dado que já existe, sem coluna nova.
+ */
+export function historicoPontuacao(checkins: CheckIn[]): RegistroPontuacao[] {
+  return checkins
+    .filter((c): c is CheckIn & { pontuacao_geral: number } => c.pontuacao_geral != null)
+    .map((c) => ({ data: c.created_at, pontuacao: c.pontuacao_geral }))
+    .reverse();
+}
+
+export type ResumoAdesaoCategoria = { categoria: string; rotulo: string; mediaPontuacao: number };
+
+/**
+ * Média por categoria de `pontuacao_categorias` (jsonb já gravado por `submeterCheckin`) nos
+ * últimos `n` check-ins — dado que já existe, sem coluna nova. `checkins` deve vir mais
+ * recente primeiro (mesma ordem de `listarCheckinsDoAluno`/`listarCheckinsDaAssinatura`).
+ *
+ * ⚠️ O `rotulo` é recalculado a partir da MÉDIA (`rotuloQualitativo`, `models/checkin.ts`), não
+ * herdado de nenhum check-in individual — carregar o rótulo de uma resposta específica pra uma
+ * média de várias respostas diferentes é incoerente (achado testando com `npx tsx`: uma
+ * primeira versão pegava o rótulo do check-in mais antigo do lote, não da média).
+ */
+export function resumoAdesao(checkins: CheckIn[], n = 3): ResumoAdesaoCategoria[] {
+  const recentes = checkins.slice(0, n);
+  const somaPorCategoria = new Map<string, { soma: number; conta: number }>();
+  for (const c of recentes) {
+    const categorias = c.pontuacao_categorias as Record<string, { valor: number; rotulo: string }> | null;
+    if (!categorias) continue;
+    for (const [categoria, { valor }] of Object.entries(categorias)) {
+      const atual = somaPorCategoria.get(categoria) ?? { soma: 0, conta: 0 };
+      somaPorCategoria.set(categoria, { soma: atual.soma + valor, conta: atual.conta + 1 });
+    }
+  }
+  return Array.from(somaPorCategoria.entries()).map(([categoria, { soma, conta }]) => {
+    const mediaPontuacao = Math.round(soma / conta);
+    return { categoria, rotulo: rotuloQualitativo(mediaPontuacao), mediaPontuacao };
+  });
 }
 
 /** Se o paciente já pode enviar um novo check-in (nunca enviou, ou já passou a periodicidade). */

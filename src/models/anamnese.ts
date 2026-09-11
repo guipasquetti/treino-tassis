@@ -138,3 +138,29 @@ export const SECOES_ANAMNESE: SecaoAnamnese[] = [
 ];
 
 export type RespostasAnamnese = Record<string, string>;
+
+/**
+ * Colunas fixas da tabela `anamnese`, extraídas do jsonb de respostas.
+ *
+ * Replica EXATAMENTE o mapeamento feito pela RPC `submeter_anamnese_autenticado`
+ * (`supabase/migrations/20260904_anamnese_pos_login.sql`) — mesmos campos de origem,
+ * mesmo `coalesce(..., '')` pra vazio (nunca `null`, sempre string vazia). Usada por
+ * `anamneseService.salvarAnamneseComoProfissional`, que grava direto na tabela (não
+ * pode chamar a RPC — ela é `security definer` escopada em `auth.uid()` do paciente).
+ * Se este mapeamento divergir do SQL, paciente e profissional passam a gravar dado
+ * diferente nas mesmas colunas silenciosamente — não alterar um lado sem o outro.
+ */
+export function extrairColunasAnamnese(respostas: RespostasAnamnese) {
+  return {
+    objetivo_principal: respostas.objetivo_principal ?? '',
+    nivel_atividade: respostas.pratica_atividade ?? '',
+    lesoes_dores: respostas.limitacao_fisica ?? '',
+    condicoes_medicas: respostas.patologias ?? '',
+    medicamentos: respostas.medicamentos ?? '',
+    cirurgias: respostas.cirurgias ?? '',
+    historico_familiar: respostas.historico_familiar ?? '',
+    restricoes_alimentares: respostas.nao_consome ?? '',
+    alergias: respostas.intolerancias_alergias ?? '',
+    observacoes: respostas.observacoes_finais ?? '',
+  };
+}

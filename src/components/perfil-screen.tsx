@@ -1,7 +1,8 @@
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 
-import { Body, Button, Caption, Card, Field, Screen, SectionTitle } from '@/components/ui';
+import { Body, Button, Caption, Card, Field, Pill, Screen, SectionTitle } from '@/components/ui';
 import { formatarDataHora } from '@/models/domain';
 import { listarAlunos, listarMeusProfissionais } from '@/services/professionalService';
 import { atualizarPerfil, signOut } from '@/services/authService';
@@ -11,7 +12,18 @@ import { Palette, Spacing } from '@/theme';
 
 type Vinculo = { titulo: string; detalhe: string };
 
+const OPCOES_SEXO = [
+  { valor: 'feminino', label: 'Feminino' },
+  { valor: 'masculino', label: 'Masculino' },
+  { valor: 'outro', label: 'Outro' },
+] as const;
+
+function rotuloSexo(sexo: string | null): string {
+  return OPCOES_SEXO.find((o) => o.valor === sexo)?.label ?? '—';
+}
+
 export function PerfilScreen() {
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const profile = useAuthStore((s) => s.profile);
   const setProfile = useAuthStore((s) => s.setProfile);
@@ -25,6 +37,7 @@ export function PerfilScreen() {
   const [dataNascimento, setDataNascimento] = useState('');
   const [peso, setPeso] = useState('');
   const [altura, setAltura] = useState('');
+  const [sexo, setSexo] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -58,6 +71,7 @@ export function PerfilScreen() {
     setDataNascimento(profile?.data_nascimento ?? '');
     setPeso(profile?.peso_kg != null ? String(profile.peso_kg) : '');
     setAltura(profile?.altura_cm != null ? String(profile.altura_cm) : '');
+    setSexo(profile?.sexo ?? null);
     setErro(null);
     setEditando(true);
   }
@@ -79,6 +93,7 @@ export function PerfilScreen() {
         data_nascimento: dataNascimento.trim() || null,
         peso_kg: pesoNumero && !Number.isNaN(Number(pesoNumero)) ? Number(pesoNumero) : null,
         altura_cm: alturaNumero && !Number.isNaN(Number(alturaNumero)) ? Number(alturaNumero) : null,
+        sexo,
       });
       setProfile(atualizado);
       setEditando(false);
@@ -93,6 +108,7 @@ export function PerfilScreen() {
     { label: 'E-mail', valor: profile?.email ?? '—' },
     { label: 'Telefone', valor: profile?.telefone || '—' },
     { label: 'Data de nascimento', valor: profile?.data_nascimento || '—' },
+    { label: 'Sexo', valor: rotuloSexo(profile?.sexo ?? null) },
     { label: 'Peso', valor: profile?.peso_kg ? `${profile.peso_kg} kg` : '—' },
     { label: 'Altura', valor: profile?.altura_cm ? `${profile.altura_cm} cm` : '—' },
   ];
@@ -116,6 +132,17 @@ export function PerfilScreen() {
               onChangeText={setDataNascimento}
               placeholder="AAAA-MM-DD"
             />
+            <Caption>Sexo</Caption>
+            <View style={styles.rowFields}>
+              {OPCOES_SEXO.map((opcao) => (
+                <Pill
+                  key={opcao.valor}
+                  label={opcao.label}
+                  active={sexo === opcao.valor}
+                  onPress={() => setSexo((atual) => (atual === opcao.valor ? null : opcao.valor))}
+                />
+              ))}
+            </View>
             <View style={styles.rowFields}>
               <Field label="Peso (kg)" value={peso} onChangeText={setPeso} keyboardType="decimal-pad" />
               <Field label="Altura (cm)" value={altura} onChangeText={setAltura} keyboardType="decimal-pad" />
@@ -141,6 +168,14 @@ export function PerfilScreen() {
           </>
         )}
       </Card>
+
+      {!isProfessional ? (
+        <Card>
+          <SectionTitle>Anamnese</SectionTitle>
+          <Caption>Mantenha suas informações de saúde e hábitos atualizadas.</Caption>
+          <Button label="Ver/editar minha anamnese" variant="ghost" onPress={() => router.push('/aluno/anamnese')} />
+        </Card>
+      ) : null}
 
       {!isProfessional && proximaConsulta ? (
         <Card>

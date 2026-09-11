@@ -1,12 +1,43 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
+import { Image, View } from 'react-native';
 
 import { AlunoTabs } from '@/components/aluno-tabs';
-import { Body, Button, Caption, Card, EmptyState, Loading, Pill, Screen, SectionTitle } from '@/components/ui';
-import { formatarDataHora } from '@/models/domain';
+import {
+  BarraProgresso,
+  Body,
+  Button,
+  Caption,
+  Card,
+  EmptyState,
+  Loading,
+  Pill,
+  Screen,
+  SectionTitle,
+  Sparkline,
+  Stat,
+} from '@/components/ui';
+import { formatarData, formatarDataHora } from '@/models/domain';
+import {
+  historicoPeso,
+  historicoPontuacao,
+  listarCheckinsDoAluno,
+  obterComparacaoFotos,
+  resumoAdesao,
+  type ComparacaoAngulo,
+} from '@/services/checkinService';
 import { obterPainelGestao, type ResumoAluno } from '@/services/gestaoService';
+import { getWorkoutData, streakTreino } from '@/services/workoutService';
 import { useAuthStore } from '@/store/authStore';
-import { Palette } from '@/theme';
+import { Palette, Spacing } from '@/theme';
+
+type Evolucao = {
+  pesos: { data: string; peso: number }[];
+  pontuacoes: { data: string; pontuacao: number }[];
+  adesao: { categoria: string; rotulo: string; mediaPontuacao: number }[];
+  fotos: ComparacaoAngulo[];
+  streak: number;
+};
 
 export default function ResumoPacienteScreen() {
   const { id: clientId } = useLocalSearchParams<{ id: string }>();
@@ -14,12 +45,14 @@ export default function ResumoPacienteScreen() {
   const router = useRouter();
   const [paciente, setPaciente] = useState<ResumoAluno | null>(null);
   const [consultas, setConsultas] = useState<{ id: string; data_hora: string; status: string; observacoes: string | null }[]>([]);
+  const [evolucao, setEvolucao] = useState<Evolucao | null>(null);
   const [loading, setLoading] = useState(true);
 
   const carregar = useCallback(async () => {
     if (!user || !clientId) return;
     const painel = await obterPainelGestao(user.id);
-    setPaciente(painel.alunos.find((aluno) => aluno.clientId === clientId) ?? null);
+    const encontrado = painel.alunos.find((aluno) => aluno.clientId === clientId) ?? null;
+    setPaciente(encontrado);
     setConsultas(
       painel.agenda.filter((consulta) => consulta.patient_id === clientId).map((consulta) => ({
         id: consulta.id,
@@ -28,6 +61,21 @@ export default function ResumoPacienteScreen() {
         observacoes: consulta.observacoes,
       })),
     );
+
+    if (encontrado) {
+      const [checkins, workout, fotos] = await Promise.all([
+        listarCheckinsDoAluno(clientId),
+        getWorkoutData(clientId),
+        obterComparacaoFotos(encontrado.subscriptionId),
+      ]);
+      setEvolucao({
+        pesos: historicoPeso(checkins),
+        pontuacoes: historicoPontuacao(checkins),
+        adesao: resumoAdesao(checkins),
+        fotos,
+        streak: streakTreino(workout.historico),
+      });
+    }
     setLoading(false);
   }, [clientId, user]);
 
@@ -57,6 +105,23 @@ export default function ResumoPacienteScreen() {
         ) : null}
       </Card>
 
+      <SectionTitle>Anamnese</SectionTitle>
+      <Card>
+        {paciente.objetivoAnamnese ? <Body>Objetivo: {paciente.objetivoAnamnese}</Body> : null}
+        {paciente.flagSaude ? (
+          <Caption color={Palette.orange}>Atenção: {paciente.flagSaude}</Caption>
+        ) : null}
+        {paciente.alergiasAnamnese ? <Caption>Alergias: {paciente.alergiasAnamnese}</Caption> : null}
+        {!paciente.objetivoAnamnese && !paciente.flagSaude && !paciente.alergiasAnamnese ? (
+          <Caption color={Palette.orange}>Paciente ainda não respondeu a anamnese.</Caption>
+        ) : null}
+        <Button
+          label="Ver anamnese completa"
+          variant="ghost"
+          onPress={() => router.push(`/pro/aluno/${clientId}/anamnese`)}
+        />
+      </Card>
+
       <SectionTitle>Prescrições</SectionTitle>
       <Card>
         <Body>Treino</Body>
@@ -79,6 +144,57 @@ export default function ResumoPacienteScreen() {
           onPress={() => router.push(`/pro/aluno/${clientId}/dieta`)}
         />
       </Card>
+
+      <SectionTitle>Evolução</SectionTitle>
+      <Card>
+        <Stat value={String(evolucao?.streak ?? 0)} label={evolucao?.streak === 1 ? 'dia seguido' : 'dias seguidos'} color={Palette.orange} />
+      </Card>
+
+      {evolucao && evolucao.pesos.length >= 2 ? (
+        <Card>
+          <SectionTitle>Peso</SectionTitle>
+          <Caption>
+            {evolucao.pesos[evolucao.pesos.length - 1].peso}kg mais recente · desde{' '}
+            {formatarData(evolucao.pesos[0].data.slice(0, 10))}
+          </Caption>
+          <Sparkline valores={evolucao.pesos.map((p) => p.peso)} cor={Palette.blue} />
+        </Card>
+      ) : null}
+
+      {evolucao && evolucao.pontuacoes.length >= 2 ? (
+        <Card>
+          <SectionTitle>Pontuação de check-in</SectionTitle>
+          <Caption>{evolucao.pontuacoes[evolucao.pontuacoes.length - 1].pontuacao}% mais recente</Caption>
+          <Sparkline valores={evolucao.pontuacoes.map((p) => p.pontuacao)} cor={Palette.purple} />
+        </Card>
+      ) : null}
+
+      {evolucao && evolucao.adesao.length ? (
+        <Card>
+          <SectionTitle>Adesão (últimos check-ins)</SectionTitle>
+          {evolucao.adesao.map((a) => (
+            <View key={a.categoria} style={{ gap: Spacing.xs }}>
+              <Caption>{a.categoria} — {a.rotulo} ({a.mediaPontuacao}%)</Caption>
+              <BarraProgresso valor={a.mediaPontuacao} total={100} cor={Palette.accent} />
+            </View>
+          ))}
+        </Card>
+      ) : null}
+
+      {evolucao && evolucao.fotos.length ? (
+        <Card>
+          <SectionTitle>Fotos de progresso</SectionTitle>
+          {evolucao.fotos.map((f) => (
+            <View key={f.angulo} style={{ gap: Spacing.xs }}>
+              <Caption>{f.label}</Caption>
+              <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                {f.primeira ? <Image source={{ uri: f.primeira.url }} style={{ width: 100, height: 130, borderRadius: 8 }} /> : null}
+                {f.ultima ? <Image source={{ uri: f.ultima.url }} style={{ width: 100, height: 130, borderRadius: 8 }} /> : null}
+              </View>
+            </View>
+          ))}
+        </Card>
+      ) : null}
 
       <SectionTitle>Consultas</SectionTitle>
       {consultas.length ? (

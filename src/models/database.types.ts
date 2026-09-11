@@ -228,6 +228,92 @@ export type Database = {
           },
         ]
       }
+      cobranca_eventos: {
+        Row: {
+          cobranca_id: string
+          created_at: string
+          evento: string
+          id: string
+          payload: Json
+        }
+        Insert: {
+          cobranca_id: string
+          created_at?: string
+          evento: string
+          id?: string
+          payload: Json
+        }
+        Update: {
+          cobranca_id?: string
+          created_at?: string
+          evento?: string
+          id?: string
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cobranca_eventos_cobranca_id_fkey"
+            columns: ["cobranca_id"]
+            isOneToOne: false
+            referencedRelation: "cobrancas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cobrancas: {
+        Row: {
+          ciclo_referencia: string | null
+          created_at: string
+          gateway_charge_id: string
+          id: string
+          professional_id: string | null
+          status: string
+          subscription_id: string | null
+          tipo: string
+          updated_at: string
+          valor_centavos: number
+        }
+        Insert: {
+          ciclo_referencia?: string | null
+          created_at?: string
+          gateway_charge_id: string
+          id?: string
+          professional_id?: string | null
+          status?: string
+          subscription_id?: string | null
+          tipo: string
+          updated_at?: string
+          valor_centavos: number
+        }
+        Update: {
+          ciclo_referencia?: string | null
+          created_at?: string
+          gateway_charge_id?: string
+          id?: string
+          professional_id?: string | null
+          status?: string
+          subscription_id?: string | null
+          tipo?: string
+          updated_at?: string
+          valor_centavos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cobrancas_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cobrancas_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       convites: {
         Row: {
           client_id: string | null
@@ -372,6 +458,9 @@ export type Database = {
       planos_alimentares: {
         Row: {
           client_id: string
+          fator_atividade: number | null
+          formula_calculo: string | null
+          get_calculado: number | null
           id: string
           meta_carboidrato_g: number | null
           meta_gordura_g: number | null
@@ -379,14 +468,19 @@ export type Database = {
           meta_proteina_g: number | null
           nutricionista: string
           observacoes: string
+          percentual_gordura: number | null
           periodo: string
           professional_id: string
           publicado: boolean
           refeicoes: Json
+          tmb_calculada: number | null
           updated_at: string
         }
         Insert: {
           client_id: string
+          fator_atividade?: number | null
+          formula_calculo?: string | null
+          get_calculado?: number | null
           id?: string
           meta_carboidrato_g?: number | null
           meta_gordura_g?: number | null
@@ -394,14 +488,19 @@ export type Database = {
           meta_proteina_g?: number | null
           nutricionista?: string
           observacoes?: string
+          percentual_gordura?: number | null
           periodo?: string
           professional_id: string
           publicado?: boolean
           refeicoes?: Json
+          tmb_calculada?: number | null
           updated_at?: string
         }
         Update: {
           client_id?: string
+          fator_atividade?: number | null
+          formula_calculo?: string | null
+          get_calculado?: number | null
           id?: string
           meta_carboidrato_g?: number | null
           meta_gordura_g?: number | null
@@ -409,10 +508,12 @@ export type Database = {
           meta_proteina_g?: number | null
           nutricionista?: string
           observacoes?: string
+          percentual_gordura?: number | null
           periodo?: string
           professional_id?: string
           publicado?: boolean
           refeicoes?: Json
+          tmb_calculada?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -589,16 +690,22 @@ export type Database = {
       }
       professionals: {
         Row: {
+          asaas_subconta_id: string | null
+          billing_status: string
           created_at: string
           especialidade: string
           id: string
         }
         Insert: {
+          asaas_subconta_id?: string | null
+          billing_status?: string
           created_at?: string
           especialidade?: string
           id: string
         }
         Update: {
+          asaas_subconta_id?: string | null
+          billing_status?: string
           created_at?: string
           especialidade?: string
           id?: string
@@ -624,6 +731,7 @@ export type Database = {
           nome: string
           peso_kg: number | null
           role: string
+          sexo: string | null
           telefone: string | null
         }
         Insert: {
@@ -636,6 +744,7 @@ export type Database = {
           nome?: string
           peso_kg?: number | null
           role?: string
+          sexo?: string | null
           telefone?: string | null
         }
         Update: {
@@ -648,12 +757,14 @@ export type Database = {
           nome?: string
           peso_kg?: number | null
           role?: string
+          sexo?: string | null
           telefone?: string | null
         }
         Relationships: []
       }
       subscriptions: {
         Row: {
+          billing_status: string
           created_at: string
           current_period_end: string | null
           id: string
@@ -665,6 +776,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          billing_status?: string
           created_at?: string
           current_period_end?: string | null
           id?: string
@@ -676,6 +788,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          billing_status?: string
           created_at?: string
           current_period_end?: string | null
           id?: string
