@@ -43,17 +43,24 @@ export default function ProLayout() {
           }}
         />
         <Tabs.Screen
-          name="planos"
-          options={{
-            title: 'Serviços',
-            tabBarIcon: ({ color, size }) => <Ionicons name="pricetags" size={size} color={color} />,
-          }}
-        />
-        <Tabs.Screen
           name="perfil"
           options={{
             title: 'Perfil',
             tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
+          }}
+        />
+        {/* Serviços (11/set): saiu da barra — é configuração mexida raro (preço/período de
+            professional_plans), não trabalho do dia a dia como Pacientes/Leads. Acessível
+            pelo Perfil, mesma rota de sempre, sem quebrar link nenhum. */}
+        <Tabs.Screen
+          name="planos"
+          options={{
+            href: null,
+            headerShown: true,
+            title: 'Serviços',
+            headerStyle: { backgroundColor: Palette.background },
+            headerTintColor: Palette.text,
+            headerShadowVisible: false,
           }}
         />
         {/* Detalhe do aluno e geração de convite: acessíveis por push, não são abas. */}

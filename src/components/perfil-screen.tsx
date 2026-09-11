@@ -177,6 +177,14 @@ export function PerfilScreen() {
         </Card>
       ) : null}
 
+      {isProfessional ? (
+        <Card>
+          <SectionTitle>Serviços</SectionTitle>
+          <Caption>Planos que você vende — nome, preço, periodicidade, o que inclui.</Caption>
+          <Button label="Gerenciar serviços" variant="ghost" onPress={() => router.push('/pro/planos')} />
+        </Card>
+      ) : null}
+
       {!isProfessional && proximaConsulta ? (
         <Card>
           <SectionTitle>Próxima consulta</SectionTitle>

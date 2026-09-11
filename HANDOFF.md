@@ -2576,3 +2576,31 @@ e as demais rotas dinâmicas (`/pro/aluno/:id`, `/dieta`, `/resumo`, `/convite/:
 conferidas por `curl`, todas 200 nos dois hosts depois do fix. **Regra que fica reforçada**:
 toda rota dinâmica nova sob `pro/aluno/[id]/` precisa de uma entrada em `public/vercel.json`,
 não só no roteamento do Expo Router — o EAS Hosting não precisa disso, só o Vercel.
+
+⚠️→✅ **Achado pelo Guilherme em produção, corrigido na hora**: `pro/aluno/[id]/anamnese.tsx`
+virou uma **6ª aba fantasma** na barra do profissional — esqueci de declarar
+`<Tabs.Screen name="aluno/[id]/anamnese" options={{ href: null }} />` em
+[`pro/_layout.tsx`](src/app/pro/_layout.tsx), gotcha já documentado neste handoff (todo arquivo
+novo em `src/app/pro/` vira aba sozinho sem essa declaração) e mesmo assim pisei nele. Corrigido
+(commit `156a7fc`), reexportado, deploy nos dois hosts, hash conferido igual
+(`entry-67d454a038511f654e71562982b8deea.js`). **Pergunta em aberto do Guilherme** — enxugar a barra do profissional (hoje
+Início/Pacientes/Leads/Serviços/Perfil, 5 abas) — respondida e implementada, ver abaixo.
+
+✅ **Barra do profissional enxugada pra 4 abas (11/set, reversão parcial deliberada de §18).**
+Princípio dado pelo Guilherme: aba = área que o profissional gerencia no dia a dia, não uma aba
+por atividade — precisa ser intuitivo, sem trabalho extra. `Serviços` (CRUD de
+`professional_plans` — nome/preço/periodicidade) saiu da barra: é configuração mexida raro,
+diferente de `Pacientes`/`Leads`, que são trabalho diário de verdade. `Leads` continua aba
+própria — é área distinta de gestão diária (funil de conversão, §12), não uma configuração.
+- `pro/_layout.tsx`: `planos` (rota `pro/planos.tsx`, mantida — não quebra link nenhum) trocou
+  de `Tabs.Screen` com ícone/título de aba pra `href: null` + header nativo, mesmo padrão já
+  usado em `aluno/[id]/index|dieta|resumo|anamnese`.
+- `perfil-screen.tsx`: seção nova "Serviços" no perfil do profissional (mesma posição/formato da
+  seção "Anamnese" já existente no perfil do aluno), botão "Gerenciar serviços" → `/pro/planos`.
+- **Barra final**: Início / Pacientes / Leads / Perfil.
+- **Verificado visualmente**: rota de depuração temporária mockando `useAuthStore` (session
+  falsa + `isProfessional: true`, sem tocar Supabase de verdade) pra renderizar o `ProLayout`
+  real sem precisar de login — confirmado só 4 ícones na barra, seção "Serviços" aparecendo no
+  Perfil, botão navegando pra `/pro/planos` com header "Serviços" certo, barra de baixo
+  permanecendo com as 4 abas dentro da tela de serviços. Removida a rota e a linha do layout
+  depois — `git status` confirmou `_layout.tsx` sem diff. `npx tsc --noEmit` limpo.
