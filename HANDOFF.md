@@ -758,6 +758,32 @@ deploy --prod` → `npx vercel deploy dist --project vytra-app --prod --yes`. Bu
 (`entry-bca2f7426756a34c561547c2167b8ba0.js`), conferido por `curl` nos dois (`app-treino.expo.app`
 e `app.vytraoficial.com.br`), ambos 200.
 
+## 31. Marcadores visuais de progresso no check-in do aluno (11/set)
+
+✅ Pedido do Guilherme, ancorado no §29 (benchmark): "hábito+badge além de treino" e o padrão
+LiveClin de "gráfico com alerta por cor" apareceram como gap parcial. Em vez de feature nova,
+achado mais barato: `pro/aluno/[id]/resumo.tsx` já calculava sparkline de pontuação, peso, adesão
+por categoria e streak (Entrega 3 do §27) — pro profissional ver, nunca espelhado pro próprio
+paciente. `aluno/checkin.tsx` ganhou seção "Sua evolução" reaproveitando exatamente isso:
+- `streakCheckin()`, nova em [`checkinService.ts`](src/services/checkinService.ts) — check-ins
+  seguidos dentro do prazo (`PERIODICIDADE_DIAS` + 3 dias de folga), diferente do streak de
+  treino (dias corridos): aqui "seguido" é não deixar passar um ciclo inteiro de check-in, não
+  contar dia a dia. Mesmo padrão de streak já usado em `workoutService.streakTreino`.
+- Sparkline de `historicoPontuacao()` e barras de `resumoAdesao()` — mesmas funções e
+  componentes (`Sparkline`/`BarraProgresso`, `ui/index.tsx`) já usados no resumo do
+  profissional. **Diferença nova**: a barra de adesão fica colorida por limiar (mint ≥60%,
+  âmbar <60%, mesmo corte de `rotuloQualitativo` em `models/checkin.ts`) em vez de sempre
+  `Palette.accent` — é o "alerta por cor" do LiveClin usando só a semântica que a marca já tem
+  (mint = bom, âmbar = atenção, nunca vermelho literal). Não retroaplicado no
+  `resumo.tsx` do profissional — fora do pedido desta rodada.
+- Sem schema novo, sem tabela nova — só leitura do que `check_ins` já grava desde 06/set.
+- **Verificado sem login**: rota de depuração temporária no root (`debugcheckin.tsx`,
+  whitelisted por uma linha em `_layout.tsx`, mesmo padrão de sempre) com 3 check-ins mockados
+  em progressão — streak bateu 3, sparkline subindo, barras coloridas certas (alimentação 48%
+  âmbar, sono/treino ≥70% mint). Removida a rota e a linha do layout depois — `git status`
+  confirmou `_layout.tsx` sem diff. `npx tsc --noEmit` limpo. **Não testado logado com histórico
+  real** — mesma regra de nunca digitar senha de conta nenhuma. **Sem deploy nesta rodada.**
+
 ## 8. Estado atual
 
 - Histórico do início do projeto (scaffold Expo renomeado, rotas provisórias em grupo
