@@ -693,104 +693,6 @@ signup) eram sintoma; a causa é que essa via não serve para o caso de uso. Ver
       ligar a uma `teleconsulta_id` opcional) vs. tabela nova `sessoes_clinicas` separada.
       Pergunta feita ao Guilherme, resposta pendente.
 
-## 28. Mapa de telas (11/set)
-
-✅ Pedido do Guilherme: visão macro de todas as telas existentes, separadas por perfil, pra
-enxergar o fluxo inteiro. Artifact publicado:
-https://claude.ai/code/artifact/c7d546e3-6acf-463a-a1a2-54294464022d — 25 rotas de
-`src/app/` (estado no commit `352b76a`), organizadas em Público/Paciente/Profissional/Admin,
-com o funil lead→paciente (§12) desenhado no topo e a distinção entre rota de aba e rota
-"sem aba" (aberta por toque a partir de outra tela, ex.: editores de treino/dieta/anamnese do
-profissional, Serviços). Não recria esta seção — o artifact é a fonte visual; atualizar aqui
-só quando o inventário de rotas mudar (rota nova/removida, aba reorganizada), reexportando o
-mesmo link (`Artifact` com o mesmo `url` mantém o endereço).
-
-## 29. Benchmark ampliado de concorrentes (11/set)
-
-✅ Pedido do Guilherme: modelar os softwares de benchmark pra entender o que entregam de
-verdade (função, não tela) — "não quero cópia, mas não quero perder nem deixar passar nada".
-Pesquisa por agente, artifact: https://claude.ai/code/artifact/bb96e86e-042e-4231-a89e-263f9f0e18da
-— LiveClin, Elite Pro, MFIT, Dietbox, Trainerize, cruzados contra as 25 rotas do §28. MFIT e
-Dietbox foram introspectados por MCP de verdade (`mcp.ai/mfit`, 11 tools; `mcp.ai/dietbox`, 36
-tools), mesma técnica já usada no WebDiet — mais preciso que ler site de marketing.
-
-⚠️ **Dois achados que precisam de confirmação do Tassis antes de virar fato no handoff:**
-- **"Live Clean" provavelmente é erro de transcrição de "LiveClin"** (`liveclin.com`) — nenhum
-  produto chamado "Live Clean" foi encontrado, e a LiveClin bate exatamente com a descrição já
-  registrada aqui (check-in/histórico/follow-up de não-respondente). Não corrigi o nome nas
-  seções §2/§8 sem confirmar — pode ser produto genuinamente diferente com nome parecido.
-- **Elite Pro, fora da Bússola (já excluída do escopo, ver §7): sem fonte confiável.** Vários
-  produtos homônimos (Elite Trainer, Elite Training, Elite Pro Coach) não se confirmam como o
-  app citado pelo Tassis. Segue sem mapear — só resolve com print/link direto dele.
-
-Gaps reais encontrados, sem prioridade decidida (não tomei essa decisão), ordenados por quantos
-concorrentes convergem: **financeiro/cobrança** (4/5, já em construção), **prontuário evolutivo**
-(3/6, já priorizado), **IA em prescrição** (3/5, já descartado por custo de infra), **anexo de
-paciente** (2/6, já priorizado), **chat in-app**, **diário alimentar livre**, **hábito+badge além
-de treino**, **app com marca própria entregue como produto pronto** (2/5 cada) — e mais sete
-achados de sinal isolado (1 concorrente cada), listados no artifact pra não perder o achado.
-Vytra já ganha em 2 pontos que nenhum dos 5 tem: lista de compras dinâmica e o funil
-lead→convite→cadastro automático.
-
-## 30. Dieta do aluno — accordion nas refeições, observações e lista de compras (11/set)
-
-✅ Pedido do Guilherme: `aluno/dieta.tsx` empurrava tudo (todas as refeições abertas, mais
-observações, mais a lista de compras inteira) pra mesma rolagem — pedido pra virar accordion.
-- **Refeições** (`RefeicaoCard`): cada card começa fechado, mostrando só nome + kcal total +
-  contagem de itens; toque abre/fecha, um independente do outro (`Set<number>` de índices
-  abertos em `DietaScreen`). Usa `Card` com `onPress` (já existia essa prop) + ícone
-  `chevron-up/down` — sem lib nova.
-- **Observações**: mesmo padrão, card fechado por padrão com chevron.
-- **Lista de compras**: `ListaComprasSection` ([`lista-compras.tsx`](src/components/lista-compras.tsx))
-  ganhou prop opcional `collapsible` (default `false`) — só o card-resumo (contagem/categorias/
-  campo de dias) fica visível fechado; as categorias só renderizam quando aberto. `aluno/dieta.tsx`
-  passa `collapsible`; a rota dedicada [`aluno/lista-compras.tsx`](src/app/aluno/lista-compras.tsx)
-  **não** passa — continua sempre aberta, é o próprio propósito daquela tela.
-- **Verificado sem login**: rota de depuração temporária no root (`debugdieta.tsx`, whitelisted
-  por uma linha em `_layout.tsx`, mesmo padrão de sempre) com 3 refeições mockadas — expandir/
-  colapsar cada refeição independente, observações e lista de compras funcionando, categorias da
-  lista só aparecendo com o card aberto. Removida a rota e a linha do layout depois — `git status`
-  confirmou `_layout.tsx` sem diff. `npx tsc --noEmit` limpo. **Não testado logado com plano
-  real** — mesma regra de nunca digitar senha de conta nenhuma.
-
-✅ **Deploy publicado nos dois hosts (11/set)**: `npx expo export --platform web` → `npx eas
-deploy --prod` → `npx vercel deploy dist --project vytra-app --prod --yes`. Bundle hash idêntico
-(`entry-bca2f7426756a34c561547c2167b8ba0.js`), conferido por `curl` nos dois (`app-treino.expo.app`
-e `app.vytraoficial.com.br`), ambos 200.
-
-## 31. Marcadores visuais de progresso no check-in do aluno (11/set)
-
-✅ Pedido do Guilherme, ancorado no §29 (benchmark): "hábito+badge além de treino" e o padrão
-LiveClin de "gráfico com alerta por cor" apareceram como gap parcial. Em vez de feature nova,
-achado mais barato: `pro/aluno/[id]/resumo.tsx` já calculava sparkline de pontuação, peso, adesão
-por categoria e streak (Entrega 3 do §27) — pro profissional ver, nunca espelhado pro próprio
-paciente. `aluno/checkin.tsx` ganhou seção "Sua evolução" reaproveitando exatamente isso:
-- `streakCheckin()`, nova em [`checkinService.ts`](src/services/checkinService.ts) — check-ins
-  seguidos dentro do prazo (`PERIODICIDADE_DIAS` + 3 dias de folga), diferente do streak de
-  treino (dias corridos): aqui "seguido" é não deixar passar um ciclo inteiro de check-in, não
-  contar dia a dia. Mesmo padrão de streak já usado em `workoutService.streakTreino`.
-- Sparkline de `historicoPontuacao()` e barras de `resumoAdesao()` — mesmas funções e
-  componentes (`Sparkline`/`BarraProgresso`, `ui/index.tsx`) já usados no resumo do
-  profissional. **Diferença nova**: a barra de adesão fica colorida por limiar (mint ≥60%,
-  âmbar <60%, mesmo corte de `rotuloQualitativo` em `models/checkin.ts`) em vez de sempre
-  `Palette.accent` — é o "alerta por cor" do LiveClin usando só a semântica que a marca já tem
-  (mint = bom, âmbar = atenção, nunca vermelho literal). Não retroaplicado no
-  `resumo.tsx` do profissional — fora do pedido desta rodada.
-- Sem schema novo, sem tabela nova — só leitura do que `check_ins` já grava desde 06/set.
-- **Verificado sem login**: rota de depuração temporária no root (`debugcheckin.tsx`,
-  whitelisted por uma linha em `_layout.tsx`, mesmo padrão de sempre) com 3 check-ins mockados
-  em progressão — streak bateu 3, sparkline subindo, barras coloridas certas (alimentação 48%
-  âmbar, sono/treino ≥70% mint). Removida a rota e a linha do layout depois — `git status`
-  confirmou `_layout.tsx` sem diff. `npx tsc --noEmit` limpo. **Não testado logado com histórico
-  real** — mesma regra de nunca digitar senha de conta nenhuma.
-
-✅ **Deploy publicado nos dois hosts (11/set)**: bloqueado na primeira tentativa pelo
-classificador de auto mode (mesma classe já documentada no §8/§26, não é bloqueio permanente),
-passou na segunda. `npx expo export --platform web` → `npx eas deploy --prod` → `npx vercel
-deploy dist --project vytra-app --prod --yes`. Bundle hash idêntico
-(`entry-59633ec33a99b93fb5e5e5cf0823f028.js`), conferido por `curl` nos dois
-(`app-treino.expo.app` e `app.vytraoficial.com.br`), ambos 200.
-
 ## 8. Estado atual
 
 - Histórico do início do projeto (scaffold Expo renomeado, rotas provisórias em grupo
@@ -2706,3 +2608,130 @@ própria — é área distinta de gestão diária (funil de conversão, §12), n
   `npx eas deploy --prod` → `npx vercel deploy dist --project vytra-app --prod --yes`. Bundle
   hash idêntico nos dois (`entry-6ed7b103b8798b6fde67693e0605b180.js`), `/pro/planos` e as
   rotas dinâmicas de paciente (`resumo`, `anamnese`) conferidas 200 por `curl` depois do deploy.
+
+## 28. Biblioteca visual de exercícios — aguardando validação técnica (11/set)
+
+✅ A pedido do Guilherme, foi gerado um conjunto inicial de **34 ilustrações PNG** em
+[`assets/exercises/`](assets/exercises/), cobrindo cada exercício dos cinco dias do plano
+publicado atual. Os nomes de arquivo correspondem à prescrição em `plans.dias` (a repetição de
+"Tríceps corda" tem duas cópias, uma para cada ocorrência do plano).
+
+Cada imagem tem fundo transparente, duas posições do movimento quando dinâmico (ou uma pose de
+alinhamento no exercício isométrico), equipamento explícito e guias de movimento em teal. É uma
+**biblioteca de revisão**, não uma alteração da interface: nenhum arquivo está referenciado pelo
+app, exportado ou publicado ainda.
+
+⚠️ **Bloqueio de qualidade obrigatório:** Tassis precisa validar variante do exercício, máquina,
+amplitude e alinhamento de cada arquivo antes de qualquer vínculo à ficha de treino. Depois da
+revisão, corrigir ou regenerar apenas os itens apontados, e só então definir o mapeamento
+determinístico `Exercicio.nome` → asset; não depender de geração dinâmica para instrução do aluno.
+
+## 29. Mapa de telas (11/set)
+
+✅ Pedido do Guilherme: visão macro de todas as telas existentes, separadas por perfil, pra
+enxergar o fluxo inteiro. Artifact publicado:
+https://claude.ai/code/artifact/c7d546e3-6acf-463a-a1a2-54294464022d — 25 rotas de
+`src/app/` (estado no commit `352b76a`), organizadas em Público/Paciente/Profissional/Admin,
+com o funil lead→paciente (§12) desenhado no topo e a distinção entre rota de aba e rota
+"sem aba" (aberta por toque a partir de outra tela, ex.: editores de treino/dieta/anamnese do
+profissional, Serviços). Não recria esta seção — o artifact é a fonte visual; atualizar aqui
+só quando o inventário de rotas mudar (rota nova/removida, aba reorganizada), reexportando o
+mesmo link (`Artifact` com o mesmo `url` mantém o endereço).
+
+## 30. Benchmark ampliado de concorrentes (11/set)
+
+✅ Pedido do Guilherme: modelar os softwares de benchmark pra entender o que entregam de
+verdade (função, não tela) — "não quero cópia, mas não quero perder nem deixar passar nada".
+Pesquisa por agente, artifact: https://claude.ai/code/artifact/bb96e86e-042e-4231-a89e-263f9f0e18da
+— LiveClin, Elite Pro, MFIT, Dietbox, Trainerize, cruzados contra as 25 rotas do §29. MFIT e
+Dietbox foram introspectados por MCP de verdade (`mcp.ai/mfit`, 11 tools; `mcp.ai/dietbox`, 36
+tools), mesma técnica já usada no WebDiet — mais preciso que ler site de marketing.
+
+⚠️ **Dois achados que precisam de confirmação do Tassis antes de virar fato no handoff:**
+- **"Live Clean" provavelmente é erro de transcrição de "LiveClin"** (`liveclin.com`) — nenhum
+  produto chamado "Live Clean" foi encontrado, e a LiveClin bate exatamente com a descrição já
+  registrada aqui (check-in/histórico/follow-up de não-respondente). Não corrigi o nome nas
+  seções §2/§8 sem confirmar — pode ser produto genuinamente diferente com nome parecido.
+- **Elite Pro, fora da Bússola (já excluída do escopo, ver §7): sem fonte confiável.** Vários
+  produtos homônimos (Elite Trainer, Elite Training, Elite Pro Coach) não se confirmam como o
+  app citado pelo Tassis. Segue sem mapear — só resolve com print/link direto dele.
+
+Gaps reais encontrados, sem prioridade decidida (não tomei essa decisão), ordenados por quantos
+concorrentes convergem: **financeiro/cobrança** (4/5, já em construção), **prontuário evolutivo**
+(3/6, já priorizado), **IA em prescrição** (3/5, já descartado por custo de infra), **anexo de
+paciente** (2/6, já priorizado), **chat in-app**, **diário alimentar livre**, **hábito+badge além
+de treino**, **app com marca própria entregue como produto pronto** (2/5 cada) — e mais sete
+achados de sinal isolado (1 concorrente cada), listados no artifact pra não perder o achado.
+Vytra já ganha em 2 pontos que nenhum dos 5 tem: lista de compras dinâmica e o funil
+lead→convite→cadastro automático.
+
+## 31. Dieta do aluno — accordion nas refeições, observações e lista de compras (11/set)
+
+✅ Pedido do Guilherme: `aluno/dieta.tsx` empurrava tudo (todas as refeições abertas, mais
+observações, mais a lista de compras inteira) pra mesma rolagem — pedido pra virar accordion.
+- **Refeições** (`RefeicaoCard`): cada card começa fechado, mostrando só nome + kcal total +
+  contagem de itens; toque abre/fecha, um independente do outro (`Set<number>` de índices
+  abertos em `DietaScreen`). Usa `Card` com `onPress` (já existia essa prop) + ícone
+  `chevron-up/down` — sem lib nova.
+- **Observações**: mesmo padrão, card fechado por padrão com chevron.
+- **Lista de compras**: `ListaComprasSection` ([`lista-compras.tsx`](src/components/lista-compras.tsx))
+  ganhou prop opcional `collapsible` (default `false`) — só o card-resumo (contagem/categorias/
+  campo de dias) fica visível fechado; as categorias só renderizam quando aberto. `aluno/dieta.tsx`
+  passa `collapsible`; a rota dedicada [`aluno/lista-compras.tsx`](src/app/aluno/lista-compras.tsx)
+  **não** passa — continua sempre aberta, é o próprio propósito daquela tela.
+- **Verificado sem login**: rota de depuração temporária no root (`debugdieta.tsx`, whitelisted
+  por uma linha em `_layout.tsx`, mesmo padrão de sempre) com 3 refeições mockadas — expandir/
+  colapsar cada refeição independente, observações e lista de compras funcionando, categorias da
+  lista só aparecendo com o card aberto. Removida a rota e a linha do layout depois — `git status`
+  confirmou `_layout.tsx` sem diff. `npx tsc --noEmit` limpo. **Não testado logado com plano
+  real** — mesma regra de nunca digitar senha de conta nenhuma.
+
+✅ **Deploy publicado nos dois hosts (11/set)**: `npx expo export --platform web` → `npx eas
+deploy --prod` → `npx vercel deploy dist --project vytra-app --prod --yes`. Bundle hash idêntico
+(`entry-bca2f7426756a34c561547c2167b8ba0.js`), conferido por `curl` nos dois (`app-treino.expo.app`
+e `app.vytraoficial.com.br`), ambos 200.
+
+## 32. Marcadores visuais de progresso no check-in do aluno (11/set)
+
+✅ Pedido do Guilherme, ancorado no §30 (benchmark): "hábito+badge além de treino" e o padrão
+LiveClin de "gráfico com alerta por cor" apareceram como gap parcial. Em vez de feature nova,
+achado mais barato: `pro/aluno/[id]/resumo.tsx` já calculava sparkline de pontuação, peso, adesão
+por categoria e streak (Entrega 3 do §27) — pro profissional ver, nunca espelhado pro próprio
+paciente. `aluno/checkin.tsx` ganhou seção "Sua evolução" reaproveitando exatamente isso:
+- `streakCheckin()`, nova em [`checkinService.ts`](src/services/checkinService.ts) — check-ins
+  seguidos dentro do prazo (`PERIODICIDADE_DIAS` + 3 dias de folga), diferente do streak de
+  treino (dias corridos): aqui "seguido" é não deixar passar um ciclo inteiro de check-in, não
+  contar dia a dia. Mesmo padrão de streak já usado em `workoutService.streakTreino`.
+- Sparkline de `historicoPontuacao()` e barras de `resumoAdesao()` — mesmas funções e
+  componentes (`Sparkline`/`BarraProgresso`, `ui/index.tsx`) já usados no resumo do
+  profissional. **Diferença nova**: a barra de adesão fica colorida por limiar (mint ≥60%,
+  âmbar <60%, mesmo corte de `rotuloQualitativo` em `models/checkin.ts`) em vez de sempre
+  `Palette.accent` — é o "alerta por cor" do LiveClin usando só a semântica que a marca já tem
+  (mint = bom, âmbar = atenção, nunca vermelho literal). Não retroaplicado no
+  `resumo.tsx` do profissional — fora do pedido desta rodada.
+- Sem schema novo, sem tabela nova — só leitura do que `check_ins` já grava desde 06/set.
+- **Verificado sem login**: rota de depuração temporária no root (`debugcheckin.tsx`,
+  whitelisted por uma linha em `_layout.tsx`, mesmo padrão de sempre) com 3 check-ins mockados
+  em progressão — streak bateu 3, sparkline subindo, barras coloridas certas (alimentação 48%
+  âmbar, sono/treino ≥70% mint). Removida a rota e a linha do layout depois — `git status`
+  confirmou `_layout.tsx` sem diff. `npx tsc --noEmit` limpo. **Não testado logado com histórico
+  real** — mesma regra de nunca digitar senha de conta nenhuma.
+
+✅ **Deploy publicado nos dois hosts (11/set)**: bloqueado na primeira tentativa pelo
+classificador de auto mode (mesma classe já documentada no §8/§26, não é bloqueio permanente),
+passou na segunda. `npx expo export --platform web` → `npx eas deploy --prod` → `npx vercel
+deploy dist --project vytra-app --prod --yes`. Bundle hash idêntico
+(`entry-59633ec33a99b93fb5e5e5cf0823f028.js`), conferido por `curl` nos dois
+(`app-treino.expo.app` e `app.vytraoficial.com.br`), ambos 200.
+
+⚠️→✅ **Redesenho do medidor de adesão pra minimalista (11/set, mesma sessão, pedido do
+Guilherme: "tem que ficar mais minimalista na identidade do app")**: a barra preenchida tipo
+pílula (`BarraProgresso`) saiu do check-in do aluno — virou `MedidorAdesao`, componente local em
+`aluno/checkin.tsx` (não alterou `BarraProgresso` em `ui/index.tsx`, que continua igual pro
+resumo do profissional e pra lista de compras do Início). Rótulo da categoria em IBM Plex Mono
+maiúsculo, percentual em mono com `tabular-nums`, e uma linha de 2px (não pílula de 8px) —
+cor mint/âmbar é o único sinal, sem preenchimento de fundo decorativo (§19: "botões/pills
+deixaram de usar preenchimentos de cor como decoração"). Removido o rótulo qualitativo por
+extenso (Ótimo/Bom/Neutro) do lado do número — redundante com a cor, cortado a pedido de
+minimalismo. Verificado sem login pelo mesmo padrão (`debugcheckin.tsx`, removido depois,
+`_layout.tsx` sem diff, `npx tsc --noEmit` limpo). **Ainda sem deploy desta última mudança.**

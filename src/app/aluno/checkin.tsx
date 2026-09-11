@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { CheckinFlow, CheckinResumo } from '@/components/checkin-flow';
 import {
-  BarraProgresso,
   Button,
   Caption,
   Card,
@@ -29,7 +28,7 @@ import {
 } from '@/services/checkinService';
 import { listarMeusProfissionais, type ProfissionalVinculado } from '@/services/professionalService';
 import { useAuthStore } from '@/store/authStore';
-import { Palette, Radius, Spacing } from '@/theme';
+import { FontSize, monoStyle, Palette, Radius, Spacing } from '@/theme';
 
 /**
  * Check-in do aluno (FA do roadmap, 06/set): série recorrente respondida pelo paciente,
@@ -186,18 +185,10 @@ export default function CheckinScreen() {
           ) : null}
           {adesao.length > 0 ? (
             <Card>
-              <Caption>Adesão por categoria (últimos check-ins)</Caption>
-              {adesao.map((a) => {
-                const cor = a.mediaPontuacao >= 60 ? Palette.accent : Palette.vitalAlert;
-                return (
-                  <View key={a.categoria} style={styles.adesaoLinha}>
-                    <Caption color={Palette.text}>
-                      {a.categoria} — {a.rotulo} ({a.mediaPontuacao}%)
-                    </Caption>
-                    <BarraProgresso valor={a.mediaPontuacao} total={100} cor={cor} />
-                  </View>
-                );
-              })}
+              <SectionTitle>Adesão por categoria</SectionTitle>
+              {adesao.map((a) => (
+                <MedidorAdesao key={a.categoria} categoria={a.categoria} valor={a.mediaPontuacao} />
+              ))}
             </Card>
           ) : null}
         </>
@@ -266,8 +257,32 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Spacing.md,
   },
-  adesaoLinha: {
-    gap: Spacing.xs,
+  medidor: {
+    gap: 6,
+  },
+  medidorCabecalho: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+  },
+  medidorRotulo: {
+    ...monoStyle(FontSize.caption),
+    color: Palette.textTertiary,
+    textTransform: 'uppercase',
+  },
+  medidorValor: {
+    ...monoStyle(FontSize.small, true),
+    fontVariant: ['tabular-nums'],
+  },
+  medidorTrilha: {
+    height: 2,
+    borderRadius: Radius.sm,
+    backgroundColor: Palette.border,
+    overflow: 'hidden',
+  },
+  medidorPreenchido: {
+    height: '100%',
+    borderRadius: Radius.sm,
   },
   fotos: {
     flexDirection: 'row',
@@ -294,4 +309,24 @@ const styles = StyleSheet.create({
 function rotuloProfissional(profissional: ProfissionalVinculado): string {
   const especialidade = profissional.especialidade === 'nutricionista' ? 'Nutrição' : 'Treino';
   return `${especialidade} · ${profissional.nome}`;
+}
+
+/**
+ * Medidor de adesão — linha fina, sem preenchimento decorativo (§19: cores só sinalizam,
+ * nunca decoram). Mint acima do corte de `rotuloQualitativo` (60%, `models/checkin.ts`),
+ * âmbar abaixo — mesma leitura "sinal vital" do resto da marca, sem vermelho literal.
+ */
+function MedidorAdesao({ categoria, valor }: { categoria: string; valor: number }) {
+  const cor = valor >= 60 ? Palette.accent : Palette.vitalAlert;
+  return (
+    <View style={styles.medidor}>
+      <View style={styles.medidorCabecalho}>
+        <Text style={styles.medidorRotulo}>{categoria}</Text>
+        <Text style={[styles.medidorValor, { color: cor }]}>{valor}%</Text>
+      </View>
+      <View style={styles.medidorTrilha}>
+        <View style={[styles.medidorPreenchido, { width: `${valor}%`, backgroundColor: cor }]} />
+      </View>
+    </View>
+  );
 }
