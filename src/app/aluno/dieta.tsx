@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -26,6 +27,8 @@ export default function DietaScreen() {
   const [categorias, setCategorias] = useState<Record<number, string>>({});
   const [liberado, setLiberado] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [refeicoesAbertas, setRefeicoesAbertas] = useState<Set<number>>(new Set());
+  const [observacoesAberta, setObservacoesAberta] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -100,17 +103,41 @@ export default function DietaScreen() {
       </Card>
 
       {plano.refeicoes.map((refeicao, i) => (
-        <RefeicaoCard key={i} refeicao={refeicao} />
+        <RefeicaoCard
+          key={i}
+          refeicao={refeicao}
+          aberta={refeicoesAbertas.has(i)}
+          onToggle={() =>
+            setRefeicoesAbertas((atual) => {
+              const novo = new Set(atual);
+              if (novo.has(i)) novo.delete(i);
+              else novo.add(i);
+              return novo;
+            })
+          }
+        />
       ))}
 
       {plano.observacoes ? (
-        <Card>
-          <SectionTitle>Observações</SectionTitle>
-          <Caption>{plano.observacoes}</Caption>
+        <Card onPress={() => setObservacoesAberta((a) => !a)}>
+          <View style={styles.toggleHeader}>
+            <SectionTitle>Observações</SectionTitle>
+            <Ionicons
+              name={observacoesAberta ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={Palette.textTertiary}
+            />
+          </View>
+          {observacoesAberta ? <Caption>{plano.observacoes}</Caption> : null}
         </Card>
       ) : null}
 
-      <ListaComprasSection userId={user.id} refeicoes={plano.refeicoes} categorias={categorias} />
+      <ListaComprasSection
+        userId={user.id}
+        refeicoes={plano.refeicoes}
+        categorias={categorias}
+        collapsible
+      />
     </Screen>
   );
 }
@@ -137,27 +164,51 @@ function MacroChip({
   );
 }
 
-function RefeicaoCard({ refeicao }: { refeicao: Refeicao }) {
+function RefeicaoCard({
+  refeicao,
+  aberta,
+  onToggle,
+}: {
+  refeicao: Refeicao;
+  aberta: boolean;
+  onToggle: () => void;
+}) {
   const itens = itensReais(refeicao.itens);
   const total = somaMacros(itens);
   const conferido = totalConferidoPeloNutricionista(refeicao.itens);
   const aviso = avisoDaRefeicao(refeicao.itens);
 
   return (
-    <Card>
+    <Card onPress={onToggle}>
       <View style={styles.refeicaoHeader}>
         <Body>{refeicao.nome}</Body>
-        <Caption color={MacroColors.kcal}>{Math.round(total.kcal)} kcal</Caption>
+        <View style={styles.refeicaoResumo}>
+          <Caption color={MacroColors.kcal}>{Math.round(total.kcal)} kcal</Caption>
+          {!aberta ? (
+            <Caption color={Palette.textTertiary}>
+              · {itens.length} {itens.length === 1 ? 'item' : 'itens'}
+            </Caption>
+          ) : null}
+          <Ionicons
+            name={aberta ? 'chevron-up' : 'chevron-down'}
+            size={18}
+            color={Palette.textTertiary}
+          />
+        </View>
       </View>
-      {itens.map((item, i) => (
-        <ItemRow key={i} item={item} />
-      ))}
-      {conferido ? (
-        <Caption color={Palette.green}>
-          ✓ Total conferido pelo nutricionista: {Math.round(conferido.kcal)} kcal
-        </Caption>
+      {aberta ? (
+        <>
+          {itens.map((item, i) => (
+            <ItemRow key={i} item={item} />
+          ))}
+          {conferido ? (
+            <Caption color={Palette.green}>
+              ✓ Total conferido pelo nutricionista: {Math.round(conferido.kcal)} kcal
+            </Caption>
+          ) : null}
+          {aviso ? <Caption color={Palette.orange}>{aviso}</Caption> : null}
+        </>
       ) : null}
-      {aviso ? <Caption color={Palette.orange}>{aviso}</Caption> : null}
     </Card>
   );
 }
@@ -210,6 +261,16 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   refeicaoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  refeicaoResumo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  toggleHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

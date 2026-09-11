@@ -46,13 +46,19 @@ export function ListaComprasSection({
   userId,
   refeicoes,
   categorias,
+  collapsible = false,
 }: {
   userId: string;
   refeicoes: Refeicao[];
   categorias: Record<number, string>;
+  /** Quando true, a lista some por trás do card de resumo até o aluno tocar nele — usado em
+   * `aluno/dieta.tsx` pra não empurrar as refeições pra baixo da dobra. A rota dedicada
+   * (`aluno/lista-compras.tsx`) mantém o padrão de sempre, sem essa prop. */
+  collapsible?: boolean;
 }) {
   const [diasPeriodo, setDiasPeriodo] = useState('30');
   const [marcados, setMarcados] = useState<Set<string>>(new Set());
+  const [aberta, setAberta] = useState(!collapsible);
 
   useEffect(() => {
     AsyncStorage.getItem(chaveMarcados(userId)).then((salvo) => {
@@ -87,7 +93,7 @@ export function ListaComprasSection({
 
   return (
     <>
-      <Card>
+      <Card onPress={collapsible ? () => setAberta((a) => !a) : undefined}>
         <View style={styles.comprasHeader}>
           <View style={styles.comprasTitulo}>
             <SectionTitle>Lista de compras</SectionTitle>
@@ -96,50 +102,62 @@ export function ListaComprasSection({
               {dias === 1 ? '' : 's'}
             </Caption>
           </View>
-          <View style={styles.diasCampo}>
-            <Field value={diasPeriodo} onChangeText={setDiasPeriodo} keyboardType="number-pad" placeholder="30" />
-            <Caption>dias</Caption>
-          </View>
+          {aberta ? (
+            <View style={styles.diasCampo}>
+              <Field value={diasPeriodo} onChangeText={setDiasPeriodo} keyboardType="number-pad" placeholder="30" />
+              <Caption>dias</Caption>
+            </View>
+          ) : null}
+          {collapsible ? (
+            <Ionicons
+              name={aberta ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={Palette.textTertiary}
+            />
+          ) : null}
         </View>
-        <Caption color={Palette.textTertiary}>
-          Arroz, feijão, massa e carne já convertidos de peso pronto pra peso cru de compra —
-          estimativa por tabela padrão, confirme com seu nutricionista.
-        </Caption>
+        {aberta ? (
+          <Caption color={Palette.textTertiary}>
+            Arroz, feijão, massa e carne já convertidos de peso pronto pra peso cru de compra —
+            estimativa por tabela padrão, confirme com seu nutricionista.
+          </Caption>
+        ) : null}
       </Card>
 
-      {compras.map((grupo) => {
-        const chaves = grupo.itens.map((item) => `${grupo.categoria}::${item.nome}`);
-        const marcadosNaCategoria = chaves.filter((c) => marcados.has(c)).length;
-        const completa = marcadosNaCategoria === chaves.length;
-        return (
-          <Card key={grupo.categoria} style={completa ? styles.categoriaCompleta : undefined}>
-            <View style={styles.categoriaHeader}>
-              <View style={styles.categoriaIconeWrap}>
-                <Ionicons
-                  name={ICONE_CATEGORIA[grupo.categoria] ?? ICONE_PADRAO}
-                  size={16}
-                  color={completa ? Palette.green : Palette.purple}
-                />
+      {aberta &&
+        compras.map((grupo) => {
+          const chaves = grupo.itens.map((item) => `${grupo.categoria}::${item.nome}`);
+          const marcadosNaCategoria = chaves.filter((c) => marcados.has(c)).length;
+          const completa = marcadosNaCategoria === chaves.length;
+          return (
+            <Card key={grupo.categoria} style={completa ? styles.categoriaCompleta : undefined}>
+              <View style={styles.categoriaHeader}>
+                <View style={styles.categoriaIconeWrap}>
+                  <Ionicons
+                    name={ICONE_CATEGORIA[grupo.categoria] ?? ICONE_PADRAO}
+                    size={16}
+                    color={completa ? Palette.green : Palette.purple}
+                  />
+                </View>
+                <Caption color={Palette.text} style={styles.categoriaTexto}>
+                  {grupo.categoria}
+                </Caption>
+                <Caption color={completa ? Palette.green : Palette.textTertiary}>
+                  {marcadosNaCategoria}/{chaves.length}
+                </Caption>
               </View>
-              <Caption color={Palette.text} style={styles.categoriaTexto}>
-                {grupo.categoria}
-              </Caption>
-              <Caption color={completa ? Palette.green : Palette.textTertiary}>
-                {marcadosNaCategoria}/{chaves.length}
-              </Caption>
-            </View>
 
-            {grupo.itens.map((item, i) => (
-              <ItemCompraRow
-                key={chaves[i]}
-                item={item}
-                marcado={marcados.has(chaves[i])}
-                onToggle={() => alternarMarcado(chaves[i])}
-              />
-            ))}
-          </Card>
-        );
-      })}
+              {grupo.itens.map((item, i) => (
+                <ItemCompraRow
+                  key={chaves[i]}
+                  item={item}
+                  marcado={marcados.has(chaves[i])}
+                  onToggle={() => alternarMarcado(chaves[i])}
+                />
+              ))}
+            </Card>
+          );
+        })}
     </>
   );
 }
