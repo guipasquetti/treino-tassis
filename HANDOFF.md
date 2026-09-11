@@ -2553,5 +2553,26 @@ ciclo": não é mais descartado, só adiado pra depois desta fase (nota adiciona
 duas vezes, mesma lista de warnings já aceita (nenhuma categoria nova). Nenhuma tela testada com
 sessão real (mesma regra de nunca digitar senha de conta nenhuma, nem descartável) — vale um
 teste manual do Guilherme/Tassis: perfil (sexo + anamnese), calculadora de dieta com paciente
-real, e o dashboard de evolução em `resumo.tsx`. **Deploy pendente** — nada disso está no ar
-ainda (`app-treino.expo.app`/`app.vytraoficial.com.br`), só no working tree local.
+real, e o dashboard de evolução em `resumo.tsx`.
+
+✅ **Testado antes do commit (11/set, mesma sessão)**: `CalculadoraMetaCalorica` testada com o
+componente REAL (export temporário revertido depois, `git status` limpo), não uma cópia — as 3
+fórmulas batendo com os valores já validados por `npx tsx`, aviso de dado faltante e campo
+condicional de % de gordura (Cunningham) funcionando. **Achado e corrigido nesse teste**:
+`resumoAdesao` (`checkinService.ts`) misturava o `rotulo` de check-ins diferentes em vez de
+rotular a média — corrigido pra usar `rotuloQualitativo()` (já existe em `checkin.ts`) sobre a
+média calculada, revalidado com `npx tsx`. Commitado em `307c18d`.
+
+✅ **Deploy publicado nos dois hosts (11/set)**: `npx expo export --platform web` → `npx eas
+deploy --prod` (produção `app-treino.expo.app`) → `npx vercel deploy dist --project vytra-app
+--prod --yes` (`app.vytraoficial.com.br`). Bundle hash idêntico nos dois
+(`entry-848a10715728853f6caa3ec4ad9af992.js`), conferido por `curl`.
+⚠️→✅ **Achado e corrigido no mesmo deploy**: `pro/aluno/[id]/anamnese` (rota nova desta fase)
+deu 404 no Vercel — mesmo bug de rota dinâmica sem rewrite já documentado no §17 (o Vercel não
+sabe rotear parâmetro dinâmico do export estático do Expo sem `rewrites` explícito em
+`vercel.json`). Adicionada a entrada que faltava em
+[`public/vercel.json`](public/vercel.json), reexportado e reenviado — `/pro/aluno/:id/anamnese`
+e as demais rotas dinâmicas (`/pro/aluno/:id`, `/dieta`, `/resumo`, `/convite/:token`)
+conferidas por `curl`, todas 200 nos dois hosts depois do fix. **Regra que fica reforçada**:
+toda rota dinâmica nova sob `pro/aluno/[id]/` precisa de uma entrada em `public/vercel.json`,
+não só no roteamento do Expo Router — o EAS Hosting não precisa disso, só o Vercel.

@@ -4,6 +4,7 @@
     { "source": "/convite/:token", "destination": "/convite/[token]" },
     { "source": "/pro/aluno/:id", "destination": "/pro/aluno/[id]" },
     { "source": "/pro/aluno/:id/dieta", "destination": "/pro/aluno/[id]/dieta" },
-    { "source": "/pro/aluno/:id/resumo", "destination": "/pro/aluno/[id]/resumo" }
+    { "source": "/pro/aluno/:id/resumo", "destination": "/pro/aluno/[id]/resumo" },
+    { "source": "/pro/aluno/:id/anamnese", "destination": "/pro/aluno/[id]/anamnese" }
   ]
 }
