@@ -2604,3 +2604,7 @@ própria — é área distinta de gestão diária (funil de conversão, §12), n
   Perfil, botão navegando pra `/pro/planos` com header "Serviços" certo, barra de baixo
   permanecendo com as 4 abas dentro da tela de serviços. Removida a rota e a linha do layout
   depois — `git status` confirmou `_layout.tsx` sem diff. `npx tsc --noEmit` limpo.
+- ✅ **Commitado (`dcd3349`) e deployado nos dois hosts**: `npx expo export --platform web` →
+  `npx eas deploy --prod` → `npx vercel deploy dist --project vytra-app --prod --yes`. Bundle
+  hash idêntico nos dois (`entry-6ed7b103b8798b6fde67693e0605b180.js`), `/pro/planos` e as
+  rotas dinâmicas de paciente (`resumo`, `anamnese`) conferidas 200 por `curl` depois do deploy.
