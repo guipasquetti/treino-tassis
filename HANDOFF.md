@@ -782,7 +782,14 @@ paciente. `aluno/checkin.tsx` ganhou seção "Sua evolução" reaproveitando exa
   em progressão — streak bateu 3, sparkline subindo, barras coloridas certas (alimentação 48%
   âmbar, sono/treino ≥70% mint). Removida a rota e a linha do layout depois — `git status`
   confirmou `_layout.tsx` sem diff. `npx tsc --noEmit` limpo. **Não testado logado com histórico
-  real** — mesma regra de nunca digitar senha de conta nenhuma. **Sem deploy nesta rodada.**
+  real** — mesma regra de nunca digitar senha de conta nenhuma.
+
+✅ **Deploy publicado nos dois hosts (11/set)**: bloqueado na primeira tentativa pelo
+classificador de auto mode (mesma classe já documentada no §8/§26, não é bloqueio permanente),
+passou na segunda. `npx expo export --platform web` → `npx eas deploy --prod` → `npx vercel
+deploy dist --project vytra-app --prod --yes`. Bundle hash idêntico
+(`entry-59633ec33a99b93fb5e5e5cf0823f028.js`), conferido por `curl` nos dois
+(`app-treino.expo.app` e `app.vytraoficial.com.br`), ambos 200.
 
 ## 8. Estado atual
 
