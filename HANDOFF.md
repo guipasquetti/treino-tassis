@@ -2621,6 +2621,11 @@ alinhamento no exercício isométrico), equipamento explícito e guias de movime
 **biblioteca de revisão**, não uma alteração da interface: nenhum arquivo está referenciado pelo
 app, exportado ou publicado ainda.
 
+✅ **Correção pontual solicitada pelo Guilherme:** `cadeira-flexora.png` teve as duas posições
+invertidas horizontalmente: a flexão final fica à esquerda e a extensão inicial à direita, com a
+seta apontando da posição inicial para a final. Aplicada por inversão exata do PNG original;
+transparência (`alpha`) preservada.
+
 ⚠️ **Bloqueio de qualidade obrigatório:** Tassis precisa validar variante do exercício, máquina,
 amplitude e alinhamento de cada arquivo antes de qualquer vínculo à ficha de treino. Depois da
 revisão, corrigir ou regenerar apenas os itens apontados, e só então definir o mapeamento
@@ -2734,4 +2739,9 @@ cor mint/âmbar é o único sinal, sem preenchimento de fundo decorativo (§19: 
 deixaram de usar preenchimentos de cor como decoração"). Removido o rótulo qualitativo por
 extenso (Ótimo/Bom/Neutro) do lado do número — redundante com a cor, cortado a pedido de
 minimalismo. Verificado sem login pelo mesmo padrão (`debugcheckin.tsx`, removido depois,
-`_layout.tsx` sem diff, `npx tsc --noEmit` limpo). **Ainda sem deploy desta última mudança.**
+`_layout.tsx` sem diff, `npx tsc --noEmit` limpo).
+
+✅ **Deploy publicado nos dois hosts (11/set)**: `npx expo export --platform web` → `npx eas
+deploy --prod` → `npx vercel deploy dist --project vytra-app --prod --yes`. Bundle hash idêntico
+(`entry-7f2d9007355e08f8ad770951fdbb9b8d.js`), conferido por `curl` nos dois
+(`app-treino.expo.app` e `app.vytraoficial.com.br`), ambos 200.
