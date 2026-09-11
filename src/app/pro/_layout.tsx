@@ -91,6 +91,17 @@ export default function ProLayout() {
             headerShadowVisible: false,
           }}
         />
+        <Tabs.Screen
+          name="aluno/[id]/anamnese"
+          options={{
+            href: null,
+            headerShown: true,
+            title: 'Anamnese',
+            headerStyle: { backgroundColor: Palette.background },
+            headerTintColor: Palette.text,
+            headerShadowVisible: false,
+          }}
+        />
       </Tabs>
     </RoleThemeProvider>
   );
