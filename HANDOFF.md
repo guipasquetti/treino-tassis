@@ -753,6 +753,11 @@ observações, mais a lista de compras inteira) pra mesma rolagem — pedido pra
   confirmou `_layout.tsx` sem diff. `npx tsc --noEmit` limpo. **Não testado logado com plano
   real** — mesma regra de nunca digitar senha de conta nenhuma.
 
+✅ **Deploy publicado nos dois hosts (11/set)**: `npx expo export --platform web` → `npx eas
+deploy --prod` → `npx vercel deploy dist --project vytra-app --prod --yes`. Bundle hash idêntico
+(`entry-bca2f7426756a34c561547c2167b8ba0.js`), conferido por `curl` nos dois (`app-treino.expo.app`
+e `app.vytraoficial.com.br`), ambos 200.
+
 ## 8. Estado atual
 
 - Histórico do início do projeto (scaffold Expo renomeado, rotas provisórias em grupo
