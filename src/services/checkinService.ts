@@ -191,6 +191,33 @@ export function resumoAdesao(checkins: CheckIn[], n = 3): ResumoAdesaoCategoria[
   });
 }
 
+/** Tolerância além da periodicidade antes de considerar a sequência quebrada — mesma folga
+ * usada pro streak de treino não zerar só porque o aluno ainda não abriu o app hoje. */
+const STREAK_GRACE_DIAS = 3;
+
+/**
+ * Check-ins seguidos dentro do prazo, contando do mais recente pra trás (`checkins` deve vir
+ * nessa ordem, mesma de `listarCheckinsDaAssinatura`/`listarCheckinsDoAluno`). Diferente do
+ * streak de treino (`workoutService.streakTreino`, dias corridos), aqui "seguido" é responder
+ * dentro do ciclo de `PERIODICIDADE_DIAS` — faltar um ciclo inteiro quebra a sequência mesmo
+ * sem intervalo de dias exato entre respostas.
+ */
+export function streakCheckin(checkins: CheckIn[]): number {
+  if (!checkins.length) return 0;
+
+  const diasDesdeUltimo = (Date.now() - new Date(checkins[0].created_at).getTime()) / 86_400_000;
+  if (diasDesdeUltimo > PERIODICIDADE_DIAS + STREAK_GRACE_DIAS) return 0;
+
+  let streak = 1;
+  for (let i = 1; i < checkins.length; i++) {
+    const gap =
+      (new Date(checkins[i - 1].created_at).getTime() - new Date(checkins[i].created_at).getTime()) / 86_400_000;
+    if (gap > PERIODICIDADE_DIAS + STREAK_GRACE_DIAS) break;
+    streak++;
+  }
+  return streak;
+}
+
 /** Se o paciente já pode enviar um novo check-in (nunca enviou, ou já passou a periodicidade). */
 export async function checkinPendente(subscriptionId: string): Promise<boolean> {
   const { data } = await supabase

@@ -2,13 +2,28 @@ import { useCallback, useEffect, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 
 import { CheckinFlow, CheckinResumo } from '@/components/checkin-flow';
-import { Button, Caption, Card, EmptyState, Loading, Pill, Screen, SectionTitle } from '@/components/ui';
+import {
+  BarraProgresso,
+  Button,
+  Caption,
+  Card,
+  EmptyState,
+  Loading,
+  Pill,
+  Screen,
+  SectionTitle,
+  Sparkline,
+  Stat,
+} from '@/components/ui';
 import { formatarDataHora } from '@/models/domain';
 import type { ResumoCheckin } from '@/models/checkin';
 import {
   checkinPendente,
+  historicoPontuacao,
   listarCheckinsDaAssinatura,
   obterComparacaoFotos,
+  resumoAdesao,
+  streakCheckin,
   type CheckIn,
   type ComparacaoAngulo,
 } from '@/services/checkinService';
@@ -64,6 +79,9 @@ export default function CheckinScreen() {
   }, [carregarAcompanhamento]);
 
   const profissionalSelecionado = profissionais?.find((v) => v.subscriptionId === subscriptionId) ?? null;
+  const pontuacoes = historicoPontuacao(historico);
+  const adesao = resumoAdesao(historico);
+  const streak = streakCheckin(historico);
 
   if (!user || profissionais === null || (subscriptionId !== null && pendente === null)) return <Loading />;
 
@@ -145,6 +163,46 @@ export default function CheckinScreen() {
         </View>
       ) : null}
 
+      {profissionalSelecionado && (streak > 0 || pontuacoes.length >= 2 || adesao.length > 0) ? (
+        <>
+          <SectionTitle>Sua evolução</SectionTitle>
+          {streak > 0 ? (
+            <Card>
+              <Stat
+                value={String(streak)}
+                label={streak === 1 ? 'check-in seguido' : 'check-ins seguidos'}
+                color={Palette.accent}
+              />
+            </Card>
+          ) : null}
+          {pontuacoes.length >= 2 ? (
+            <Card>
+              <Caption>Pontuação geral</Caption>
+              <Caption color={Palette.textTertiary}>
+                {Math.round(pontuacoes[pontuacoes.length - 1].pontuacao)}% no último check-in
+              </Caption>
+              <Sparkline valores={pontuacoes.map((p) => p.pontuacao)} cor={Palette.accent} />
+            </Card>
+          ) : null}
+          {adesao.length > 0 ? (
+            <Card>
+              <Caption>Adesão por categoria (últimos check-ins)</Caption>
+              {adesao.map((a) => {
+                const cor = a.mediaPontuacao >= 60 ? Palette.accent : Palette.vitalAlert;
+                return (
+                  <View key={a.categoria} style={styles.adesaoLinha}>
+                    <Caption color={Palette.text}>
+                      {a.categoria} — {a.rotulo} ({a.mediaPontuacao}%)
+                    </Caption>
+                    <BarraProgresso valor={a.mediaPontuacao} total={100} cor={cor} />
+                  </View>
+                );
+              })}
+            </Card>
+          ) : null}
+        </>
+      ) : null}
+
       {comparacao.length > 0 ? (
         <>
           <SectionTitle>Progresso visual</SectionTitle>
@@ -207,6 +265,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: Spacing.md,
+  },
+  adesaoLinha: {
+    gap: Spacing.xs,
   },
   fotos: {
     flexDirection: 'row',
