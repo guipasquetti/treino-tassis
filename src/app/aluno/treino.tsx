@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, Linking, ScrollView, StyleSheet, View } from 'react-native';
 
 import {
   Body,
@@ -18,7 +18,6 @@ import {
 import {
   formatarData,
   formatarSet,
-  type DiaTreino,
   type Exercicio,
   type SetLog,
 } from '@/models/domain';
@@ -38,6 +37,7 @@ import {
 import { temPlanoConfirmado } from '@/services/professionalService';
 import { useAuthStore } from '@/store/authStore';
 import { Palette, Radius, Spacing, trainingColor } from '@/theme';
+import { getExerciseIllustration } from '@/lib/exerciseIllustrations';
 
 export default function TreinoScreen() {
   const user = useAuthStore((s) => s.user);
@@ -128,6 +128,7 @@ export default function TreinoScreen() {
         <ExercicioCard
           key={ex.id}
           ex={ex}
+          diaId={dia.id}
           cor={cor}
           data={data!}
           onMudou={carregar}
@@ -140,12 +141,14 @@ export default function TreinoScreen() {
 
 function ExercicioCard({
   ex,
+  diaId,
   cor,
   data,
   clientId,
   onMudou,
 }: {
   ex: Exercicio;
+  diaId: string;
   cor: string;
   data: WorkoutData;
   clientId: string;
@@ -157,6 +160,7 @@ function ExercicioCard({
   const anterior = sessaoAnterior(historico);
   const concluido = concluidoHoje(historico);
   const avaliacao = avaliar(ex, anterior);
+  const illustration = getExerciseIllustration(ex.nome, diaId);
 
   const [pendente, setPendente] = useState<SetLog | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -205,6 +209,17 @@ function ExercicioCard({
           {ex.tempo ? 's' : ''} ({ex.sets}x)
         </Caption>
       </Caption>
+
+      {illustration ? (
+        <View style={styles.illustration}>
+          <Image
+            source={illustration}
+            style={styles.illustrationImage}
+            resizeMode="contain"
+            accessibilityLabel={`Demonstração de execução: ${ex.nome}`}
+          />
+        </View>
+      ) : null}
 
       {ex.nota ? <Caption color={Palette.orange}>{ex.nota}</Caption> : null}
 
@@ -349,6 +364,16 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontWeight: '800',
+  },
+  illustration: {
+    height: 210,
+    borderRadius: Radius.md,
+    overflow: 'hidden',
+    backgroundColor: Palette.surfaceElevated,
+  },
+  illustrationImage: {
+    width: '100%',
+    height: '100%',
   },
   logadas: {
     flexDirection: 'row',
