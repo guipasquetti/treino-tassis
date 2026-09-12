@@ -1,9 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 
-import { BarraProgresso, Body, Button, Caption, Card, EmptyState, Loading, Screen, SectionTitle, Sparkline, Stat } from '@/components/ui';
+import { Body, Button, Caption, Card, EmptyState, GraficoPontos, Loading, Screen, SectionTitle, Stat } from '@/components/ui';
 import { formatarData, formatarDataHora, itensReais, listaDeCompras, somaMacros } from '@/models/domain';
 import {
   checkinPendente,
@@ -202,12 +203,14 @@ export default function InicioScreen() {
       {totalItensCompra > 0 ? (
         <Card onPress={() => router.push('/aluno/lista-compras')}>
           <View style={styles.linhaEntreTexto}>
-            <SectionTitle>Lista de compras</SectionTitle>
-            <Caption color={Palette.text}>
-              {Math.min(estado.comprasMarcadas, totalItensCompra)}/{totalItensCompra} comprados
+            <View style={styles.listaComprasEsquerda}>
+              <Ionicons name="list-outline" size={20} color={Palette.textSecondary} />
+              <Body>Lista de compras</Body>
+            </View>
+            <Caption>
+              {Math.min(estado.comprasMarcadas, totalItensCompra)}/{totalItensCompra}
             </Caption>
           </View>
-          <BarraProgresso valor={estado.comprasMarcadas} total={totalItensCompra} cor={Palette.purple} />
         </Card>
       ) : null}
 
@@ -218,7 +221,7 @@ export default function InicioScreen() {
             <Stat value={`${formatarNumero(pesos[pesos.length - 1].peso)}kg`} label="mais recente" color={Palette.blue} />
             <VariacaoPeso pesos={pesos} />
           </View>
-          <Sparkline valores={pesos.map((p) => p.peso)} cor={Palette.blue} />
+          <GraficoPontos valores={pesos.map((p) => p.peso)} cor={Palette.blue} />
         </Card>
       ) : (
         <EmptyState text="Registre seu peso no check-in pra ver a evolução aqui." />
@@ -314,5 +317,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  listaComprasEsquerda: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
   },
 });

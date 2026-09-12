@@ -159,6 +159,36 @@ export function Sparkline({ valores, cor }: { valores: number[]; cor: string }) 
   );
 }
 
+/**
+ * Gráfico de pontos sobre uma linha de base — pontos escalados pelo min/max da série, sem
+ * preenchimento decorativo (§19: cor só como sinal). Leitura mais direta que a `Sparkline`
+ * (barras) pra série contínua tipo peso, no espírito de traço de monitor da paleta Sinal Vital.
+ */
+export function GraficoPontos({ valores, cor }: { valores: number[]; cor: string }) {
+  const min = Math.min(...valores);
+  const max = Math.max(...valores);
+  const amplitude = max - min || 1;
+  const ultimos = valores.slice(-12);
+  return (
+    <View style={styles.pontosGrafico}>
+      {ultimos.map((v, i) => {
+        const altura = ((v - min) / amplitude) * 40;
+        const ultimo = i === ultimos.length - 1;
+        return (
+          <View key={i} style={styles.pontosColuna}>
+            <View
+              style={[
+                styles.pontosPonto,
+                { marginBottom: altura, borderColor: cor, backgroundColor: ultimo ? cor : 'transparent' },
+              ]}
+            />
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 export function Pill({
   label,
   active,
@@ -370,6 +400,24 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: Radius.sm,
     minHeight: 8,
+  },
+  pontosGrafico: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    height: 48,
+    marginTop: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Palette.border,
+  },
+  pontosColuna: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  pontosPonto: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    borderWidth: 1.5,
   },
   screen: {
     flex: 1,

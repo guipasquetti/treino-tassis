@@ -1,8 +1,8 @@
 # Vytra — Handoff
 
 > Documento de contexto para replicar o estado do projeto em outro chat.
-> Última atualização: 12/Setembro/2026 — correção de panturrilha no leg press publicada nos
-> dois hosts do app.
+> Última atualização: 12/Setembro/2026 — Início com gráfico de pontos no peso e lista de
+> compras minimalista (§34); prontuário evolutivo por sessão aplicado (§33).
 
 > **Fonte canônica:** este arquivo, na raiz do repositório. Todo agente (Codex ou Claude) deve lê-lo antes de alterar o projeto e atualizá-lo ao concluir mudanças relevantes, decisões, migrações, configuração de infraestrutura ou bloqueios.
 
@@ -2868,4 +2868,24 @@ criar `sessoes_clinicas` separada — pergunta que ficava pendente desde §7/11-
   topo da lista com "· consulta de [data]" quando ligada. Removida a rota e a linha do layout
   depois — `git status` confirmou `_layout.tsx` sem diff. `npx tsc --noEmit` limpo. **Não
   testado logado com paciente real** — mesma regra de nunca digitar senha de conta nenhuma.
+  **Sem deploy ainda desta rodada.**
+
+## 34. Início — gráfico de pontos no peso + lista de compras minimalista (12/set)
+
+✅ Pedido do Guilherme: peso na tela Início virar "gráfico de pontos" e lista de compras virar
+ícone mais direto, dentro da proposta de identidade da marca.
+- `GraficoPontos`, novo em [`ui/index.tsx`](src/components/ui/index.tsx) — pontos ocos na cor
+  do sinal sobre uma linha de base fina (`Palette.border`), só o mais recente vem preenchido —
+  mesmo princípio já usado no `MedidorAdesao` do §32 (cor é o único sinal, sem preenchimento
+  decorativo). Substitui a `Sparkline` (barras) só no card de peso de
+  [`aluno/index.tsx`](src/app/aluno/index.tsx); `Sparkline` continua igual pros outros usos
+  (resumo do profissional).
+- Card "Lista de compras" do Início perdeu o título de seção e a `BarraProgresso` — virou uma
+  linha só: ícone `list-outline` (Ionicons) + nome + contagem (`7/23`), sem barra preenchida.
+- **Verificado sem login**: rota de depuração temporária (`_debug-pontos.tsx`, whitelisted por
+  uma linha em `_layout.tsx`, mesmo padrão de sempre) com peso mockado em queda — pontos
+  escalando certo, só o último preenchido, linha de base visível; card de lista de compras
+  renderizando ícone+nome+contagem numa linha só. Removida a rota e a linha do layout depois —
+  `git status` confirmou `_layout.tsx` sem diff. `npx tsc --noEmit` limpo.
+- **Não testado logado com dado real** — mesma regra de nunca digitar senha de conta nenhuma.
   **Sem deploy ainda desta rodada.**
