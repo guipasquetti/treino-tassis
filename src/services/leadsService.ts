@@ -43,6 +43,20 @@ export async function listarAtendimentosDoLead(leadId: string): Promise<Atendime
   return data ?? [];
 }
 
+/**
+ * Prontuário evolutivo do paciente já convertido (pós-cadastro) — mesma tabela do funil de
+ * lead, filtrada por `client_id` em vez de `lead_id`. `teleconsulta_id` (quando presente) liga
+ * a nota a uma consulta específica; nota avulsa entre consultas fica com `teleconsulta_id` nulo.
+ */
+export async function listarAtendimentosDoCliente(clientId: string): Promise<Atendimento[]> {
+  const { data } = await supabase
+    .from('atendimentos')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('data_atendimento', { ascending: false });
+  return data ?? [];
+}
+
 export async function criarAtendimento(atendimento: TablesInsert<'atendimentos'>): Promise<void> {
   const { error } = await supabase.from('atendimentos').insert(atendimento);
   if (error) throw error;

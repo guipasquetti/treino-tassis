@@ -10,6 +10,7 @@ import {
   Caption,
   Card,
   EmptyState,
+  Field,
   Loading,
   Pill,
   Screen,
@@ -27,6 +28,7 @@ import {
   type ComparacaoAngulo,
 } from '@/services/checkinService';
 import { obterPainelGestao, type ResumoAluno } from '@/services/gestaoService';
+import { criarAtendimento, listarAtendimentosDoCliente, type Atendimento } from '@/services/leadsService';
 import { getWorkoutData, streakTreino } from '@/services/workoutService';
 import { useAuthStore } from '@/store/authStore';
 import { Palette, Spacing } from '@/theme';
@@ -46,6 +48,10 @@ export default function ResumoPacienteScreen() {
   const [paciente, setPaciente] = useState<ResumoAluno | null>(null);
   const [consultas, setConsultas] = useState<{ id: string; data_hora: string; status: string; observacoes: string | null }[]>([]);
   const [evolucao, setEvolucao] = useState<Evolucao | null>(null);
+  const [prontuario, setProntuario] = useState<Atendimento[]>([]);
+  const [notaTexto, setNotaTexto] = useState('');
+  const [notaTeleconsulta, setNotaTeleconsulta] = useState<string | null>(null);
+  const [salvandoNota, setSalvandoNota] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const carregar = useCallback(async () => {
@@ -63,10 +69,11 @@ export default function ResumoPacienteScreen() {
     );
 
     if (encontrado) {
-      const [checkins, workout, fotos] = await Promise.all([
+      const [checkins, workout, fotos, atendimentos] = await Promise.all([
         listarCheckinsDoAluno(clientId),
         getWorkoutData(clientId),
         obterComparacaoFotos(encontrado.subscriptionId),
+        listarAtendimentosDoCliente(clientId),
       ]);
       setEvolucao({
         pesos: historicoPeso(checkins),
@@ -75,9 +82,28 @@ export default function ResumoPacienteScreen() {
         fotos,
         streak: streakTreino(workout.historico),
       });
+      setProntuario(atendimentos);
     }
     setLoading(false);
   }, [clientId, user]);
+
+  async function registrarNota() {
+    if (!user || !clientId || !notaTexto.trim()) return;
+    setSalvandoNota(true);
+    try {
+      await criarAtendimento({
+        professional_id: user.id,
+        client_id: clientId,
+        teleconsulta_id: notaTeleconsulta,
+        notas: notaTexto.trim(),
+      });
+      setNotaTexto('');
+      setNotaTeleconsulta(null);
+      setProntuario(await listarAtendimentosDoCliente(clientId));
+    } finally {
+      setSalvandoNota(false);
+    }
+  }
 
   useEffect(() => {
     const task = setTimeout(() => {
@@ -210,6 +236,58 @@ export default function ResumoPacienteScreen() {
       ) : (
         <EmptyState text="Nenhuma consulta registrada para este paciente." />
       )}
+      <SectionTitle>Prontuário</SectionTitle>
+      <Card>
+        <Field
+          label="Nova nota"
+          value={notaTexto}
+          onChangeText={setNotaTexto}
+          placeholder="Evolução, observação clínica, orientação combinada..."
+          multiline
+        />
+        {consultas.length > 0 ? (
+          <View style={{ gap: Spacing.xs }}>
+            <Caption color={Palette.textTertiary}>Ligar a uma consulta (opcional)</Caption>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }}>
+              <Pill label="Nota avulsa" active={notaTeleconsulta === null} onPress={() => setNotaTeleconsulta(null)} />
+              {consultas.map((consulta) => (
+                <Pill
+                  key={consulta.id}
+                  label={formatarDataHora(consulta.data_hora)}
+                  active={notaTeleconsulta === consulta.id}
+                  onPress={() => setNotaTeleconsulta(consulta.id)}
+                />
+              ))}
+            </View>
+          </View>
+        ) : null}
+        <Button
+          label="Registrar nota"
+          onPress={registrarNota}
+          disabled={!notaTexto.trim()}
+          loading={salvandoNota}
+        />
+      </Card>
+
+      {prontuario.length ? (
+        prontuario.map((atendimento) => {
+          const consultaLigada = atendimento.teleconsulta_id
+            ? consultas.find((c) => c.id === atendimento.teleconsulta_id)
+            : null;
+          return (
+            <Card key={atendimento.id}>
+              <Caption color={Palette.textTertiary}>
+                {formatarDataHora(atendimento.data_atendimento)}
+                {consultaLigada ? ` · consulta de ${formatarDataHora(consultaLigada.data_hora)}` : ''}
+              </Caption>
+              <Body>{atendimento.notas}</Body>
+            </Card>
+          );
+        })
+      ) : (
+        <EmptyState text="Nenhuma nota de prontuário registrada ainda." />
+      )}
+
       <Button label="Agendar consulta no Início" variant="ghost" onPress={() => router.push('/pro')} />
     </Screen>
   );

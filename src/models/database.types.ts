@@ -121,6 +121,7 @@ export type Database = {
           lead_id: string | null
           notas: string | null
           professional_id: string
+          teleconsulta_id: string | null
         }
         Insert: {
           client_id?: string | null
@@ -130,6 +131,7 @@ export type Database = {
           lead_id?: string | null
           notas?: string | null
           professional_id: string
+          teleconsulta_id?: string | null
         }
         Update: {
           client_id?: string | null
@@ -139,6 +141,7 @@ export type Database = {
           lead_id?: string | null
           notas?: string | null
           professional_id?: string
+          teleconsulta_id?: string | null
         }
         Relationships: [
           {
@@ -160,6 +163,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atendimentos_teleconsulta_id_fkey"
+            columns: ["teleconsulta_id"]
+            isOneToOne: false
+            referencedRelation: "teleconsultas"
             referencedColumns: ["id"]
           },
         ]

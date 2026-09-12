@@ -1,7 +1,8 @@
 # Vytra — Handoff
 
 > Documento de contexto para replicar o estado do projeto em outro chat.
-> Última atualização: 09/Setembro/2026.
+> Última atualização: 12/Setembro/2026 — correção de panturrilha no leg press publicada nos
+> dois hosts do app.
 
 > **Fonte canônica:** este arquivo, na raiz do repositório. Todo agente (Codex ou Claude) deve lê-lo antes de alterar o projeto e atualizá-lo ao concluir mudanças relevantes, decisões, migrações, configuração de infraestrutura ou bloqueios.
 
@@ -2617,19 +2618,112 @@ publicado atual. Os nomes de arquivo correspondem à prescrição em `plans.dias
 "Tríceps corda" tem duas cópias, uma para cada ocorrência do plano).
 
 Cada imagem tem fundo transparente, duas posições do movimento quando dinâmico (ou uma pose de
-alinhamento no exercício isométrico), equipamento explícito e guias de movimento em teal. É uma
-**biblioteca de revisão**, não uma alteração da interface: nenhum arquivo está referenciado pelo
-app, exportado ou publicado ainda.
+alinhamento no exercício isométrico), equipamento explícito e guias de movimento em teal.
 
 ✅ **Correção pontual solicitada pelo Guilherme:** `cadeira-flexora.png` teve as duas posições
 invertidas horizontalmente: a flexão final fica à esquerda e a extensão inicial à direita, com a
 seta apontando da posição inicial para a final. Aplicada por inversão exata do PNG original;
 transparência (`alpha`) preservada.
 
-⚠️ **Bloqueio de qualidade obrigatório:** Tassis precisa validar variante do exercício, máquina,
-amplitude e alinhamento de cada arquivo antes de qualquer vínculo à ficha de treino. Depois da
-revisão, corrigir ou regenerar apenas os itens apontados, e só então definir o mapeamento
-determinístico `Exercicio.nome` → asset; não depender de geração dinâmica para instrução do aluno.
+✅ **Correção biomecânica solicitada pelo Guilherme:** `triceps-coice-unilateral-no-cabo.png`
+foi redesenhada. A modelo agora fica de frente para a torre de cabo, em hinge estável; o braço
+superior permanece fixo junto ao tronco e apenas o antebraço estende para trás. Arquivo PNG com
+`alpha` confirmado; continua aguardando a validação técnica do Tassis.
+
+✅ **Correção solicitada pelo Guilherme:** `abdominal-infra.png` trocou o halter preso entre os
+pés por duas caneleiras escuras, cada uma fixada ao tornozelo. Mantém o mesmo movimento de
+reverse crunch no banco declinado; PNG com `alpha` confirmado.
+
+✅ **Correção biomecânica solicitada pelo Guilherme:** `elevacao-lateral-na-polia.png` foi
+redesenhada para o cabo direto: a torre de polia baixa fica do mesmo lado da mão que segura o
+handle, sem cruzar o tronco; a mesma mão do lado direito no quadro inicial segura o handle e
+eleva esse mesmo braço até a altura do ombro no quadro final — sem espelhamento/troca de braço.
+O braço oposto fica imóvel. PNG com `alpha` confirmado.
+
+✅ **Correção biomecânica solicitada pelo Guilherme (12/set):**
+`panturrilha-em-pe-ou-no-legpress.png` foi redesenhada como panturrilha no leg press 45°.
+A modelo permanece reclinada e pernas, joelhos, assento, trenó e plataforma não se deslocam
+entre os quadros; somente tornozelos e pés passam da dorsiflexão à flexão plantar contra a
+plataforma fixa. PNG com `alpha` confirmado.
+
+✅ **Causa de a correção não aparecer no app, encontrada e resolvida (12/set):** o resolvedor
+em `src/lib/exerciseIllustrations.ts` testava o alias genérico `leg press` antes de
+`panturrilha no leg press`; por isso a prescrição resolvia incorretamente para
+`legpress.png`. A regra de panturrilha agora é avaliada primeiro. `npx tsc --noEmit` passou
+e o bundle exportado confirma essa prioridade.
+
+✅ **Correção solicitada pelo Guilherme:** `cadeira-adutora.png` foi redesenhada para que os
+dois apoios permaneçam entre as pernas, pressionando a face interna das coxas tanto na abertura
+inicial quanto no fechamento; ambos caminham para o centro, sem inverter lado ou atravessar o
+corpo. PNG com `alpha` confirmado.
+
+✅ **Correção solicitada pelo Guilherme:** `cadeira-abdutora.png` foi redesenhada para que os
+dois apoios permaneçam do lado externo das coxas nas duas posições e acompanhem a abertura das
+pernas para fora; não há apoio entre as pernas. PNG com `alpha` confirmado.
+
+✅ **Correção solicitada pelo Guilherme:** `agachamento-smith-hack-ou-livre.png` foi
+redesenhada para que a barra corra à frente dos trilhos e todos os discos fiquem nas mangas
+externas, com espaço visível para fora das colunas do Smith — sem atravessar ou ficar ocultos
+pelo suporte. PNG com `alpha` confirmado.
+
+✅ **Padrão visual oficial para novos exercícios (decisão do Guilherme):** usar
+`assets/exercises/elevacao-lateral-na-polia.png` como a referência de qualidade, formato e
+acabamento. Ilustrações devem ter atleta adulta atlética sem traços faciais, anatomia e
+proporções naturais, roupa de treino escura, máquina em grafite, seta de movimento em teal,
+recorte PNG com alpha e sequência clara de início→fim. A variação feminina preserva a silhueta
+e o styling da modelo atual; a masculina deve ser a contraparte atlética equivalente (traços
+faciais neutros/sem rosto, cabelo curto e vestimenta escura), mantendo a mesma linguagem,
+proporção, nível de detalhe e enquadramento. A continuidade do membro que segura carga/cabo e
+a geometria física do equipamento são invariantes obrigatórios em ambos os perfis. Aplicar esse
+padrão em toda solicitação futura de exercício, salvo orientação explícita em contrário.
+
+✅ **Inventário conferido em 11/set:** `assets/exercises/` contém **34 PNGs**:
+`abdominal-banco-45`, `abdominal-infra`, `agachamento-smith-hack-ou-livre`, `bulgaro`,
+`cadeira-abdutora`, `cadeira-adutora`, `cadeira-extensora`, `cadeira-flexora`,
+`crucifixo-inverso-maquina-ou-halter`, `crucifixo-maquina`,
+`desenvolvimento-maquina-ou-smith`, `elevacao-frontal-unilateral-cabo-ou-halter`,
+`elevacao-lateral-com-halter`, `elevacao-lateral-na-polia`, `elevacao-pelvica`,
+`hiperextensao-lombar-com-sobrecarga`, `legpress`, `mesa-flexora`,
+`panturrilha-em-pe-ou-no-legpress`, `prancha-isometrica`, `pull-down`,
+`puxada-alta-barra-reta`, `puxada-alta-pegada-neutra`,
+`remada-com-peito-apoiado-maquina`, `remada-maquina-sentado-cotovelos-altos`,
+`remada-serrote-com-halter`, `rosca-martelo-unilateral-com-halter`,
+`rosca-unilateral-com-halter`, `stiff`, `supino-declinado-maquina-ou-banco`,
+`supino-reto-maquina-ou-barra`, `triceps-coice-unilateral-no-cabo`,
+`triceps-corda` e `triceps-corda-dia-d`. Não há PNGs idênticos por hash. Os dois arquivos
+de tríceps corda são a única duplicidade funcional intencional, pois a prescrição o repete em
+dois dias; os arquivos são distintos para manter o mapeamento por ocorrência.
+
+✅ **Integração piloto no treino do aluno (autorizada pelo Guilherme após validação parcial do
+Tassis):** `src/lib/exerciseIllustrations.ts` faz o mapeamento local e determinístico por
+`Exercicio.nome`, aceitando pequenas variações de grafia; exercícios ainda sem correspondência
+apenas ficam sem imagem. Não há geração dinâmica, escrita no banco ou mudança em carga,
+histórico e prescrição. Para a repetição de Tríceps corda, o dia `D` resolve
+`triceps-corda-dia-d.png`; os demais resolvem `triceps-corda.png`.
+
+✅ **Decisão de layout mobile (11/set):** a tentativa de recolher a imagem em uma prévia
+compacta foi rejeitada pelo Guilherme e revertida. Cada card volta a exibir a demonstração
+inteira, aberta por padrão, antes das séries. Preservar este layout até nova orientação.
+`npx tsc --noEmit` limpo após a reversão.
+
+✅ **Publicado em produção (11/set):** export web com as ilustrações abertas nos cards
+promovido no EAS Hosting e no Vercel. `https://app-treino.expo.app` e
+`https://app.vytraoficial.com.br` responderam 200 e entregaram o mesmo bundle
+`entry-49d5914e79d6b50ffaed7d4690c19e9a.js`.
+
+✅ **Correção de panturrilha publicada (12/set):** export web promovido no EAS Hosting
+(`https://app-treino--ykifine9as.expo.app`) e na Vercel. As produções
+`https://app-treino.expo.app` e `https://app.vytraoficial.com.br` responderam 200 e
+entregaram o mesmo bundle `entry-f46f970b2b59b59cee6dffb0c66169b5.js`.
+
+✅ **Republicação do mapeamento de panturrilha (12/set):** o bundle com a regra de prioridade
+corrigida foi promovido no EAS (`https://app-treino--2b9c4pv7s5.expo.app`) e na Vercel.
+Os dois hosts públicos responderam 200 com o mesmo bundle
+`entry-4ae6f81d6d0839d8d73c4bb94d973c14.js`.
+
+⚠️ **Validação técnica restante:** a integração é um piloto visual. Tassis ainda pode apontar
+correções de variante, máquina, amplitude e alinhamento; nesse caso, regenerar apenas o asset
+indicado, preservando o mapeamento determinístico já aplicado.
 
 ## 29. Mapa de telas (11/set)
 
@@ -2745,3 +2839,33 @@ minimalismo. Verificado sem login pelo mesmo padrão (`debugcheckin.tsx`, removi
 deploy --prod` → `npx vercel deploy dist --project vytra-app --prod --yes`. Bundle hash idêntico
 (`entry-7f2d9007355e08f8ad770951fdbb9b8d.js`), conferido por `curl` nos dois
 (`app-treino.expo.app` e `app.vytraoficial.com.br`), ambos 200.
+
+## 33. Prontuário evolutivo por sessão (12/set)
+
+✅ Item 4 do §30 (benchmark) fechado: decisão do Guilherme foi **estender `atendimentos`**, não
+criar `sessoes_clinicas` separada — pergunta que ficava pendente desde §7/11-set.
+- **Migração** [`20260912_atendimentos_teleconsulta.sql`](supabase/migrations/20260912_atendimentos_teleconsulta.sql),
+  **aplicada em produção** (autorizado pelo Guilherme): `atendimentos.teleconsulta_id` (uuid,
+  nullable, referencia `teleconsultas`) + constraint `atendimentos_teleconsulta_requires_client`
+  (uma nota ligada a consulta não pode pendurar num lead sem conta — `teleconsultas.patient_id`
+  só existe pra quem já é paciente) + índice. Sem mudança de RLS: `atendimentos_write` já
+  restringe por `professional_id = auth.uid()`, independente do alvo. `get_advisors(security)`
+  depois: mesma lista de warnings já aceita, nenhuma categoria nova. `database.types.ts`
+  regenerado via `generate_typescript_types` — conferido idêntico ao que eu já tinha adicionado
+  à mão antes de aplicar.
+- **Serviço**: `listarAtendimentosDoCliente()`, nova em
+  [`leadsService.ts`](src/services/leadsService.ts) — mesma tabela do funil de lead, filtrada
+  por `client_id` em vez de `lead_id`. `criarAtendimento()` já era genérico, sem mudança.
+- **Tela**: [`pro/aluno/[id]/resumo.tsx`](src/app/pro/aluno/%5Bid%5D/resumo.tsx) ganhou seção
+  "Prontuário" — campo de nota multilinha, Pills pra ligar a nota a uma das consultas já
+  listadas na seção "Consultas" da mesma tela (ou "Nota avulsa", sem vínculo), lista das notas
+  já registradas com a consulta ligada quando houver. **Só o profissional vê** — mesmo padrão
+  de prontuário clínico privado que WebDiet/Dietbox/LiveClin também têm; paciente não lê nota
+  do profissional sobre si, RLS não abre exceção pra isso.
+- **Verificado sem login**: rota de depuração temporária no root (`debugprontuario.tsx`,
+  whitelisted por uma linha em `_layout.tsx`, mesmo padrão de sempre) com nota mockada — campo
+  preenchido habilita o botão, seleção de consulta muda o vínculo exibido, nota nova aparece no
+  topo da lista com "· consulta de [data]" quando ligada. Removida a rota e a linha do layout
+  depois — `git status` confirmou `_layout.tsx` sem diff. `npx tsc --noEmit` limpo. **Não
+  testado logado com paciente real** — mesma regra de nunca digitar senha de conta nenhuma.
+  **Sem deploy ainda desta rodada.**
