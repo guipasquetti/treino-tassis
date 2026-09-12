@@ -1,8 +1,8 @@
 # Vytra — Handoff
 
 > Documento de contexto para replicar o estado do projeto em outro chat.
-> Última atualização: 12/Setembro/2026 — Início com gráfico de pontos no peso e lista de
-> compras minimalista (§34); prontuário evolutivo por sessão aplicado (§33).
+> Última atualização: 12/Setembro/2026 — deploy consolidado nos dois hosts com prontuário
+> evolutivo (§33), redesenho do Início (§34) e ilustrações de exercício (§28).
 
 > **Fonte canônica:** este arquivo, na raiz do repositório. Todo agente (Codex ou Claude) deve lê-lo antes de alterar o projeto e atualizá-lo ao concluir mudanças relevantes, decisões, migrações, configuração de infraestrutura ou bloqueios.
 
