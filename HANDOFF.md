@@ -2868,7 +2868,12 @@ criar `sessoes_clinicas` separada — pergunta que ficava pendente desde §7/11-
   topo da lista com "· consulta de [data]" quando ligada. Removida a rota e a linha do layout
   depois — `git status` confirmou `_layout.tsx` sem diff. `npx tsc --noEmit` limpo. **Não
   testado logado com paciente real** — mesma regra de nunca digitar senha de conta nenhuma.
-  **Sem deploy ainda desta rodada.**
+
+✅ **Deploy publicado nos dois hosts (12/set)**, junto com o commit do Codex das ilustrações de
+exercício e do redesenho do Início (§28/§34) — `npx expo export --platform web` → `npx eas
+deploy --prod` → `npx vercel deploy dist --project vytra-app --prod --yes`. Bundle hash idêntico
+(`entry-1743f0269c8cc2493048b7f4fbd8e92a.js`), conferido por `curl` nos dois
+(`app-treino.expo.app` e `app.vytraoficial.com.br`), ambos 200.
 
 ## 34. Início — gráfico de pontos no peso + lista de compras minimalista (12/set)
 
