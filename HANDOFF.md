@@ -2866,8 +2866,12 @@ criar `sessoes_clinicas` separada — pergunta que ficava pendente desde §7/11-
   whitelisted por uma linha em `_layout.tsx`, mesmo padrão de sempre) com nota mockada — campo
   preenchido habilita o botão, seleção de consulta muda o vínculo exibido, nota nova aparece no
   topo da lista com "· consulta de [data]" quando ligada. Removida a rota e a linha do layout
-  depois — `git status` confirmou `_layout.tsx` sem diff. `npx tsc --noEmit` limpo. **Não
-  testado logado com paciente real** — mesma regra de nunca digitar senha de conta nenhuma.
+  depois — `git status` confirmou `_layout.tsx` sem diff. `npx tsc --noEmit` limpo.
+
+✅ **Testado logado pelo Guilherme (12/set), em produção**: nota avulsa registrada e aparece no
+topo sem vínculo; nota ligada a uma consulta aparece com "· consulta de [data]"; as duas
+persistem depois de sair e voltar na tela; confirmado que o lado do paciente (perfil/check-in/
+dieta) não expõe a nota — RLS de fato restringe ao profissional.
 
 ✅ **Deploy publicado nos dois hosts (12/set)**, junto com o commit do Codex das ilustrações de
 exercício e do redesenho do Início (§28/§34) — `npx expo export --platform web` → `npx eas
