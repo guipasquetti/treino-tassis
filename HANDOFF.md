@@ -2756,13 +2756,18 @@ tools), mesma técnica já usada no WebDiet — mais preciso que ler site de mar
   app citado pelo Tassis. Segue sem mapear — só resolve com print/link direto dele.
 
 Gaps reais encontrados, sem prioridade decidida (não tomei essa decisão), ordenados por quantos
-concorrentes convergem: **financeiro/cobrança** (4/5, já em construção), **prontuário evolutivo**
-(3/6, já priorizado), **IA em prescrição** (3/5, já descartado por custo de infra), **anexo de
-paciente** (2/6, já priorizado), **chat in-app**, **diário alimentar livre**, **hábito+badge além
-de treino**, **app com marca própria entregue como produto pronto** (2/5 cada) — e mais sete
-achados de sinal isolado (1 concorrente cada), listados no artifact pra não perder o achado.
+concorrentes convergem: **financeiro/cobrança** (4/5, já em construção), ~~**prontuário
+evolutivo**~~ (3/6 — ✅ **fechado 12/set**, ver §33), **IA em prescrição** (3/5, já descartado
+por custo de infra), **anexo de paciente** (2/6, já priorizado), **chat in-app**, **diário
+alimentar livre**, **hábito+badge além de treino**, **app com marca própria entregue como
+produto pronto** (2/5 cada) — e mais sete achados de sinal isolado (1 concorrente cada),
+listados no artifact pra não perder o achado.
 Vytra já ganha em 2 pontos que nenhum dos 5 tem: lista de compras dinâmica e o funil
 lead→convite→cadastro automático.
+
+✅ **Artifact atualizado (12/set)** com o fechamento do prontuário evolutivo — mesmo link:
+https://claude.ai/code/artifact/bb96e86e-042e-4231-a89e-263f9f0e18da (tabela-síntese e item
+04 da lista ranqueada marcados como feito).
 
 ## 31. Dieta do aluno — accordion nas refeições, observações e lista de compras (11/set)
 
